@@ -19,8 +19,13 @@ import "./main.css";
 import { invoke } from "@tauri-apps/api/core"; // Tauri command invocation
 import { appLocalDataDir } from "@tauri-apps/api/path"; // Get application local data directory
 
+const isTauriRuntime = typeof window !== "undefined" && Boolean(window.__TAURI_INTERNALS__);
+
 // Markdown Parser
 import MarkdownIt from "markdown-it"; // Markdown to HTML parser
+
+// Logger
+import {traceLog, debugLog, infoLog, warnLog, errorLog} from "./logger"
 
 // ###################################################
 // Function : HASM_Markdown_Editor
@@ -52,6 +57,10 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange }) {
 
   // Initialize new document if no file is specified
   useEffect(() => {
+    if (!isTauriRuntime) {
+      warnLog("Tauri runtime is not available; skipping package open.");
+      return;
+    }
     if (initializedRef.current) {
       return;
     }
@@ -78,7 +87,7 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange }) {
     }
 
     const saveCurrentMarkdown = async () => {
-      if (lastSavedMarkdownRef.current === markdown) {
+      if (lastSavedMarkdownRef.current === markdown || !isTauriRuntime) {
         return;
       }
 
@@ -87,7 +96,7 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange }) {
         onPackageChange?.(pkg);
         lastSavedMarkdownRef.current = markdown;
       } catch (err) {
-        console.error("Failed to auto-save markdown:", err);
+        errorLog("Failed to auto-save markdown:", err);
       }
     };
 
@@ -114,6 +123,7 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange }) {
   const html = useMemo(() => md.render(markdown), [markdown, md]);
 
   // Render HASM Markdown Editor with editor and preview panels
+  infoLog("Render HASM Markdown Editor");
   return (
     <Row 
       className="HASM_Markdown_Editor flex-grow-1 g-0 overflow-hidden"

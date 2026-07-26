@@ -21,6 +21,9 @@ import "./main.css";
 // Bootstrap
 import { Container } from "react-bootstrap";
 
+// Logger
+import {traceLog, debugLog, infoLog, warnLog, errorLog} from "./logger"
+
 // ###################################################
 // Function : App
 // Description : Definition of App Componentincluding all component
@@ -36,6 +39,7 @@ function App() {
   const [currentPackage, setCurrentPackage] = useState(null);
 
   // Return App Component
+  infoLog("Render App");
   return (
     <Container fluid className="Main p-0 d-flex flex-column">
       <Menu

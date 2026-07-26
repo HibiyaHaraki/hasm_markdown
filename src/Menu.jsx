@@ -19,6 +19,11 @@ import { invoke } from "@tauri-apps/api/core";
 import { appLocalDataDir } from "@tauri-apps/api/path";
 import { open, save } from "@tauri-apps/plugin-dialog";
 
+// Logger
+import {traceLog, debugLog, infoLog, warnLog, errorLog} from "./logger"
+
+const isTauriRuntime = typeof window !== "undefined" && Boolean(window.__TAURI_INTERNALS__);
+
 // ###################################################
 // Function : Menu
 // Description : Definition of Global Menu Component
@@ -27,6 +32,11 @@ function Menu({ markdown, currentPackage, onPackageChange, setMarkdown }) {
 
   // Tauri : Open Exist Package
   const handleOpen = async () => {
+    if (!isTauriRuntime) {
+      warnLog("Tauri runtime is not available; skipping package open.");
+      return;
+    }
+
     try {
       // Step 1. Get App Local Path
       const basePath = await appLocalDataDir();
@@ -44,6 +54,9 @@ function Menu({ markdown, currentPackage, onPackageChange, setMarkdown }) {
           : `${selected}.hasmmd`;
 
         // Step 4. Call Rust Function (open_hasmmd) and get local package info and markdown
+        if (!isTauriRuntime) {
+          return;
+        }
         const [pkg, content] = await invoke("open_hasmmd", { basePath, hasmmdPath });
 
         // Step 5. Update Local Package info and Markdown content
@@ -51,12 +64,17 @@ function Menu({ markdown, currentPackage, onPackageChange, setMarkdown }) {
         setMarkdown?.(content);
       }
     } catch (err) {
-      console.error("Failed to open package:", err);
+      errorLog("Failed to open package:", err);
     }
   };
 
   // Tauri : Save Edit Page as New File
   const handleSaveAs = async () => {
+    if (!isTauriRuntime) {
+      warnLog("Tauri runtime is not available; skipping save as.");
+      return;
+    }
+
     try {
       // Step 1. Select single hasmmd file from file dialog
       const selected = await save({
@@ -80,11 +98,12 @@ function Menu({ markdown, currentPackage, onPackageChange, setMarkdown }) {
         onPackageChange?.(pkg);
       }
     } catch (err) {
-      console.error("Failed to save as:", err);
+      errorLog("Failed to save as:", err);
     }
   };
 
   // Return Menu Component
+  infoLog("Render Menu");
   return (
     <Navbar 
       variant="dark" 
