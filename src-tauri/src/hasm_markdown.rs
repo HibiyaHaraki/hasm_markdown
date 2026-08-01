@@ -466,10 +466,60 @@ impl HASMMarkdown {
 mod tests {
     use super::*;
     use std::fs;
+    use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    fn log_test(test_name: &str, detail: &str) {
+        init_logger();
+        trace!("[TEST] {} | {}", test_name, detail);
+    }
+
+    fn log_step(test_name: &str, step: &str, detail: &str) {
+        init_logger();
+        trace!("[STEP] {} | {} | {}", test_name, step, detail);
+    }
+
+    struct TestWorkspace {
+        base_path: PathBuf,
+    }
+
+    impl TestWorkspace {
+        fn new(prefix: &str) -> Self {
+            let unique_dir = format!(
+                "{}-{}",
+                prefix,
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            );
+            let base_path = std::env::temp_dir().join(unique_dir);
+            Self { base_path }
+        }
+    }
+
+    impl Drop for TestWorkspace {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.base_path);
+        }
+    }
+
+    /// # Test Function : create_new_hasmmd_creates_package_scaffold
+    /// ## Test Procedure
+    /// * Step 1 : Create a unique temporary base path.
+    /// * Step 2 : Call create_new_hasmmd to generate a new package scaffold.
+    /// * Step 3 : Validate package folder, main.md, and assets folder existence.
+    /// * Step 4 : Validate main.md includes the default starter text.
+    /// * Step 5 : Delete all created files.
+    /// ## Expected behavior
+    /// * Step 1 : A unique and isolated temporary path is prepared.
+    /// * Step 2 : A new package is created with a UUID-based folder.
+    /// * Step 3 : The scaffold files and folders are created at the correct path.
+    /// * Step 4 : The default markdown starter content is written to main.md.
+    /// * Step 5 : Temporary files are removed successfully.
     #[test]
     fn create_new_hasmmd_creates_package_scaffold() {
+        let test_name = "create_new_hasmmd_creates_package_scaffold";
         let unique_dir = format!(
             "hasmmd-test-{}",
             SystemTime::now()
@@ -478,39 +528,379 @@ mod tests {
                 .as_nanos()
         );
         let base_path = std::env::temp_dir().join(unique_dir);
+        log_test(test_name, &format!("base_path={}", base_path.display()));
 
+        log_step(test_name, "Step 2", "Call create_new_hasmmd");
         let package = HASMMarkdown::create_new_hasmmd(base_path.clone());
         let main_md = package.package_local_path.join(MDNAME);
         let assets_dir = package.package_local_path.join("assets");
+        log_step(
+            test_name,
+            "Step 3",
+            &format!(
+                "package_local_path={}, main_md={}, assets_dir={}",
+                package.package_local_path.display(),
+                main_md.display(),
+                assets_dir.display()
+            ),
+        );
 
-        assert!(package.package_local_path.exists());
-        assert!(main_md.exists());
-        assert!(assets_dir.exists());
-        assert!(fs::read_to_string(main_md).unwrap().contains("Start editing here"));
+        assert!(
+            package.package_local_path.exists(),
+            "[ERROR] {} | Step 3 failed: package path does not exist: {}",
+            test_name,
+            package.package_local_path.display()
+        );
+        assert!(
+            main_md.exists(),
+            "[ERROR] {} | Step 3 failed: main.md does not exist: {}",
+            test_name,
+            main_md.display()
+        );
+        assert!(
+            assets_dir.exists(),
+            "[ERROR] {} | Step 3 failed: assets directory does not exist: {}",
+            test_name,
+            assets_dir.display()
+        );
 
-        let _ = fs::remove_dir_all(base_path);
+        log_step(test_name, "Step 4", "Read and validate starter markdown text");
+        let initial_text = fs::read_to_string(&main_md).unwrap_or_else(|e| {
+            panic!(
+                "[ERROR] {} | Step 4 failed: cannot read {}: {}",
+                test_name,
+                main_md.display(),
+                e
+            )
+        });
+        assert!(
+            initial_text.contains("Start editing here"),
+            "[ERROR] {} | Step 4 failed: starter text missing in {}",
+            test_name,
+            main_md.display()
+        );
+
+        log_step(test_name, "Step 5", &format!("Cleanup path={}", base_path.display()));
+        fs::remove_dir_all(&base_path).unwrap_or_else(|e| {
+            panic!(
+                "[ERROR] {} | Step 5 failed: cleanup failed for {}: {}",
+                test_name,
+                base_path.display(),
+                e
+            )
+        });
     }
 
+    /// # Test Function : save_local_package_persists_markdown_to_main_md_in_package_path
+    /// ## Test Procedure
+    /// * Step 1 : Create an isolated test workspace and new package.
+    /// * Step 2 : Prepare markdown text and call save_local_package.
+    /// * Step 3 : Build the expected main.md path from package_local_path.
+    /// * Step 4 : Read saved file content and compare with input text.
+    /// * Step 5 : Delete all created files.
+    /// ## Expected behavior
+    /// * Step 1 : A valid package exists in the temporary workspace.
+    /// * Step 2 : save_local_package completes without error.
+    /// * Step 3 : main.md exists at package_local_path/main.md.
+    /// * Step 4 : Saved content exactly matches provided markdown text.
+    /// * Step 5 : Temporary files are removed successfully.
     #[test]
-    fn save_local_package_writes_markdown_to_main_md() {
-        let unique_dir = format!(
-            "hasmmd-save-test-{}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
+    fn save_local_package_persists_markdown_to_main_md_in_package_path() {
+        let test_name = "save_local_package_persists_markdown_to_main_md_in_package_path";
+        // Step 1. Create isolated temp workspace and new package
+        let workspace = TestWorkspace::new("hasmmd-save-test");
+        log_test(test_name, &format!("base_path={}", workspace.base_path.display()));
+        log_step(test_name, "Step 1", "Create new package scaffold");
+        let mut package = HASMMarkdown::create_new_hasmmd(workspace.base_path.clone());
+
+        // Step 2. Save markdown input through target function
+        let markdown_input = "# Saved content\n\nThis sentence must be persisted exactly.".to_string();
+        log_step(
+            test_name,
+            "Step 2",
+            &format!("Save markdown length={} chars", markdown_input.len()),
         );
-        let base_path = std::env::temp_dir().join(unique_dir);
+        package.save_local_package(markdown_input.clone()).unwrap_or_else(|e| {
+            panic!(
+                "[ERROR] {} | Step 2 failed: save_local_package returned error: {}",
+                test_name, e
+            )
+        });
 
-        let mut package = HASMMarkdown::create_new_hasmmd(base_path.clone());
-        package
-            .save_local_package("# Saved content".to_string())
-            .unwrap();
-
+        // Step 3. Validate save path and saved content
         let saved_path = package.package_local_path.join(MDNAME);
-        assert!(saved_path.exists());
-        assert!(fs::read_to_string(saved_path).unwrap().contains("# Saved content"));
+        log_step(
+            test_name,
+            "Step 3",
+            &format!("saved_path={}", saved_path.display()),
+        );
+        assert_eq!(
+            saved_path,
+            package.package_local_path.join("main.md"),
+            "[ERROR] {} | Step 3 failed: saved path mismatch",
+            test_name
+        );
+        assert!(
+            saved_path.exists(),
+            "[ERROR] {} | Step 3 failed: saved file does not exist: {}",
+            test_name,
+            saved_path.display()
+        );
 
-        let _ = fs::remove_dir_all(base_path);
+        log_step(test_name, "Step 4", "Read saved main.md and compare full content");
+        let saved_content = fs::read_to_string(&saved_path).unwrap_or_else(|e| {
+            panic!(
+                "[ERROR] {} | Step 4 failed: cannot read {}: {}",
+                test_name,
+                saved_path.display(),
+                e
+            )
+        });
+        assert_eq!(
+            saved_content,
+            markdown_input,
+            "[ERROR] {} | Step 4 failed: saved content mismatch",
+            test_name
+        );
+
+        // Step 4. Cleanup is automatic via TestWorkspace Drop implementation
+        log_step(
+            test_name,
+            "Step 5",
+            &format!("Cleanup by Drop for base_path={}", workspace.base_path.display()),
+        );
+    }
+
+    /// # Test Function : save_hasmmd_creates_portable_archive_from_local_package
+    /// ## Test Procedure
+    /// * Step 1 : Create an isolated test workspace and new package.
+    /// * Step 2 : Save known markdown content into local main.md.
+    /// * Step 3 : Call save_hasmmd with a target .hasmmd path.
+    /// * Step 4 : Open generated archive and read main.md entry.
+    /// * Step 5 : Compare extracted content with original input.
+    /// ## Expected behavior
+    /// * Step 1 : Package workspace is created correctly.
+    /// * Step 2 : Local package content is updated as expected.
+    /// * Step 3 : A .hasmmd archive file is created and state path is updated.
+    /// * Step 4 : main.md is present in the archive.
+    /// * Step 5 : Archived markdown matches the input text exactly.
+    #[test]
+    fn save_hasmmd_creates_portable_archive_from_local_package() {
+        let test_name = "save_hasmmd_creates_portable_archive_from_local_package";
+        // Step 1. Create isolated temp workspace and package
+        let workspace = TestWorkspace::new("hasmmd-archive-save-test");
+        log_test(test_name, &format!("base_path={}", workspace.base_path.display()));
+        log_step(test_name, "Step 1", "Create new package scaffold");
+        let mut package = HASMMarkdown::create_new_hasmmd(workspace.base_path.clone());
+
+        // Step 2. Save markdown so archive contains known content
+        let markdown_input = "# Archive Save Test\n\nThis content must be zipped.".to_string();
+        log_step(
+            test_name,
+            "Step 2",
+            &format!("Save markdown length={} chars", markdown_input.len()),
+        );
+        package.save_local_package(markdown_input.clone()).unwrap_or_else(|e| {
+            panic!(
+                "[ERROR] {} | Step 2 failed: save_local_package returned error: {}",
+                test_name, e
+            )
+        });
+
+        // Step 3. Save as .hasmmd file
+        let archive_path = workspace.base_path.join("exported.hasmmd");
+        log_step(
+            test_name,
+            "Step 3",
+            &format!("archive_path={}", archive_path.display()),
+        );
+        package.save_hasmmd(archive_path.clone()).unwrap_or_else(|e| {
+            panic!(
+                "[ERROR] {} | Step 3 failed: save_hasmmd returned error: {}",
+                test_name, e
+            )
+        });
+
+        // Step 4. Validate archive path and package state update
+        log_step(test_name, "Step 4", "Validate archive file existence and model path update");
+        assert!(
+            archive_path.exists(),
+            "[ERROR] {} | Step 4 failed: archive not found at {}",
+            test_name,
+            archive_path.display()
+        );
+        assert_eq!(
+            package.hasmmd_local_path,
+            archive_path,
+            "[ERROR] {} | Step 4 failed: hasmmd_local_path not updated correctly",
+            test_name
+        );
+
+        // Step 5. Validate archive contains main.md with expected content
+        log_step(
+            test_name,
+            "Step 5",
+            &format!("Open archive and verify {} entry", MDNAME),
+        );
+        let file = File::open(&package.hasmmd_local_path).unwrap_or_else(|e| {
+            panic!(
+                "[ERROR] {} | Step 5 failed: cannot open archive {}: {}",
+                test_name,
+                package.hasmmd_local_path.display(),
+                e
+            )
+        });
+        let mut archive = ZipArchive::new(file).unwrap_or_else(|e| {
+            panic!(
+                "[ERROR] {} | Step 5 failed: invalid zip archive {}: {}",
+                test_name,
+                package.hasmmd_local_path.display(),
+                e
+            )
+        });
+        let mut main_md = archive.by_name(MDNAME).unwrap_or_else(|e| {
+            panic!(
+                "[ERROR] {} | Step 5 failed: missing {} in archive: {}",
+                test_name, MDNAME, e
+            )
+        });
+        let mut extracted_markdown = String::new();
+        main_md.read_to_string(&mut extracted_markdown).unwrap_or_else(|e| {
+            panic!(
+                "[ERROR] {} | Step 5 failed: cannot read {} from archive: {}",
+                test_name, MDNAME, e
+            )
+        });
+        assert_eq!(
+            extracted_markdown,
+            markdown_input,
+            "[ERROR] {} | Step 5 failed: archived markdown mismatch",
+            test_name
+        );
+    }
+
+    /// # Test Function : open_hasmmd_extracts_archive_and_returns_saved_markdown
+    /// ## Test Procedure
+    /// * Step 1 : Create source package, save markdown, and export to .hasmmd.
+    /// * Step 2 : Call open_hasmmd with a separate temporal base path.
+    /// * Step 3 : Verify returned package paths and returned markdown string.
+    /// * Step 4 : Verify extracted main.md exists in opened package path.
+    /// * Step 5 : Compare extracted file content with original markdown input.
+    /// ## Expected behavior
+    /// * Step 1 : Source archive is created successfully.
+    /// * Step 2 : Archive is extracted into a new UUID workspace.
+    /// * Step 3 : Returned hasmmd path and markdown are correct.
+    /// * Step 4 : Extracted main.md exists at the expected path.
+    /// * Step 5 : Extracted markdown content matches the original input.
+    #[test]
+    fn open_hasmmd_extracts_archive_and_returns_saved_markdown() {
+        let test_name = "open_hasmmd_extracts_archive_and_returns_saved_markdown";
+        // Step 1. Create source package and archive
+        let source_workspace = TestWorkspace::new("hasmmd-open-source-test");
+        log_test(
+            test_name,
+            &format!("source_base_path={}", source_workspace.base_path.display()),
+        );
+        log_step(test_name, "Step 1", "Create source package and archive with known markdown");
+        let mut source_package = HASMMarkdown::create_new_hasmmd(source_workspace.base_path.clone());
+        let markdown_input = "# Open Test\n\nThis content must be restored from archive.".to_string();
+        source_package.save_local_package(markdown_input.clone()).unwrap_or_else(|e| {
+            panic!(
+                "[ERROR] {} | Step 1 failed: save_local_package returned error: {}",
+                test_name, e
+            )
+        });
+
+        let archive_path = source_workspace.base_path.join("for-open-test.hasmmd");
+        source_package.save_hasmmd(archive_path.clone()).unwrap_or_else(|e| {
+            panic!(
+                "[ERROR] {} | Step 1 failed: save_hasmmd returned error: {}",
+                test_name, e
+            )
+        });
+        assert!(
+            archive_path.exists(),
+            "[ERROR] {} | Step 1 failed: source archive not found at {}",
+            test_name,
+            archive_path.display()
+        );
+
+        // Step 2. Open archive into another temporal workspace
+        let open_workspace = TestWorkspace::new("hasmmd-open-target-test");
+        log_step(
+            test_name,
+            "Step 2",
+            &format!(
+                "open_base_path={}, archive_path={}",
+                open_workspace.base_path.display(),
+                archive_path.display()
+            ),
+        );
+        let (opened_package, opened_markdown) =
+            HASMMarkdown::open_hasmmd(open_workspace.base_path.clone(), archive_path.clone())
+                .unwrap_or_else(|e| {
+                    panic!(
+                        "[ERROR] {} | Step 2 failed: open_hasmmd returned error: {}",
+                        test_name, e
+                    )
+                });
+
+        // Step 3. Validate returned package paths and restored markdown
+        log_step(
+            test_name,
+            "Step 3",
+            &format!(
+                "opened_package_path={}, returned_hasmmd_path={}",
+                opened_package.package_local_path.display(),
+                opened_package.hasmmd_local_path.display()
+            ),
+        );
+        assert_eq!(
+            opened_package.hasmmd_local_path,
+            archive_path,
+            "[ERROR] {} | Step 3 failed: returned hasmmd path mismatch",
+            test_name
+        );
+        assert!(
+            opened_package.package_local_path.exists(),
+            "[ERROR] {} | Step 3 failed: extracted package path missing: {}",
+            test_name,
+            opened_package.package_local_path.display()
+        );
+        assert_eq!(
+            opened_markdown,
+            markdown_input,
+            "[ERROR] {} | Step 3 failed: returned markdown mismatch",
+            test_name
+        );
+
+        let extracted_main_md = opened_package.package_local_path.join(MDNAME);
+        log_step(
+            test_name,
+            "Step 4",
+            &format!("extracted_main_md={}", extracted_main_md.display()),
+        );
+        assert!(
+            extracted_main_md.exists(),
+            "[ERROR] {} | Step 4 failed: extracted main.md missing at {}",
+            test_name,
+            extracted_main_md.display()
+        );
+
+        log_step(test_name, "Step 5", "Read extracted main.md and compare markdown text");
+        let extracted_text = fs::read_to_string(&extracted_main_md).unwrap_or_else(|e| {
+            panic!(
+                "[ERROR] {} | Step 5 failed: cannot read {}: {}",
+                test_name,
+                extracted_main_md.display(),
+                e
+            )
+        });
+        assert_eq!(
+            extracted_text,
+            markdown_input,
+            "[ERROR] {} | Step 5 failed: extracted markdown mismatch",
+            test_name
+        );
     }
 }

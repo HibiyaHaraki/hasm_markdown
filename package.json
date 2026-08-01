@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "check:tauri-build": "node scripts/check-rust-build.mjs",
+    "check:tauri-buuild": "npm run check:tauri-build",
     "check:react-render": "node scripts/check-browser-smoke.mjs",
     "check": "npm run check:tauri-build && npm run check:react-render"
   },

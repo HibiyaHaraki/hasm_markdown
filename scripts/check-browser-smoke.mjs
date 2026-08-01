@@ -6,6 +6,17 @@ const root = process.cwd();
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const targetUrl = "http://127.0.0.1:4173";
 
+/**
+ * # Test Function : waitForServer
+ * ## Test Procedure
+ * * Step 1 : Send HTTP request to the target URL.
+ * * Step 2 : If request fails, retry every second until timeout.
+ * * Step 3 : Resolve when the server responds.
+ * ## Expected behavior
+ * * Step 1 : Server availability is actively probed.
+ * * Step 2 : Temporary startup delays are tolerated.
+ * * Step 3 : Function fails only when timeout threshold is exceeded.
+ */
 function waitForServer(url, timeoutMs = 60000) {
   return new Promise((resolve, reject) => {
     const start = Date.now();
@@ -27,6 +38,17 @@ function waitForServer(url, timeoutMs = 60000) {
   });
 }
 
+/**
+ * # Test Function : stopProcess
+ * ## Test Procedure
+ * * Step 1 : Check if the child process is valid and still running.
+ * * Step 2 : Send termination signal (taskkill on Windows, SIGTERM otherwise).
+ * * Step 3 : Wait for normal exit or force-kill after timeout.
+ * ## Expected behavior
+ * * Step 1 : Already-stopped processes are handled safely.
+ * * Step 2 : Process shutdown is initiated on all platforms.
+ * * Step 3 : No orphaned dev server remains after test completion.
+ */
 function stopProcess(child) {
   return new Promise((resolve) => {
     if (!child || child.killed) {
@@ -53,6 +75,23 @@ function stopProcess(child) {
   });
 }
 
+/**
+ * # Test Function : checkReactRendering
+ * ## Test Procedure
+ * * Step 1 : Start Vite dev server on fixed host/port.
+ * * Step 2 : Wait until the server becomes reachable.
+ * * Step 3 : Open page in Playwright Chromium and capture runtime errors.
+ * * Step 4 : Validate editor and preview UI elements are rendered.
+ * * Step 5 : Report PASS on success, otherwise throw with diagnostics.
+ * * Step 6 : Stop the dev server in finally block.
+ * ## Expected behavior
+ * * Step 1 : Test target app is launched in predictable environment.
+ * * Step 2 : Browser navigation starts only after server is ready.
+ * * Step 3 : JS runtime/page errors are collected for failure reporting.
+ * * Step 4 : Core UI contract is verified (editor + preview present).
+ * * Step 5 : PASS line is printed only when no runtime/UI issue exists.
+ * * Step 6 : Cleanup always runs even when test fails.
+ */
 async function main() {
   const isWindows = process.platform === "win32";
   const viteCommand = isWindows ? "cmd.exe" : npmCommand;
@@ -114,6 +153,17 @@ async function main() {
   }
 }
 
+/**
+ * # Test Function : reactRenderingScriptMain
+ * ## Test Procedure
+ * * Step 1 : Execute checkReactRendering via main().
+ * * Step 2 : Print FAIL summary and error detail if rejected.
+ * * Step 3 : Exit with non-zero code on failure.
+ * ## Expected behavior
+ * * Step 1 : Full browser smoke test flow is executed.
+ * * Step 2 : Failure cause is visible in output.
+ * * Step 3 : CI/local automation detects test failure correctly.
+ */
 main().catch((error) => {
   console.error("✗ FAIL: React rendering smoke test failed (checkReactRendering)");
   console.error(error.message);
