@@ -54,11 +54,15 @@ function stopProcess(child) {
 }
 
 async function main() {
-  console.log("Starting Vite dev server for browser smoke test...");
-  const vite = spawn(npmCommand, ["run", "dev", "--", "--host", "127.0.0.1", "--port", "4173", "--strictPort"], {
+  const isWindows = process.platform === "win32";
+  const viteCommand = isWindows ? "cmd.exe" : npmCommand;
+  const viteArgs = isWindows
+    ? ["/d", "/s", "/c", "npm run dev -- --host 127.0.0.1 --port 4173 --strictPort"]
+    : ["run", "dev", "--", "--host", "127.0.0.1", "--port", "4173", "--strictPort"];
+
+  const vite = spawn(viteCommand, viteArgs, {
     cwd: root,
     stdio: ["ignore", "pipe", "pipe"],
-    shell: true,
   });
 
   let output = "";
@@ -71,7 +75,6 @@ async function main() {
 
   try {
     await waitForServer(targetUrl);
-    console.log("Vite server is responding.");
 
     const browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
@@ -101,7 +104,7 @@ async function main() {
       throw new Error("The application did not render the expected editor and preview UI.");
     }
 
-    console.log("Browser smoke test passed: the React app rendered with no runtime errors.");
+    console.log("✓ PASS: React rendering smoke test has no runtime errors (checkReactRendering)");
     await browser.close();
   } catch (error) {
     console.error(output);
@@ -112,7 +115,7 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error("❌ Browser smoke check failed.");
+  console.error("✗ FAIL: React rendering smoke test failed (checkReactRendering)");
   console.error(error.message);
   process.exit(1);
 });

@@ -16,13 +16,23 @@ import "./main.css";
 
 // Tauri
 import { invoke } from "@tauri-apps/api/core";
-import { appLocalDataDir } from "@tauri-apps/api/path";
+import { appLocalDataDir, documentDir, join } from "@tauri-apps/api/path";
 import { open, save } from "@tauri-apps/plugin-dialog";
 
 // Logger
 import {traceLog, debugLog, infoLog, warnLog, errorLog} from "./logger"
 
 const isTauriRuntime = typeof window !== "undefined" && Boolean(window.__TAURI_INTERNALS__);
+const DEFAULT_HASMMD_FILENAME = "untitled.hasmmd";
+
+const resolveArchiveDefaultPath = async (currentPackage) => {
+  if (currentPackage?.hasmmd_local_path) {
+    return currentPackage.hasmmd_local_path;
+  }
+
+  const docsPath = await documentDir();
+  return join(docsPath, DEFAULT_HASMMD_FILENAME);
+};
 
 // ###################################################
 // Function : Menu
@@ -40,11 +50,13 @@ function Menu({ markdown, currentPackage, onPackageChange, setMarkdown }) {
     try {
       // Step 1. Get App Local Path
       const basePath = await appLocalDataDir();
+      const archiveDefaultPath = await resolveArchiveDefaultPath(currentPackage);
 
       // Step 2. Select single hasmmd file from file dialog
       const selected = await open({
         multiple: false,
-        filters: [{ name: 'HASM Markdown', extensions: ['hasmmd'] }]
+        filters: [{ name: 'HASM Markdown', extensions: ['hasmmd'] }],
+        defaultPath: archiveDefaultPath,
       });
 
       if (selected) {
@@ -76,10 +88,12 @@ function Menu({ markdown, currentPackage, onPackageChange, setMarkdown }) {
     }
 
     try {
+      const archiveDefaultPath = await resolveArchiveDefaultPath(currentPackage);
+
       // Step 1. Select single hasmmd file from file dialog
       const selected = await save({
         filters: [{ name: "HASM Markdown", extensions: ["hasmmd"] }],
-        defaultPath: currentPackage?.hasmmd_local_path || undefined,
+        defaultPath: archiveDefaultPath,
       });
 
       if (selected) {

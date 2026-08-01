@@ -25,11 +25,17 @@ The current version already includes the basic editing experience:
 
 ```mermaid
 flowchart LR
-    A[✍️ Write Markdown] --> B[🖼️ Add images and assets]
-    B --> C[📦 Bundle into a HASM package]
-    C --> D[💾 Save as a single .hasmmd file]
-    D --> E[📤 Share or archive the document]
+    A[Write and preview markdown] --> B[Temporal layer appLocalDataDir workspace]
+    B --> C[Open .hasmmd from archive layer by unzip]
+    C --> D[Save As to archive layer by zip]
+    D --> E[Portable single-file document]
 ```
+
+## Architecture details 📚
+
+- [System components](docs/arch/01-system-components.md)
+- [Create/Open/Save flows](docs/arch/02-create-open-save-flows.md)
+- [HASMMD format and zip behavior](docs/arch/03-hasmmd-format-and-zip.md)
 
 ## Feature overview 🧩
 
@@ -78,6 +84,7 @@ npm run tauri build
 ```text
 src/                # React frontend UI and editor components
 src-tauri/          # Tauri and Rust backend logic
+docs/arch/          # Detailed architecture documents and diagrams
 public/             # Static assets
 package.json        # Frontend scripts and dependencies
 vite.config.js      # Vite configuration
