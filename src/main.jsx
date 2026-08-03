@@ -14,9 +14,11 @@ import ReactDOM from "react-dom/client";
 // JSXs
 import Menu from "./Menu"; // Menu Component
 import HASM_Markdown_Editor from "./HASM_Markdown_Editor"; // HASM Markdown Editor Component
+import { DEFAULT_COLOR_PATTERN } from "./colorPatterns";
 
 // CSS
 import "./main.css";
+import "./colorPatterns.css";
 
 // Bootstrap
 import { Container } from "react-bootstrap";
@@ -38,15 +40,20 @@ function App() {
   // Define HASMMD Package Status
   const [currentPackage, setCurrentPackage] = useState(null);
 
+  // Define Color Pattern Status
+  const [colorPattern, setColorPattern] = useState(DEFAULT_COLOR_PATTERN);
+
   // Return App Component
   infoLog("Render App");
   return (
-    <Container fluid className="Main p-0 d-flex flex-column">
+    <Container fluid className={`Main theme-${colorPattern} p-0 d-flex flex-column`}>
       <Menu
         markdown={markdown}
         currentPackage={currentPackage}
         onPackageChange={setCurrentPackage}
         setMarkdown={setMarkdown}
+        colorPattern={colorPattern}
+        onColorPatternChange={setColorPattern}
       />
       <HASM_Markdown_Editor
         markdown={markdown}

@@ -13,6 +13,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 
 // CSS
 import "./main.css";
+import { COLOR_PATTERNS, isValidColorPattern } from "./colorPatterns";
 
 // Tauri
 import { invoke } from "@tauri-apps/api/core";
@@ -38,7 +39,14 @@ const resolveArchiveDefaultPath = async (currentPackage) => {
 // Function : Menu
 // Description : Definition of Global Menu Component
 // ###################################################
-function Menu({ markdown, currentPackage, onPackageChange, setMarkdown }) {
+function Menu({
+  markdown,
+  currentPackage,
+  onPackageChange,
+  setMarkdown,
+  colorPattern,
+  onColorPatternChange,
+}) {
 
   // Tauri : Open Exist Package
   const handleOpen = async () => {
@@ -135,6 +143,21 @@ function Menu({ markdown, currentPackage, onPackageChange, setMarkdown }) {
           <NavDropdown.Item onClick={handleOpen}>Open</NavDropdown.Item>
           <NavDropdown.Divider />
           <NavDropdown.Item onClick={handleSaveAs}>Save As</NavDropdown.Item>
+        </NavDropdown>
+        <NavDropdown title="Theme" id="theme-nav-dropdown">
+          {COLOR_PATTERNS.map((pattern) => (
+            <NavDropdown.Item
+              key={pattern.id}
+              active={colorPattern === pattern.id}
+              onClick={() => {
+                if (isValidColorPattern(pattern.id)) {
+                  onColorPatternChange?.(pattern.id);
+                }
+              }}
+            >
+              {pattern.label}
+            </NavDropdown.Item>
+          ))}
         </NavDropdown>
       </Nav>      
     </Navbar>
