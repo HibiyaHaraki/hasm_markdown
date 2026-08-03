@@ -21,6 +21,7 @@
 .Menu .dropdown-menu {
     position: absolute;
     z-index: 1050;
+    padding: 2px; 
 }
 
 .Menu_Title {

@@ -139,12 +139,12 @@ function Menu({
         HASM
       </Navbar.Brand>
       <Nav className="me-auto">
-        <NavDropdown title="File" id="basic-nav-dropdown">
+        <NavDropdown title="File" id="basic-nav-dropdown" className="m-2">
           <NavDropdown.Item onClick={handleOpen}>Open</NavDropdown.Item>
           <NavDropdown.Divider />
           <NavDropdown.Item onClick={handleSaveAs}>Save As</NavDropdown.Item>
         </NavDropdown>
-        <NavDropdown title="Theme" id="theme-nav-dropdown">
+        <NavDropdown title="Theme" id="theme-nav-dropdown" className="m-2">
           {COLOR_PATTERNS.map((pattern) => (
             <NavDropdown.Item
               key={pattern.id}
