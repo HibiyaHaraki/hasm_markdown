@@ -13,7 +13,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 
 // CSS
 import "./main.css";
-import { COLOR_PATTERNS, isValidColorPattern } from "./colorPatterns";
+import { COLOR_PATTERN_OPTIONS, isValidColorPattern } from "./hasm_color_patterns/src/index.js";
 
 // Tauri
 import { invoke } from "@tauri-apps/api/core";
@@ -145,7 +145,7 @@ function Menu({
           <NavDropdown.Item onClick={handleSaveAs}>Save As</NavDropdown.Item>
         </NavDropdown>
         <NavDropdown title="Theme" id="theme-nav-dropdown" className="m-2">
-          {COLOR_PATTERNS.map((pattern) => (
+          {COLOR_PATTERN_OPTIONS.map((pattern) => (
             <NavDropdown.Item
               key={pattern.id}
               active={colorPattern === pattern.id}
@@ -155,7 +155,7 @@ function Menu({
                 }
               }}
             >
-              {pattern.label}
+              {pattern.markdownLabel ?? pattern.label}
             </NavDropdown.Item>
           ))}
         </NavDropdown>

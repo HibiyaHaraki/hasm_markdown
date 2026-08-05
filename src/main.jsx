@@ -14,17 +14,21 @@ import ReactDOM from "react-dom/client";
 // JSXs
 import Menu from "./Menu"; // Menu Component
 import HASM_Markdown_Editor from "./HASM_Markdown_Editor"; // HASM Markdown Editor Component
-import { DEFAULT_COLOR_PATTERN } from "./colorPatterns";
+import {
+  DEFAULT_COLOR_PATTERN,
+  buildThemeClassCss,
+} from "./hasm_color_patterns/src/index.js";
 
 // CSS
 import "./main.css";
-import "./colorPatterns.css";
 
 // Bootstrap
 import { Container } from "react-bootstrap";
 
 // Logger
 import {traceLog, debugLog, infoLog, warnLog, errorLog} from "./logger"
+
+const GENERATED_THEME_CSS = buildThemeClassCss(".Main");
 
 // ###################################################
 // Function : App
@@ -46,21 +50,24 @@ function App() {
   // Return App Component
   infoLog("Render App");
   return (
-    <Container fluid className={`Main theme-${colorPattern} p-0 d-flex flex-column`}>
-      <Menu
-        markdown={markdown}
-        currentPackage={currentPackage}
-        onPackageChange={setCurrentPackage}
-        setMarkdown={setMarkdown}
-        colorPattern={colorPattern}
-        onColorPatternChange={setColorPattern}
-      />
-      <HASM_Markdown_Editor
-        markdown={markdown}
-        setMarkdown={setMarkdown}
-        onPackageChange={setCurrentPackage}
-      />
-    </Container>
+    <>
+      <style>{GENERATED_THEME_CSS}</style>
+      <Container fluid className={`Main theme-${colorPattern} p-0 d-flex flex-column`}>
+        <Menu
+          markdown={markdown}
+          currentPackage={currentPackage}
+          onPackageChange={setCurrentPackage}
+          setMarkdown={setMarkdown}
+          colorPattern={colorPattern}
+          onColorPatternChange={setColorPattern}
+        />
+        <HASM_Markdown_Editor
+          markdown={markdown}
+          setMarkdown={setMarkdown}
+          onPackageChange={setCurrentPackage}
+        />
+      </Container>
+    </>
   );
 }
 
