@@ -21,7 +21,7 @@ import { appLocalDataDir, documentDir, join } from "@tauri-apps/api/path";
 import { open, save } from "@tauri-apps/plugin-dialog";
 
 // Logger
-import {traceLog, debugLog, infoLog, warnLog, errorLog} from "./logger"
+import { traceLog, debugLog, infoLog, warnLog, errorLog } from "./hasm_logger/src/react/logger.js";
 
 const isTauriRuntime = typeof window !== "undefined" && Boolean(window.__TAURI_INTERNALS__);
 const DEFAULT_HASMMD_FILENAME = "untitled.hasmmd";

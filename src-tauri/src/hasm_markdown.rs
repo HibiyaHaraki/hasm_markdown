@@ -6,7 +6,8 @@
 // Modules
 
 // Crates
-use crate::logger::{init_logger, LOGLEVEL};
+// Logger module is provided by hasm_logger via path mapping in lib.rs.
+use crate::logger::init_logger;
 use log::{debug, error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};

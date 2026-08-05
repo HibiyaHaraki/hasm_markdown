@@ -25,7 +25,7 @@ const isTauriRuntime = typeof window !== "undefined" && Boolean(window.__TAURI_I
 import MarkdownIt from "markdown-it"; // Markdown to HTML parser
 
 // Logger
-import {traceLog, debugLog, infoLog, warnLog, errorLog} from "./logger"
+import { traceLog, debugLog, infoLog, warnLog, errorLog } from "./hasm_logger/src/react/logger.js";
 
 // ###################################################
 // Function : HASM_Markdown_Editor

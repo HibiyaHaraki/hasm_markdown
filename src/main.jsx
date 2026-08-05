@@ -26,7 +26,7 @@ import "./main.css";
 import { Container } from "react-bootstrap";
 
 // Logger
-import {traceLog, debugLog, infoLog, warnLog, errorLog} from "./logger"
+import { traceLog, debugLog, infoLog, warnLog, errorLog } from "./hasm_logger/src/react/logger.js";
 
 const GENERATED_THEME_CSS = buildThemeClassCss(".Main");
 
