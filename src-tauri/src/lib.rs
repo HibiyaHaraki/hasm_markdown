@@ -7,6 +7,7 @@
 
 // Modules
 mod hasm_markdown;
+#[path = "hasm_logger/src/tauri/logger.rs"]
 mod logger;
 
 // Crates
