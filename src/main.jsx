@@ -17,7 +17,7 @@ import HASM_Markdown_Editor from "./HASM_Markdown_Editor"; // HASM Markdown Edit
 import {
   DEFAULT_COLOR_PATTERN,
   buildThemeClassCss,
-} from "./hasm_color_patterns/src/index.js";
+} from "./hasm_color_pattern/src/index.js";
 
 // CSS
 import "./main.css";

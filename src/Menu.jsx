@@ -13,7 +13,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 
 // CSS
 import "./main.css";
-import { COLOR_PATTERN_OPTIONS, isValidColorPattern } from "./hasm_color_patterns/src/index.js";
+import { COLOR_PATTERN_OPTIONS, isValidColorPattern } from "./hasm_color_pattern/src/index.js";
 
 // Tauri
 import { invoke } from "@tauri-apps/api/core";
