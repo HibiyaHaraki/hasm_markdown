@@ -1,0 +1,9 @@
+[submodule "src/hasm_logger"]
+	path = src/hasm_logger
+	url = https://github.com/HibiyaHaraki/hasm_logger
+[submodule "src/hasm_color_pattern"]
+	path = src/hasm_color_pattern
+	url = https://github.com/HibiyaHaraki/hasm_color_pattern
+[submodule "src-tauri/src/hasm_logger"]
+	path = src-tauri/src/hasm_logger
+	url = https://github.com/HibiyaHaraki/hasm_logger
