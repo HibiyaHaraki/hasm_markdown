@@ -1,12 +1,13 @@
-# App Launch, Import, and Workspace Verification Requirements
+# REQ-MD-01: App Launch, Import, and Workspace Verification Requirements
 
 ## 1. Functional Requirements
 
-### 1.1 Application Launch and Environment Validation
+### 1.1 Application Launch, Multi-Instance Coexistence, and Environment Validation
 
 * **`REQ-MD-01-001` (CLI Launch Handling):** The system shall accept application execution triggered via CLI/Terminal arguments (`hasm_markdown [target_path]`).
-* **`REQ-MD-01-002` (App Version Read):** Upon startup, the Rust backend shall read its own application version metadata.
-* **`REQ-MD-01-003` (App Version Error Handling):** If reading the application version fails or encounters inconsistency, the system shall render the `/error-app` screen and halt execution.
+* **`REQ-MD-01-002` (Multi-Instance Application Execution):** The system shall allow multiple application instances (`hasm_markdown` process windows) to execute simultaneously across the operating system.
+* **`REQ-MD-01-003` (App Version Read):** Upon startup, the Rust backend shall read its own application version metadata.
+* **`REQ-MD-01-004` (App Version Error Handling):** If reading the application version fails or encounters inconsistency, the system shall render the `/error-app` screen and halt execution.
 
 ---
 
@@ -22,25 +23,27 @@
 
 ---
 
-### 1.3 Exclusive Locking and Memory Caching
+### 1.3 Single-Workspace Process Locking and Essential OS File Handle Reservation
 
-* **`REQ-MD-01-020` (Process Lock File Creation):** After placing workspace files, the system shall create a `<UUID>/.lock` file containing the current OS Process ID (PID).
-* **`REQ-MD-01-021` (Double Opening Conflict Interception):** If a valid PID lock already exists inside `<UUID>/`, the system shall abort loading and display a lock conflict dialog.
-* **`REQ-MD-01-022` (Manifest Read and Parse):** The system shall read `<UUID>/assets.json` and parse/expand it into the in-memory `AssetManifest` struct (`HashMap<String, AssetMetadata>`) in Rust.
+* **`REQ-MD-01-020` (Single-Workspace Process Lock Check):** Prior to opening a workspace, the system shall inspect `<UUID>/.lock`. If a lock file exists containing an active OS Process ID (PID), the system shall reject loading to restrict workspace access strictly to a single process at a time.
+* **`REQ-MD-01-021` (Double Opening Conflict Interception):** When single-workspace lock validation fails, the system shall abort loading and display a lock conflict modal indicating that the workspace is already open in another window.
+* **`REQ-MD-01-022` (Process Lock File Creation):** Upon successfully opening a free workspace, the system shall write `<UUID>/.lock` containing the active process PID.
+* **`REQ-MD-01-023` (Core Files OS Physical Lock):** During an active editor session, the Rust backend shall acquire exclusive OS write/delete file handles over `<UUID>/main.md` and `<UUID>/assets.json` to physically block external process modification or deletion.
+* **`REQ-MD-01-024` (Source Archive OS Lock - Mode A):** When operating under `StorageTarget::Archive`, the Rust backend shall acquire an OS exclusive read/share lock on the source `.hasmmd` archive file to prevent external moving, renaming, or deletion during execution.
+* **`REQ-MD-01-025` (Manifest Read and Parse):** The system shall read `<UUID>/assets.json` and parse/expand it into the in-memory `AssetManifest` struct (`HashMap<String, AssetMetadata>`) in Rust.
 
 ---
 
-### 1.4 Structural Verification, Asset Cross-Check, and React State Commitment
+### 1.4 Structural Verification, Non-Fatal Cross-Check, and Direct Navigation
 
 * **`REQ-MD-01-030` (Structure Check - main.md):** Prior to screen navigation, the system shall verify the physical existence of `<UUID>/main.md`.
 * **`REQ-MD-01-031` (Structure Check - assets.json):** Prior to screen navigation, the system shall verify the physical existence of `<UUID>/assets.json`.
 * **`REQ-MD-01-032` (Structure Check - assets Directory):** Prior to screen navigation, the system shall verify the physical existence of the `<UUID>/assets/` directory.
-* **`REQ-MD-01-033` (Basic Structure Verification Failure Handling):** If any required basic component (`main.md`, `assets.json`, `assets/`) is missing, the system shall render the `/error-model` screen.
-* **`REQ-MD-01-034` (Missing Physical Asset Aggregation - Fatal Error):** The system shall cross-check each entry in `assets.json` against physical files in `<UUID>/assets/`. If physical asset files are missing, the system shall collect all missing asset details (alias and expected UUID filename) into an array and return a `MissingPhysicalAssets` error to display a detailed missing file table on the `/error-model` screen.
-* **`REQ-MD-01-035` (Orphan File Detection - Warning):** The system shall scan the `<UUID>/assets/` directory for physical files not registered in `assets.json`. If orphan files are detected, the system shall collect their filenames into a `warnings` array without halting execution.
-* **`REQ-MD-01-036` (React Store Payload Commitment):** Upon successful verification, the Rust backend shall return `PackageStatePayload` (including any collected warnings), and the React frontend shall commit it to `usePackageStore`.
-* **`REQ-MD-01-037` (markdown-it Asset Map Initialization):** The React frontend shall initialize `markdown-it` asset path resolution rules using the committed `assets.json` manifest data.
-* **`REQ-MD-01-038` (Warning Toast Display & Editor Page Navigation):** Upon completing state commitment, if warnings exist, the React frontend shall display a Warning Toast indicating unregistered orphan files, and navigate to the `/editor` screen.
+* **`REQ-MD-01-033` (Core Structural Failure Handling):** If any required core component (`main.md`, `assets.json`, `assets/` directory) is completely missing, the system shall render the `/error-model` screen and halt loading.
+* **`REQ-MD-01-034` (Missing Physical Asset Aggregation - Non-Fatal):** The system shall cross-check entries in `assets.json` against physical files in `<UUID>/assets/`. If physical asset files are missing, the system shall collect all missing asset details into a `missingAssets` array without halting the workspace loading process.
+* **`REQ-MD-01-035` (Orphan File Detection - Warning):** The system shall scan the `<UUID>/assets/` directory for physical files not registered in `assets.json` and collect their filenames into a `warnings` array without halting execution.
+* **`REQ-MD-01-036` (React Store Payload Commitment):** Upon completing structural verification, the Rust backend shall return `PackageStatePayload` containing `missingAssets` and `warnings`, and the React frontend shall commit it to `usePackageStore`.
+* **`REQ-MD-01-037` (Direct Editor Navigation):** Even if `missingAssets` or `warnings` exist, the system shall bypass error screens and directly navigate to the `/editor` screen, delegating live red-text warning rendering to `REQ-MD-02`.
 
 ---
 
@@ -50,7 +53,7 @@
 
 * **`REQ-MD-01-100` (React Loading State On):** At the start of the import process, the React frontend shall set the store's `isLoading` state to `true` to disable duplicate button triggers.
 * **`REQ-MD-01-101` (React Loading State Off):** Upon completion (success or failure) of the import process, the React frontend shall reset the store's `isLoading` state to `false`.
-* **`REQ-MD-01-102` (Progress Event Emission):** During ZIP extraction or folder copying, the Rust backend shall emit `import_progress` events at regular intervals containing progress metrics (percentage, current filename, processed bytes, total bytes).
+* **`REQ-MD-01-102` (Progress Event Emission):** During ZIP extraction or folder copying, the Rust backend shall emit `import_progress` events at regular intervals containing progress metrics.
 * **`REQ-MD-01-103` (Progress Bar UI Update):** Upon receiving an `import_progress` event, the React frontend shall update the store's `loadingProgress` state and refresh the progress bar UI.
 
 ---
