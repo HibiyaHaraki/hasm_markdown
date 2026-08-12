@@ -21,7 +21,7 @@
     "markdown-it": "^15.0.0",
     "react": "^18.3.1",
     "react-bootstrap": "^2.10.10",
-    "react-dom": "^18.3.1"
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
