@@ -1,36 +1,24 @@
-# EVL-MD-01: App Launch, Import, Workspace Locking, and Lightweight Metadata Initialization Evaluation Specification
+# EVL-MD-01 (抜粋修正): Non-Existent Path Test Cases Added
 
-This document defines the comprehensive test matrix, acceptance criteria, and traceability mapping for validating multi-instance execution, single-workspace process locking (`.lock`), selective lightweight metadata import (`Mode A` / `Mode B`), portable relative path handling with runtime absolute path expansion (`resolvedPath`), structural validation, and instant editor routing.
+## 1. CLI Interface & Headless Engine Tests (追加・改訂)
 
----
-
-## 1. Desktop App Level Tests (E2E / System Integration)
-
-| Test ID | Trace Requirement ID | Test Type | Test Scenario | Test Steps | Expected Result |
+| Test ID | Trace Requirement ID | Test Type | Execution Command / Input | Test Steps | Expected Result |
 | --- | --- | --- | --- | --- | --- |
-| **`TC-MD-01-E2E-001`** | `REQ-MD-01-001` | Positive (Multi-Instance) | Multi-Window Application Launch | 1. Launch instance A of `hasm_markdown`. 2. Launch instance B of `hasm_markdown` pointing to a different workspace target. | 1. Both instances launch successfully into separate desktop windows without process conflict. |
-| **`TC-MD-01-E2E-002`** | `REQ-MD-01-002` `REQ-MD-01-003` | Negative (Lock Conflict) | Open Workspace Already Locked by Active Process | 1. Open Workspace X in Window A (PID 1024 active, writing `.lock`). 2. Attempt to open Workspace X in Window B. | 1. Window B rejects workspace mounting. 2. Displays Lock Conflict Modal ("Workspace already open in another window"). |
-| **`TC-MD-01-E2E-003`** | `REQ-MD-01-010` `REQ-MD-01-011` | Positive (Instant Import) | Open 10GB `.hasmmd` Archive Package | 1. Select a 10GB `.hasmmd` ZIP archive. 2. Trigger workspace open. 3. Measure duration from selection to `/editor` render. | 1. Startup completes within 100ms. 2. Only `main.md` and `assets.json` are extracted to `App Local`. 3. Zero asset binaries are copied upfront. |
-| **`TC-MD-01-E2E-004`** | `REQ-MD-01-020` `REQ-MD-01-021` | Positive (Path Expansion) | Verify Asset Resolution on Workspace Open | 1. Open workspace with relative entries (`assets/fig1.png`). 2. Inspect active React Store (`usePackageStore`). | 1. Manifest entries contain dynamically expanded `resolvedPath` (absolute OS path or `asset-stream://` URI). |
-| **`TC-MD-01-E2E-005`** | `REQ-MD-01-030` | Negative (Missing Metadata) | Open Workspace with Corrupted/Missing `main.md` | 1. Open target directory lacking `main.md`. | 1. Application aborts mounting. 2. Renders Data Error Page (`/error-model`). |
+| **`TC-MD-01-CLI-001`** | `REQ-MD-01-001` `REQ-MD-01-002` | Positive (Valid Package Verification) | `hasm_markdown verify /path/to/valid_pkg.hasmmd` | 1. Run command on a valid `.hasmmd` archive. 2. Inspect stdout and exit code. | 1. Output prints success message. 2. Process terminates immediately without launching GUI. 3. Exit code is `0`. |
+| **`TC-MD-01-CLI-002`** | `REQ-MD-01-002` | Positive (JSON Format Error Verification) | `hasm_markdown verify /path/to/corrupted.hasmmd --json` | 1. Run command on archive missing `main.md`. 2. Parse stdout JSON payload. | 1. Output prints valid JSON containing `"status": "Invalid"` and error details. 2. Exit code is `1`. |
+| **`TC-MD-01-CLI-003`** | `REQ-MD-01-003` | Positive (Folder Absolute Path Preview Stream) | `hasm_markdown preview /path/to/folder_workspace` | 1. Run command on a valid Folder Type workspace (Mode B). 2. Inspect stdout stream. | 1. `main.md` content is output to stdout. 2. Asset tags `![alt](asset:alias)` are converted to OS absolute file paths. 3. Exit code is `0`. |
+| **`TC-MD-01-CLI-004`** | `REQ-MD-01-003` | Negative (Preview Rejection on ZIP Archive) | `hasm_markdown preview /path/to/archive.hasmmd` | 1. Run command against a `.hasmmd` ZIP archive. 2. Inspect stderr and exit code. | 1. Error message indicates `preview` subcommand is restricted to Folder Type workspaces only. 2. Exit code is `1`. |
+| **`TC-MD-01-CLI-005`** | `REQ-MD-01-004` | Positive (GUI Direct Launcher) | `hasm_markdown open /path/to/valid_pkg.hasmmd` | 1. Execute launch command with target path. 2. Monitor process and window creation. | 1. Launches application window. 2. Skips `/select` page and mounts `/editor` directly. |
+| **`TC-MD-01-CLI-006`** | `REQ-MD-01-001` `REQ-MD-01-002` | **Negative (Non-Existent Target Path)** | `hasm_markdown verify /non/existent/path/package.hasmmd` | 1. Execute `verify` with a path that does not exist on disk. 2. Inspect stderr and exit code. | 1. Outputs explicit error ("Target path does not exist or is inaccessible"). 2. Terminates process immediately with exit code `1`. |
+| **`TC-MD-01-CLI-007`** | `REQ-MD-01-003` | **Negative (Non-Existent Folder Preview)** | `hasm_markdown preview /invalid/dummy_folder` | 1. Execute `preview` with an invalid directory path. 2. Inspect stderr and exit code. | 1. Outputs explicit error ("Target folder directory does not exist"). 2. Terminates process immediately with exit code `1`. |
 
 ---
 
-## 2. React Level Tests (Frontend Component & UI Store State)
-
-| Test ID | Trace Requirement ID | Test Type | Component / Target | Test Steps | Expected Result |
-| --- | --- | --- | --- | --- | --- |
-| **`TC-MD-01-REACT-001`** | `REQ-MD-01-033` | Positive (State Commitment) | `usePackageStore` | 1. Receive `PackageStatePayload` from backend `invoke`. | 1. Store is populated with `uuid`, `tempDirPath`, and manifest containing `resolvedPath` entries. 2. `isLoading` becomes `false`. |
-| **`TC-MD-01-REACT-002`** | `REQ-MD-01-032` | Positive (Missing Asset Array) | `usePackageStore` | 1. Open workspace with asset keys missing from physical ZIP index. | 1. `missingAssets` array is populated with missing key details. 2. Editor routes successfully without fatal errors. |
-| **`TC-MD-01-REACT-003`** | `REQ-MD-01-012` | Positive (Folder Mount) | `SelectPage.tsx` | 1. Select Mode B (Folder Mode). | 1. Dispatches `open_folder_workspace` IPC command with target path. |
-
----
-
-## 3. Rust Level Tests (Backend Engine, Lock Execution & Path Expansion)
+## 3. Rust Backend Level Tests (Engine & Lock Validation) (追加・改訂)
 
 | Test ID | Trace Requirement ID | Test Type | Rust Module / Function | Test Steps | Expected Result |
 | --- | --- | --- | --- | --- | --- |
-| **`TC-MD-01-RUST-001`** | `REQ-MD-01-004` | Positive (Lock File Acquisition) | `workspace::lock` | 1. Execute `open_archive_workspace`. 2. Inspect `<UUID>/.lock`. | 1. File contains active process PID. 2. Exclusive write file handles held on `main.md` and `assets.json`. |
-| **`TC-MD-01-RUST-002`** | `REQ-MD-01-010` | Positive (Selective Extraction) | `workspace::unpack` | 1. Unpack `.hasmmd` archive containing 500MB of images. | 1. `main.md` and `assets.json` extracted to `<AppLocalDataDir>/<UUID>/`. 2. `assets/` subfolder remains empty in `App Local`. |
-| **`TC-MD-01-RUST-003`** | `REQ-MD-01-021` `REQ-MD-01-022` | Positive (Path Resolution) | `manifest::resolve` | 1. Parse `assets.json` in Mode A (ZIP Archive). 2. Inspect returned manifest. | 1. Maps `relativePath` (`assets/a.png`) to `resolvedPath` (`asset-stream://<UUID>/a`). |
-| **`TC-MD-01-RUST-004`** | `REQ-MD-01-003` | Negative (Stale Lock Cleanup) | `workspace::lock` | 1. Write `.lock` with dead PID. 2. Execute workspace open. | 1. Detects dead PID in OS process table. 2. Overwrites stale lock file and successfully opens workspace. |
+| **`TC-MD-01-RUST-001`** | `REQ-MD-01-020` | Positive (Lock File Payload Generation) | `domain::lock::acquire` | 1. Invoke `acquire_workspace_lock(uuid)`. 2. Read `<UUID>/.lock` file on disk. | 1. File exists and contains valid JSON payload (`"pid": current_pid`, `"status": "Locked"`). |
+| **`TC-MD-01-RUST-002`** | `REQ-MD-01-030` | Positive (Path Expansion Unit Test) | `services::path_resolver` | 1. Pass relative manifest entry `assets/test.png` to path resolver in Mode B. | 1. Joins target workspace root directory and returns exact OS absolute path string. |
+| **`TC-MD-01-RUST-003`** | `REQ-MD-01-100` | Positive (CLI Verification SLA) | `cli::verify::exec` | 1. Execute `verify` on a package with 1,000 asset mappings. 2. Measure execution duration. | 1. Verification completes and exits process within 50ms. |
+| **`TC-MD-01-RUST-004`** | `REQ-MD-01-001` | Negative (Non-Existent Path Handler) | `domain::package::open_archive` | 1. Pass non-existent `PathBuf` to `open_archive`. | 1. Returns `Err(PackageError::IoError { message: "NotFound" })` without panicking or creating orphaned temporary folders. |

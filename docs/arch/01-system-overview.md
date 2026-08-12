@@ -1,42 +1,89 @@
 # HASM Markdown Desktop Application - High Level Design Document
 
-This document defines the high-level architecture, dual-layer storage strategy, asset mapping metadata management (`assets.json`), external editor synchronization policy, single-workspace process locking (`.lock`), asset delta packing, React application state management, routing guard protection mechanisms, global notifications, save status indicators, color theme management, and complete end-to-end screen/operation flowcharts for the HASM Markdown Editor (`hasm_markdown.exe`).
+This document defines the high-level architecture, dual-layer storage strategy, asset mapping metadata management (`assets.json`), CLI interface specifications (`verify`, `preview`, `open`), external editor synchronization policy, single-workspace process locking (`.lock`), asset delta packing, React application state management, routing guard protection mechanisms, global notifications, save status indicators, color theme management, and complete end-to-end screen/operation flowcharts for the HASM Markdown Editor (`hasm_markdown.exe`).
 
 ---
 
-## 1. System Overview & Dual-Layer Storage Strategy
+## 1. System Overview & CLI Interface Strategy
 
-HASM Markdown utilizes a hybrid architecture built with **Tauri v2 (Rust Backend)** and **React (Frontend)**[cite: 4]. To achieve non-blocking high-performance editing alongside portable package sharing, the system strictly separates the storage lifecycle into two distinct layers:
+HASM Markdown provides both a rich **GUI Desktop Interface** (powered by Tauri v2 + React) and a robust **CLI Interface** designed for automated verification, local preview compatibility, and CLI pipeline integration.
+
+### 1.1 Dual-Layer Storage Strategy
 
 1. **Temporal Layer (App Local Temporary Workspace):**
-* **Location:** `<AppLocalDataDir>/<UUID>/`[cite: 3, 4]
-* **Contents:** `main.md`, `assets.json` (Alias-to-UUID metadata mapping), `.lock` (JSON process lock tracking file), and the `assets/` directory (UUID-named physical media files)[cite: 3, 4].
-* **Behavior:** All editing actions, single-asset registrations, soft-deletions (`isDeleted: true`), and fast 10-second periodic local autosaves operate exclusively within this sandbox to ensure zero UI latency[cite: 1, 6, 7]. `Ctrl+S` shortcuts are completely unbound[cite: 6].
+* **Location:** `<AppLocalDataDir>/<UUID>/`
+
+* **Contents:** `main.md`, `assets.json` (Alias-to-UUID metadata mapping), `.lock` (JSON process lock tracking file), and the `assets/` directory (UUID-named physical media files).
+
+
+* **Behavior:** All editing actions, single-asset registrations, soft-deletions (`isDeleted: true`), and fast 10-second periodic local autosaves operate exclusively within this sandbox to ensure zero UI latency. `Ctrl+S` shortcuts are completely unbound.
+
+
 
 
 2. **Archive / External Layer (Master Storage Target):**
-* **Location:** User-specified filesystem path (`.hasmmd` ZIP archive or External Folder)[cite: 4].
-* **Purpose:** Long-term persistence and portable sharing[cite: 4].
-* **Behavior:** Synchronized exclusively upon explicit user actions ("Save" or "Export As") via a performance-optimized **Asset Delta Synchronization Algorithm** (computing deletion and addition lists without full archive re-compression)[cite: 1].
+* **Location:** User-specified filesystem path (`.hasmmd` ZIP archive or External Folder).
+
+
+* **Purpose:** Long-term persistence and portable sharing.
+
+
+* **Behavior:** Synchronized exclusively upon explicit user actions ("Save" or "Export As") via a performance-optimized **Asset Delta Synchronization Algorithm** (computing deletion and addition lists without full archive re-compression).
+
+
 
 
 3. **Asset Alias & Dynamic Path Resolution Policy (`assets.json` & `resolvedPath`):**
 * Authors write intuitive media file tags in Markdown (e.g., `![Architecture](asset:diagram.png)`).
-* Portable relative paths (`assets/<uuid>.<ext>`) stored in `assets.json` are dynamically expanded at runtime into absolute `resolvedPath` URIs (`asset-stream://` URIs for Mode A ZIP archives or OS absolute file paths for Mode B folders)[cite: 5, 7].
-* Soft-deleted assets (`isDeleted: true`) or missing files are dynamically wrapped in `<span class="missing-asset-warning">` preview spans and rendered with red line warning decorators in the editor[cite: 6, 7].
+* Portable relative paths (`assets/<uuid>.<ext>`) stored in `assets.json` are dynamically expanded at runtime into absolute `resolvedPath` URIs (`asset-stream://` URIs for Mode A ZIP archives or OS absolute file paths for Mode B folders).
+
+
+* Soft-deleted assets (`isDeleted: true`) or missing files are dynamically wrapped in `<span class="missing-asset-warning">` preview spans and rendered with red line warning decorators in the editor.
+
+
 
 
 4. **Single-Workspace Process Locking (`.lock`):**
-* Multi-instance window execution across the OS is permitted, but each workspace directory is restricted to a single active window[cite: 2, 5].
-* On unmount/close, the physical `.lock` file is preserved, and its internal payload is set atomically to `pid: 0` and `status: "Unlocked"`[cite: 2, 5].
+* Multi-instance window execution across the OS is permitted, but each workspace directory is restricted to a single active window.
+
+
+* On unmount/close, the physical `.lock` file is preserved, and its internal payload is set atomically to `pid: 0` and `status: "Unlocked"`.
+
+
+
+
+
+---
+
+### 1.2 CLI Execution Modes
+
+1. **Structural Verification Mode (`hasm_markdown verify <PATH>`):**
+* Non-GUI execution mode for `.hasmmd` archives or folder workspaces.
+* Inspects structural integrity (`main.md`, `assets.json`, `assets/` structure).
+
+
+* Outputs diagnostic errors (`missingAssets`) and warnings (orphans) to `stdout` or formatted JSON, returning exit code `0` (Valid) or `1` (Invalid).
+
+
+2. **Absolute Path Local Preview Mode (`hasm_markdown preview <FOLDER_PATH>`):**
+* **Folder Type Only Mode:** Restricted strictly to directory workspaces (Mode B).
+* Reads `main.md` and `assets.json` from the specified target directory.
+* Resolves all relative asset links (e.g. `![alt](asset:alias)`) into **OS absolute file paths** based on `assets.json` mappings and outputs the converted Markdown content to `stdout` (or stdout-piped stream).
+* **Value:** Enables seamless local preview rendering across external editors (e.g. VS Code, Obsidian, CLI renderers) regardless of where the output is saved or piped on the local file system.
+
+
+3. **Interactive Workspace Mode (`hasm_markdown open <PATH>` or `hasm_markdown <PATH>`):**
+* Standard GUI launcher mode. Mounts target path via `SEQ-MD-01`, validates process locks, resolves `resolvedPath` URIs, and routes directly to `/editor`.
+
+
+
+
 
 ---
 
 ## 2. React Global State Management, Routing Guard & Cross-Cutting UI Services
 
 ### 2.1 Central React Application State (`usePackageStore`)
-
-The React frontend centralizes active workspace state inside a Zustand/React Context store (`usePackageStore`). The store holds the following atomic state fields:
 
 ```typescript
 export interface PackageStoreState {
@@ -87,7 +134,7 @@ To prevent illegal states, corrupted rendering, or application crashes caused by
 
 ---
 
-## 3. High-Level Flowchart (System Lifecycle, State, Guard & Global Menu Operations)
+## 3. High-Level Flowchart (System Lifecycle, CLI, Guard & Operations)
 
 ```mermaid
 %%{
@@ -117,35 +164,50 @@ flowchart
     classDef tauri fill:#581c87,stroke:#c084fc,stroke-width:1.5px,color:#ffffff;
     classDef cond fill:#854d0e,stroke:#facc15,stroke-width:1.5px,color:#ffffff;
     classDef guard fill:#0369a1,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
+    classDef cli fill:#0369a1,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
+
+    %% ----------------------------------------------------
+    %% 0. CLI Command Dispatcher Phase
+    %% ----------------------------------------------------
+    subgraph CLIPhase["0. CLI Interface Entry Point"]
+        CLICall(["Invoke CLI Command"]):::cli --> ParseCLI{"Parse Subcommand & Arguments"}:::cond
+        
+        ParseCLI -->|verify <PATH>| ExecVerify[["CLI: Inspect Package Structure & Assets"]]:::cli
+        ParseCLI -->|preview <FOLDER_PATH>| CheckFolderMode{"Target Is Directory (Folder Type)?"}:::cond
+        ParseCLI -->|open <PATH> or <PATH>| LaunchGUI(["Launch Desktop Application Window"]):::action
+        ParseCLI -->|No Arguments| LaunchGUI
+        
+        %% Verify Branch
+        ExecVerify --> CheckValid{"Validation Passed?"}:::cond
+        CheckValid -->|Yes| OutputSuccess["Output Valid Result (JSON/Text) & Exit Code 0"]:::action
+        CheckValid -->|No| OutputError["Output Missing Assets / Errors & Exit Code 1"]:::action
+        
+        %% Preview Branch (Folder Type Only)
+        CheckFolderMode -->|No - ZIP Archive| RejectPreview["Output Error: Preview subcommand supports Folder Type only & Exit Code 1"]:::action
+        CheckFolderMode -->|Yes - Folder Directory| ReadMetadata[["CLI: Read main.md and assets.json from Target Folder"]]:::cli
+        ReadMetadata --> ExpandAbsolutePaths[["CLI: Resolve asset:alias links to OS Absolute Paths"]]:::cli
+        ExpandAbsolutePaths --> OutputPreviewMarkdown["Output Converted Markdown Stream to stdout / Terminal"]:::action
+    end
 
     %% ----------------------------------------------------
     %% 1. App Boot, Guard Check & Workspace Loading Phase
     %% ----------------------------------------------------
     subgraph BootPhase["1. App Launch, Routing Guard & Workspace Loading Phase"]
-        BootAction(["Launch Application"]):::action --> ValidateHASMApp[["Backend: Validate Runtime Environment"]]:::tauri
+        LaunchGUI --> ValidateHASMApp[["Backend: Validate Runtime Environment"]]:::tauri
         ValidateHASMApp --> AppCheck{"Runtime Valid?"}:::cond
         
         AppCheck -->|No| ErrorHASMApp[/"System Error Screen /error-app"/]:::error
         AppCheck -->|Yes| DataSelectIF{"Target Path Provided?"}:::cond
         
         DataSelectIF -->|No| SelectPage["File Selection Screen /select"]:::page
-        SelectPage --> SelectImportType{"Select Import Mode"}:::cond
-        
-        SelectImportType -->|ZIP Archive| SelectZipAction(["Select .hasmmd / .zip File"]):::action
-        SelectImportType -->|Existing Folder| SelectFolderAction(["Select Workspace Folder"]):::action
-        SelectImportType -->|Create New| CreateNewAction(["Select Create New"]):::action
-        
         DataSelectIF -->|Yes| AutoInspectType{"Inspect Target Storage Type"}:::cond
-        AutoInspectType -->|ZIP File| SelectZipAction
-        AutoInspectType -->|Existing Folder| SelectFolderAction
         
-        SelectZipAction --> LockCheckZip[["Backend: Check .lock File PID & Handles"]]:::tauri
-        SelectFolderAction --> LockCheckFolder[["Backend: Check .lock File PID & Handles"]]:::tauri
-        CreateNewAction --> ScaffoldLocal[["Backend: Scaffold Workspace in App Local"]]:::tauri
+        AutoInspectType -->|ZIP File| LockCheckZip[["Backend: Check .lock File PID & Handles"]]:::tauri
+        AutoInspectType -->|Existing Folder| LockCheckFolder[["Backend: Check .lock File PID & Handles"]]:::tauri
         
         LockCheckZip --> IsLockedZip{"Workspace Locked?"}:::cond
         IsLockedZip -->|Yes| LockModal["Display Lock Conflict Modal"]:::modal
-        IsLockedZip -->|No| UnzipMetadata[["Backend: Extract main.md & assets.json ONLY (Selective Import)"]]:::tauri
+        IsLockedZip -->|No| UnzipMetadata[["Backend: Extract main.md & assets.json ONLY"]]:::tauri
         
         LockCheckFolder --> IsLockedFolder{"Workspace Locked?"}:::cond
         IsLockedFolder -->|Yes| LockModal
@@ -153,7 +215,6 @@ flowchart
         
         UnzipMetadata --> ResolvePaths[["Backend: Expand relativePath to runtime resolvedPath"]]:::tauri
         MountFolder --> ResolvePaths
-        ScaffoldLocal --> ResolvePaths
         
         ResolvePaths --> CommitState["Commit Payload to usePackageStore & Set isLoaded = true"]:::action
         CommitState --> EditorPage["Markdown Editor Screen /editor"]:::page
@@ -281,82 +342,53 @@ flowchart
 ## 4. Detailed Phase Summaries
 
 1. **App Launch, Lock Check & Selective Import Phase:**
-
-* Checks `<UUID>/.lock` status; rejects access if another active PID holds the lock.
-
-
-* Extracts **only** `main.md` and `assets.json` into `App Local`. Media binaries remain in ZIP for on-demand streaming (`asset-stream://`).
-
-
-* Dynamically resolves portable relative paths to `resolvedPath` URIs and commits payload to `usePackageStore` setting `isLoaded = true`.
-
-
+   * Checks `<UUID>/.lock` status; rejects access if another active PID holds the lock.
+   * Extracts **only** `main.md` and `assets.json` into `App Local`. Media binaries remain in ZIP for on-demand streaming (`asset-stream://`).
+   * Dynamically resolves portable relative paths to `resolvedPath` URIs and commits payload to `usePackageStore` setting `isLoaded = true`.
 
 2. **Routing Guard Protection Mechanism (`<WorkspaceGuard>`):**
-
-* Intercepts all direct navigation attempts to `/editor` or `/assets`.
-
-
-* Validates `isLoaded === true` and `uuid !== null`. If unauthorized, redirects immediately to `/select`.
+   * Intercepts all direct navigation attempts to `/editor` or `/assets`.
+   * Validates `isLoaded === true` and `uuid !== null`. If unauthorized, redirects immediately to `/select`.
 
 3. **Text Editing, Red-Text Highlight & Fast Local Autosave Loop:**
-
-* Tracks live edits (`isDirty = true`). `Ctrl+S` manual shortcuts are unbound.
-
-
-* `markdown-it` resolves asset tags to `resolvedPath` URIs and wraps missing/soft-deleted assets in red warning spans and line decorators.
-
-
-* 10-second timer periodically persists UTF-8 text to `<UUID>/main.md` in `App Local`.
-
-
+   * Tracks live edits (`isDirty = true`). `Ctrl+S` manual shortcuts are unbound.
+   * `markdown-it` resolves asset tags to `resolvedPath` URIs and wraps missing/soft-deleted assets in red warning spans and line decorators.
+   * 10-second timer periodically persists UTF-8 text to `<UUID>/main.md` in `App Local`.
 
 4. **Single-Asset Management Sub-window:**
-
-* Enforces single-file drop/selection constraints and prompts Alias Naming Modal.
-
-
-* Soft-deletes assets (`isDeleted: true`) in `assets.json`.
-
-
-* Recalculates `missingAssets` upon window closure to update editor warning decorators.
-
-
+   * Enforces single-file drop/selection constraints and prompts Alias Naming Modal.
+   * Soft-deletes assets (`isDeleted: true`) in `assets.json`.
+   * Recalculates `missingAssets` upon window closure to update editor warning decorators.
 
 5. **Explicit Save & Export (Asset Delta Synchronization):**
+   * Computes `delete_list` (`isDeleted: true`) and `addition_list`.
+   * Purges deleted binaries, packs new additions, normalizes paths to relative format (`assets/<uuid>.<ext>`), and performs atomic file replacement.
+   * Updates readout status to "Master Target Synced".
 
-* Computes `delete_list` (`isDeleted: true`) and `addition_list`.
-
-
-* Purges deleted binaries, packs new additions, normalizes paths to relative format (`assets/<uuid>.<ext>`), and performs atomic file replacement.
-
-
-* Updates readout status to "Master Target Synced".
 
 6. **Workspace Close & Process Lock Release Phase:**
-
-* Intercepts close attempts if `isDirty === true`.
-
-
-* Releases master OS file handles.
-
-
-* Atomically updates `<UUID>/.lock` payload to `pid: 0` and `status: "Unlocked"`, resets store (`isLoaded = false`), and routes to `/select`.
-
-
+   * Intercepts close attempts if `isDirty === true`.
+   * Releases master OS file handles.
+   * Atomically updates `<UUID>/.lock` payload to `pid: 0` and `status: "Unlocked"`, resets store (`isLoaded = false`), and routes to `/select`.
 
 7. **Global Menu Notifications, Save State Indicator & Theme Switching:**
+   * Displays persistent Warning List and Error List notifications across all routes.
+   * Updates real-time save state readouts in header ("Unsaved (*)", "Saving...", "Autosaved at HH:mm:ss", "Master Target Synced").
+   * Provides 16ms instant theme switching across `Light`, `Dark`, and `High-Contrast` palettes, persisted in `localStorage` and `AppConfig`.
 
-* Displays persistent Warning List and Error List notifications across all routes.
-* Updates real-time save state readouts in header ("Unsaved (*)", "Saving...", "Autosaved at HH:mm:ss", "Master Target Synced").
-* Provides 16ms instant theme switching across `Light`, `Dark`, and `High-Contrast` palettes, persisted in `localStorage` and `AppConfig`.
+
 
 ---
 
 ## 5. HASM Markdown Detailed Design Sequence (SEQ) Files
 
-### 5.1 `SEQ-MD-01`: App Launch, Selective Import, Workspace Locking, and Runtime Path Resolution
+### 5.1 `SEQ-MD-01`: App Launch, CLI Interface, Selective Import, Workspace Locking, and Path Resolution
 
+* CLI Command parser (`verify`, `preview`, `open`).
+
+
+* Folder-type restricted `preview` execution: converts `main.md` asset links to OS absolute paths and outputs to `stdout`.
+* Non-GUI verification execution and CLI exit code handling.
 * Application launch, version check, and PID `.lock` validation.
 
 
@@ -364,9 +396,6 @@ flowchart
 
 
 * Runtime absolute path resolution (`relativePath` $\rightarrow$ `resolvedPath`).
-
-
-* Structural verification (`main.md`, `assets.json`) and `missingAssets` collection.
 
 
 
@@ -382,10 +411,7 @@ flowchart
 
 
 
-### 5.3 `SEQ-MD-03`: Asset Management Window Operations, Single-Asset Upload, Soft-Deletion, Dynamic Path Mapping, and Editor State Synchronization
-
-* Asset management window initialization & non-deleted asset filtering.
-
+### 5.3 `SEQ-MD-03`: Asset Management Operations, Single-Asset Upload, Soft-Deletion, and Editor Sync
 
 * Single-asset upload constraint (1-file limit) & custom alias naming modal.
 
@@ -432,6 +458,6 @@ flowchart
 
 ### 5.6 `SEQ-MD-06_Others`: Global Menu Notifications, Save State Indicator, and Dynamic Color Theme Switching
 
-* Global Menu drawer for Error List (`missingAssets`) and Warning List (orphans, soft-deleted assets) notifications.
-* Continuous real-time save state indicator readout ("Unsaved (*)" $\rightarrow$ "Autosaved at HH:mm:ss" $\rightarrow$ "Master Target Synced").
-* App-wide 3-color theme switcher (`Light` / `Dark` / `High-Contrast`) with instant 16ms DOM re-skinning and `AppConfig` persistence.
+* Global Menu drawer for Error List (`missingAssets`) and Warning List notifications.
+* Continuous real-time save state indicator readout.
+* App-wide 3-color theme switcher (`Light` / `Dark` / `High-Contrast`).
