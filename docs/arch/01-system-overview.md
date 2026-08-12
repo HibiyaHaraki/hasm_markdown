@@ -300,3 +300,38 @@ flowchart
 * Intercepts window close events (`X` / `Alt+F4`).
 * Prompts confirmation if unsaved changes exist ("Save & Exit", "Discard & Exit", "Cancel").
 * Releases locks, purges the `App Local` temporary UUID directory, and exits cleanly.
+
+# 4 HASM Markdown Detailed Design Sequence (SEQ) Files
+
+- **`SEQ-MD-01`**:
+  - Application launch and environment validation
+  - 3-mode import (ZIP extraction / Folder copy / Scaffold creation)
+  - Exclusive workspace lock acquisition
+  - Structural integrity verification (`main.md`, `assets.json`, `assets/`)
+  - `assets.json` in-memory caching (`AssetManifest` expansion)
+- **`SEQ-MD-02`**:
+  - Text editing detection and `is_dirty` state management
+  - Alias-to-UUID path resolution via `markdown-it` custom rules (O(1) in-memory lookup)
+  - 10-second interval timer for asynchronous App Local sync (`main.md` & `assets.json`)
+- **`SEQ-MD-03`**:
+  - Asset management sub-window display
+  - Asset addition (UUID generation, physical file write, `AssetManifest` update)
+  - Asset deletion
+  - Asset list retrieval and real-time preview refresh
+- **`SEQ-MD-04`**:
+  - Explicit Save (Overwrite: sync `main.md` + `assets.json` + `assets/` back to master target / ZIP compression)
+  - Save As (OS dialog integration and active target re-binding)
+- **`SEQ-MD-05`**:
+  - External editor modification detection (window focus `mtime` check)
+  - Conflict dialog display
+  - External data reload and re-verification (`Verify`)
+- **`SEQ-MD-06`**:
+  - Window close event (`X` / `Alt+F4`) interception
+  - Unsaved changes confirmation modal
+  - Master target synchronization
+  - Lock release and App Local temporary directory cleanup
+  - Clean process termination
+- **`SEQ-MD-07`**:
+  - Structure error screen (`/error-model`)
+  - Environment error screen (`/error-app`)
+  - Boot-time cleanup of orphaned temporary directories and crash recovery
