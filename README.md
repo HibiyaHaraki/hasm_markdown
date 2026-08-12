@@ -105,5 +105,5 @@ The long-term goal is to make HASM Markdown a practical tool for creating docume
 
 ## License 📜
 
-This project is currently being shared without a formal license declaration.
-If you intend to publish or reuse it publicly, please add an appropriate open-source license such as MIT, Apache-2.0, or BSD-2-Clause.
+This project is licensed under the GNU General Public License v3.0 or later.
+See [LICENSE](LICENSE) for the full license text.
