@@ -1,38 +1,93 @@
 # HASM Markdown Desktop Application - High Level Design Document
 
-This document defines the high-level architecture, dual-layer storage strategy, asset mapping metadata management (`assets.json`), external editor synchronization policy, and complete end-to-end screen/operation flowcharts for the HASM Markdown Editor (`hasm_markdown.exe`).
+This document defines the high-level architecture, dual-layer storage strategy, asset mapping metadata management (`assets.json`), external editor synchronization policy, single-workspace process locking (`.lock`), asset delta packing, React application state management, routing guard protection mechanisms, global notifications, save status indicators, color theme management, and complete end-to-end screen/operation flowcharts for the HASM Markdown Editor (`hasm_markdown.exe`).
 
 ---
 
 ## 1. System Overview & Dual-Layer Storage Strategy
 
-HASM Markdown utilizes a hybrid architecture built with **Tauri v2 (Rust Backend)** and **React (Frontend)**. To achieve non-blocking high-performance editing alongside portable package sharing, the system strictly separates the storage lifecycle into two distinct layers:
+HASM Markdown utilizes a hybrid architecture built with **Tauri v2 (Rust Backend)** and **React (Frontend)**[cite: 4]. To achieve non-blocking high-performance editing alongside portable package sharing, the system strictly separates the storage lifecycle into two distinct layers:
 
 1. **Temporal Layer (App Local Temporary Workspace):**
-* **Location:** `<AppLocalDataDir>/<UUID>/`
-* **Contents:** `main.md`, `assets.json` (Alias-to-UUID mapping), `.lock`, and the `assets/` directory (UUID-named physical media files).
-* **Behavior:** All editing actions, asset additions/deletions, and periodic autosaves (e.g., every 10s) operate exclusively within this local workspace to ensure zero UI latency.
+* **Location:** `<AppLocalDataDir>/<UUID>/`[cite: 3, 4]
+* **Contents:** `main.md`, `assets.json` (Alias-to-UUID metadata mapping), `.lock` (JSON process lock tracking file), and the `assets/` directory (UUID-named physical media files)[cite: 3, 4].
+* **Behavior:** All editing actions, single-asset registrations, soft-deletions (`isDeleted: true`), and fast 10-second periodic local autosaves operate exclusively within this sandbox to ensure zero UI latency[cite: 1, 6, 7]. `Ctrl+S` shortcuts are completely unbound[cite: 6].
 
 
 2. **Archive / External Layer (Master Storage Target):**
-* **Location:** User-specified filesystem path (`.hasmmd` ZIP archive or External Folder).
-* **Purpose:** Long-term persistence and portable sharing.
-* **Behavior:** Synchronized (flushed) upon explicit user actions ("Save", "Save As", or "Save & Exit" on app close).
+* **Location:** User-specified filesystem path (`.hasmmd` ZIP archive or External Folder)[cite: 4].
+* **Purpose:** Long-term persistence and portable sharing[cite: 4].
+* **Behavior:** Synchronized exclusively upon explicit user actions ("Save" or "Export As") via a performance-optimized **Asset Delta Synchronization Algorithm** (computing deletion and addition lists without full archive re-compression)[cite: 1].
 
 
-3. **Asset Alias Resolution Policy (`assets.json` & `markdown-it`):**
-* Authors write intuitive media file paths in Markdown (e.g., `![Architecture](diagram.png)`).
-* At render time, a custom `markdown-it` renderer rule looks up `assets.json` to map human-readable aliases to physical UUID filenames (e.g., `./assets/3f8b9a20-1c2d-4e5f.png`), ensuring human readability without risking file conflicts or bad character encoding.
+3. **Asset Alias & Dynamic Path Resolution Policy (`assets.json` & `resolvedPath`):**
+* Authors write intuitive media file tags in Markdown (e.g., `![Architecture](asset:diagram.png)`).
+* Portable relative paths (`assets/<uuid>.<ext>`) stored in `assets.json` are dynamically expanded at runtime into absolute `resolvedPath` URIs (`asset-stream://` URIs for Mode A ZIP archives or OS absolute file paths for Mode B folders)[cite: 5, 7].
+* Soft-deleted assets (`isDeleted: true`) or missing files are dynamically wrapped in `<span class="missing-asset-warning">` preview spans and rendered with red line warning decorators in the editor[cite: 6, 7].
 
 
-4. **External Editor Synchronization Policy (Pattern A):**
-* When bound to an external folder target, switching focus back to the application window automatically inspects external `mtime` metadata. If external modifications (e.g., via VS Code) are detected, the user is prompted to reload and sync the temporary workspace.
-
-
+4. **Single-Workspace Process Locking (`.lock`):**
+* Multi-instance window execution across the OS is permitted, but each workspace directory is restricted to a single active window[cite: 2, 5].
+* On unmount/close, the physical `.lock` file is preserved, and its internal payload is set atomically to `pid: 0` and `status: "Unlocked"`[cite: 2, 5].
 
 ---
 
-## 2. High-Level Flowchart (System Lifecycle & Operations)
+## 2. React Global State Management, Routing Guard & Cross-Cutting UI Services
+
+### 2.1 Central React Application State (`usePackageStore`)
+
+The React frontend centralizes active workspace state inside a Zustand/React Context store (`usePackageStore`). The store holds the following atomic state fields:
+
+```typescript
+export interface PackageStoreState {
+  // Active Workspace Identity & Status
+  uuid: string | null;                  // Temporary workspace UUID (null if unmounted)
+  tempDirPath: string | null;           // Absolute path to App Local sandbox
+  targetType: 'Archive' | 'Folder' | 'Unbound' | null; // Storage target classification
+  targetPath: string | null;            // Master target path on disk (.hasmmd path or folder path)
+  
+  // Loading & Mount Flags
+  isLoaded: boolean;                    // Set to TRUE only after successful IPC load & path resolution
+  isLoading: boolean;                   // Active IPC loading/unzipping spinner indicator
+  
+  // Document Buffer & Diff Tracking
+  rawContent: string;                   // Active live Markdown text buffer in editor
+  lastSavedContent: string;             // Text buffer at last successful save/autosave
+  isDirty: boolean;                     // Computed as (rawContent !== lastSavedContent)
+  isSaving: boolean;                    // Prevents concurrent autosave/save IPC calls
+  
+  // Metadata & Warnings
+  manifest: RuntimeAssetManifest | null;// Active manifest populated with absolute resolvedPaths
+  missingAssets: MissingAssetInfo[];    // List of referenced asset tags missing physical files
+  warnings: PackageWarning[];           // List of unregistered orphan files in workspace
+  
+  // Global UI State
+  themeMode: 'Light' | 'Dark' | 'High-Contrast'; // Active 3-color palette theme
+}
+
+```
+
+---
+
+### 2.2 Navigation Guard Mechanism (`<WorkspaceGuard>`)
+
+To prevent illegal states, corrupted rendering, or application crashes caused by unexpected user operations (e.g., direct URL navigation to `/editor` before loading a workspace, refreshing the page mid-session, or manipulating route history), all protected routes (`/editor`, `/assets`, `/loading-model`) are wrapped inside a strict **Routing Guard Component (`<WorkspaceGuard>`)**.
+
+* **Unloaded State Access Denial:** If a user attempts to access `/editor` or `/assets` while `isLoaded === false` or `uuid === null`, the Routing Guard immediately intercepts the navigation request, cancels component rendering, and redirects the user to the selection page (`/select`) with a warning toast notification ("No active workspace loaded. Please select or create a package.").
+* **System Error Boundary Redirection:** If workspace initialization fails during startup or re-verification, the guard routes the application to the appropriate error page (`/error-model` for structural integrity errors or `/error-app` for runtime/environment failures).
+* **Unsaved Exit Guard:** Intercepts route transitions when `isDirty === true` and prompts the Unsaved Changes Modal.
+
+---
+
+### 2.3 Cross-Cutting Global UI Services (Global Menu, Readout & Themes)
+
+* **Global Diagnostic Menu:** A persistent drawer/modal rendering real-time **Error List** (missing asset tags, lock conflicts) and **Warning List** (orphan assets, soft-deleted references) with badge counters.
+* **Real-time Save State Readout:** A unified header status displaying live state transitions ("Unsaved Changes (*)", "Saving...", "Autosaved Locally at HH:mm:ss", and "Master Target Synced").
+* **App-Wide 3-Color Theme Selector:** Supports dynamic switching between **`Light`**, **`Dark`**, and **`High-Contrast`** palettes across all routes without page reloads, persisting preference in `localStorage` and backend `AppConfig`.
+
+---
+
+## 3. High-Level Flowchart (System Lifecycle, State, Guard & Global Menu Operations)
 
 ```mermaid
 %%{
@@ -61,277 +116,322 @@ flowchart
     classDef action fill:#065f46,stroke:#34d399,stroke-width:1.5px,color:#ffffff;
     classDef tauri fill:#581c87,stroke:#c084fc,stroke-width:1.5px,color:#ffffff;
     classDef cond fill:#854d0e,stroke:#facc15,stroke-width:1.5px,color:#ffffff;
+    classDef guard fill:#0369a1,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
 
     %% ----------------------------------------------------
-    %% 0. Legend
+    %% 1. App Boot, Guard Check & Workspace Loading Phase
     %% ----------------------------------------------------
-    subgraph Legend["Legend"]
-        L_Page["Rectangle: Page"]:::page
-        L_Modal["Rounded Rectangle: Sub-window or Modal"]:::modal
-        L_Action["Ellipse: User Action or Internal Process"]:::action
-        L_Tauri["Double Rectangle: Backend Communication"]:::tauri
-        L_Cond{"Rhombus: Decision Point"}:::cond
-        L_Error[/"Parallelogram: Error Screen"/]:::error
-    end
-
-    %% ----------------------------------------------------
-    %% 1. App Boot & HASM Markdown Loading Phase
-    %% ----------------------------------------------------
-    subgraph BootPhase["1. App Launch and Workspace Loading Phase"]
+    subgraph BootPhase["1. App Launch, Routing Guard & Workspace Loading Phase"]
         BootAction(["Launch Application"]):::action --> ValidateHASMApp[["Backend: Validate Runtime Environment"]]:::tauri
         ValidateHASMApp --> AppCheck{"Runtime Valid?"}:::cond
         
         AppCheck -->|No| ErrorHASMApp[/"System Error Screen /error-app"/]:::error
         AppCheck -->|Yes| DataSelectIF{"Target Path Provided?"}:::cond
         
-        %% 1-A. No Target Provided: Route to Selector Page
         DataSelectIF -->|No| SelectPage["File Selection Screen /select"]:::page
         SelectPage --> SelectImportType{"Select Import Mode"}:::cond
         
-        SelectImportType -->|ZIP Archive| SelectZipAction(["Select .hasmmd or .zip File"]):::action
+        SelectImportType -->|ZIP Archive| SelectZipAction(["Select .hasmmd / .zip File"]):::action
         SelectImportType -->|Existing Folder| SelectFolderAction(["Select Workspace Folder"]):::action
         SelectImportType -->|Create New| CreateNewAction(["Select Create New"]):::action
         
-        %% 1-B. Target Provided: Auto-inspect Target Type
         DataSelectIF -->|Yes| AutoInspectType{"Inspect Target Storage Type"}:::cond
-        
         AutoInspectType -->|ZIP File| SelectZipAction
         AutoInspectType -->|Existing Folder| SelectFolderAction
-        AutoInspectType -->|App Local Temporary UUID| SkipImport(["Use Existing Temporary Workspace"]):::action
         
-        %% Import / Scaffold into App Local Temporary Workspace
-        SelectZipAction --> UnzipToLocal[["Backend: Extract ZIP to Temporary Workspace"]]:::tauri
-        SelectFolderAction --> CopyFolderToLocal[["Backend: Copy Folder to Temporary Workspace"]]:::tauri
-        CreateNewAction --> CreateScaffold[["Backend: Scaffold main.md and assets.json in Temporary Workspace"]]:::tauri
+        SelectZipAction --> LockCheckZip[["Backend: Check .lock File PID & Handles"]]:::tauri
+        SelectFolderAction --> LockCheckFolder[["Backend: Check .lock File PID & Handles"]]:::tauri
+        CreateNewAction --> ScaffoldLocal[["Backend: Scaffold Workspace in App Local"]]:::tauri
         
-        UnzipToLocal --> LoadingHASMModelPage["Loading Screen /loading-model"]:::page
-        CopyFolderToLocal --> LoadingHASMModelPage
-        CreateScaffold --> LoadingHASMModelPage
-        SkipImport --> LoadingHASMModelPage
+        LockCheckZip --> IsLockedZip{"Workspace Locked?"}:::cond
+        IsLockedZip -->|Yes| LockModal["Display Lock Conflict Modal"]:::modal
+        IsLockedZip -->|No| UnzipMetadata[["Backend: Extract main.md & assets.json ONLY (Selective Import)"]]:::tauri
         
-        %% Unified Verification Process
-        LoadingHASMModelPage --> ValidateHASMModel[["Backend: Verify Package Structure main.md assets.json and assets/"]]:::tauri
-        ValidateHASMModel --> ModelCheck{"Verification Passed?"}:::cond
+        LockCheckFolder --> IsLockedFolder{"Workspace Locked?"}:::cond
+        IsLockedFolder -->|Yes| LockModal
+        IsLockedFolder -->|No| MountFolder[["Backend: Read Metadata & Acquire Master Handle"]]:::tauri
         
-        ModelCheck -->|Verification Error or Missing File| ErrorHASMModel[/"Data Error Screen /error-model"/]:::error
-        ModelCheck -->|Valid| EditorPage["Markdown Editor Screen /editor"]:::page
+        UnzipMetadata --> ResolvePaths[["Backend: Expand relativePath to runtime resolvedPath"]]:::tauri
+        MountFolder --> ResolvePaths
+        ScaffoldLocal --> ResolvePaths
+        
+        ResolvePaths --> CommitState["Commit Payload to usePackageStore & Set isLoaded = true"]:::action
+        CommitState --> EditorPage["Markdown Editor Screen /editor"]:::page
+    end
+
+    %% ----------------------------------------------------
+    %% Routing Guard Interception Flow (Unexpected Operations)
+    %% ----------------------------------------------------
+    subgraph GuardFlow["Routing Guard Interception Mechanism"]
+        DirectNav(["User Attempts Direct Access to /editor or /assets"]):::action --> GuardCheck{"<WorkspaceGuard>: Check isLoaded & uuid"}:::guard
+        GuardCheck -->|isLoaded == true & uuid != null| AllowRoute(["Allow Route Access"]):::action
+        GuardCheck -->|isLoaded == false OR uuid == null| DenyRoute(["Intercept Route Transition"]):::guard
+        DenyRoute --> ToastWarning["Display Warning Toast: No Active Workspace Loaded"]:::action
+        ToastWarning --> RedirectSelect["Redirect Immediately to /select"]:::page
     end
         
-    %% ====================================================
-    %% Flow 2: Markdown Editing, Preview Rendering & Periodic Local Autosave
-    %% ====================================================
-    subgraph AutosaveFlow["2 Text Editing, Asset Path Resolution & Periodic Autosave Loop"]
-        EditorPage -->|Type Text| TextChange(["Edit Markdown Document"]):::action
-        TextChange --> SetDirty["Set Unsaved Changes Flag to True"]:::action
+    %% ----------------------------------------------------
+    %% 2. Text Editing & Fast Local Autosave
+    %% ----------------------------------------------------
+    subgraph AutosaveFlow["2 Text Editing, Red-Text Highlight & Fast Local Autosave Loop"]
+        EditorPage -->|Type Text| TextChange(["Edit Document Buffer"]):::action
+        TextChange --> SetDirty["Set isDirty = true"]:::action
         
-        %% Asset Alias Resolution Pipeline
-        TextChange --> RenderPreview(["Render Preview with markdown-it"]):::action
-        RenderPreview --> ResolveAssetPath[["Frontend: Map Alias to UUID via assets.json Metadata"]]:::action
-        ResolveAssetPath --> DisplayPreview(["Display Rendered HTML in Preview Pane"]):::action
+        TextChange --> RenderPreview(["markdown-it Render & Red-Text Evaluation"]):::action
+        RenderPreview --> DisplayPreview(["Update Editor & Preview Pane & Save Readout"]):::action
         
-        %% Autosave Loop
-        SetDirty --> AutosaveTimer{"Autosave Timer Interval Elapsed?"}:::cond
+        SetDirty --> AutosaveTimer{"10s Timer Elapsed?"}:::cond
         AutosaveTimer -->|No| WaitEdit(["Continue Editing"]):::action
         WaitEdit --> AutosaveTimer
         
-        AutosaveTimer -->|Yes| CheckDirty{"Unsaved Changes Exist?"}:::cond
+        AutosaveTimer -->|Yes| CheckDirty{"isDirty == true?"}:::cond
         CheckDirty -->|No| AutosaveTimer
-        CheckDirty -->|Yes| SaveLocalPkg[["Backend: Update main.md and assets.json in Temporary Workspace"]]:::tauri
-        SaveLocalPkg --> ResetDirty["Set Unsaved Flag to False and Notify UI"]:::action
+        CheckDirty -->|Yes| SaveLocalPkg[["Backend: Atomic Write main.md.tmp -> main.md in App Local"]]:::tauri
+        SaveLocalPkg --> ResetDirty["Set isDirty = false & Update Saved Timestamp Readout"]:::action
         ResetDirty --> AutosaveTimer
     end
 
-    %% ====================================================
-    %% Flow 3: Asset Management Window
-    %% ====================================================
-    subgraph AssetFlow["3 Asset Management Sub-window"]
-        EditorPage -->|Open Assets| OpenAssetManager(["Open Asset Manager Window"]):::action
-        OpenAssetManager --> FetchAssets[["Backend: Load assets.json and List Physical Files in Temporary Workspace"]]:::tauri
-        FetchAssets --> AssetWindow["Asset Management Sub-window"]:::modal
+    %% ----------------------------------------------------
+    %% 3. Single-Asset Upload & Soft-Delete Window
+    %% ----------------------------------------------------
+    subgraph AssetFlow["3 Single-Asset Management Sub-window"]
+        EditorPage -->|Click Assets| OpenAssetManager(["Open Asset Window"]):::action
+        OpenAssetManager --> FetchAssets[["Read Manifest & Filter isDeleted: true Entries"]]:::tauri
+        FetchAssets --> AssetWindow["Asset Management Window"]:::modal
         
-        AssetWindow --> AssetAction{"Asset Action Type"}:::cond
+        AssetWindow --> AssetAction{"Action Type"}:::cond
         
-        %% Asset Addition (Generates UUID & Updates assets.json)
-        AssetAction -->|Add Asset| AddAssetAction(["Select File to Add"]):::action
-        AddAssetAction --> CopyAsset[["Backend: Save as UUID File in assets/ and Register Alias in assets.json"]]:::tauri
-        CopyAsset --> RefreshAssets[["Refresh Asset List and Reload assets.json State"]]:::action
+        AssetAction -->|Add Asset - Single File| AliasModal["Alias Naming Modal"]:::modal
+        AliasModal --> RegisterAsset[["Backend: Register resolvedPath & Bind Asset UUID"]]:::tauri
+        RegisterAsset --> RefreshAssets[["Refresh Asset Store State"]]:::action
         
-        %% Asset Deletion (Purges UUID File & Updates assets.json)
-        AssetAction -->|Delete Asset| DeleteAssetAction(["Select Asset to Delete"]):::action
-        DeleteAssetAction --> RemoveAsset[["Backend: Delete UUID File from assets/ and Remove Entry from assets.json"]]:::tauri
-        RemoveAsset --> RefreshAssets
+        AssetAction -->|Soft Delete Asset| ScanRef[["Scan main.md Text for References"]]:::tauri
+        ScanRef --> DeleteConfirmModal["In-Use Warning / Confirmation Modal"]:::modal
+        DeleteConfirmModal --> SoftDelete[["Backend: Set isDeleted = true & deletedAt timestamp"]]:::tauri
+        SoftDelete --> RefreshAssets
         
         RefreshAssets --> AssetWindow
-        AssetWindow -->|Close Window| EditorPage
+        AssetWindow -->|Close Window| RecalcMissing[["Recalculate missingAssets & Update Red Line Decorators"]]:::tauri
+        RecalcMissing --> EditorPage
     end
 
-    %% ====================================================
-    %% Flow 4: Explicit Save & Save As (Sync / Flush)
-    %% ====================================================
-    subgraph SaveFlow["4 Explicit Save and Save As - Master Synchronization"]
-        EditorPage -->|Click Save or Save As| SaveActionType{"Save Action Type"}:::cond
+    %% ----------------------------------------------------
+    %% 4. Explicit Save & Asset Delta Packing
+    %% ----------------------------------------------------
+    subgraph SaveFlow["4 Explicit Save & Export - Asset Delta Synchronization"]
+        EditorPage -->|Click Save or Export| SaveActionType{"Action Type"}:::cond
         
-        %% Case A: Overwrite Save
-        SaveActionType -->|Save - Overwrite| FlushLocal[["Backend: Flush main.md and assets.json in Temporary Workspace"]]:::tauri
-        FlushLocal --> CheckSourceType{"Inspect Active Storage Target Type"}:::cond
+        SaveActionType -->|In-Place Save| ExecSave[["Backend: Compute delete_list & addition_list"]]:::tauri
+        SaveActionType -->|Export As| SaveDialog["OS Save File Dialog"]:::modal
+        SaveDialog --> ExecSave
         
-        CheckSourceType -->|ZIP Archive .hasmmd| SyncToZip[["Backend: Compress Temporary Workspace including assets.json to Active ZIP Target"]]:::tauri
-        CheckSourceType -->|External Folder| SyncToFolder[["Backend: Sync Temporary Workspace including assets.json to Active Folder Target"]]:::tauri
-        CheckSourceType -->|Unbound - New Workspace| TriggerSaveAs(["Automatically Trigger Save As Flow"]):::action
-        
-        SyncToZip --> SaveComplete["Display Save Success Toast"]:::action
-        SyncToFolder --> SaveComplete
-        TriggerSaveAs --> PromptSaveAsModal
-        
-        %% Case B: Save As
-        SaveActionType -->|Save As| FlushLocalBeforeSaveAs[["Backend: Flush Temporary Workspace"]]:::tauri
-        FlushLocalBeforeSaveAs --> PromptSaveAsModal["Display Save As Options Modal"]:::modal
-        
-        PromptSaveAsModal --> SelectSaveType{"Select Target Format"}:::cond
-        
-        SelectSaveType -->|External Folder| PickFolderDialog(["OS Folder Picker Dialog"]):::action
-        PickFolderDialog --> UserCanceledFolder{"Dialog Canceled?"}:::cond
-        UserCanceledFolder -->|Yes| CancelSaveAs(["Return to Editor - Keep Unsaved Flag"]):::action
-        UserCanceledFolder -->|No| ExportToFolder[["Backend: Sync Temporary Workspace to New External Folder"]]:::tauri
-        ExportToFolder --> UpdateFolderTarget["Bind New External Folder as Active Target"]:::action
-        
-        SelectSaveType -->|ZIP Archive .hasmmd| PickArchiveDialog(["OS File Save Dialog"]):::action
-        PickArchiveDialog --> UserCanceledArchive{"Dialog Canceled?"}:::cond
-        UserCanceledArchive -->|Yes| CancelSaveAs
-        UserCanceledArchive -->|No| ExportNewArchive[["Backend: Compress Temporary Workspace to New ZIP Target"]]:::tauri
-        ExportNewArchive --> UpdateArchiveTarget["Bind New ZIP File as Active Target"]:::action
-        
-        UpdateFolderTarget --> SaveComplete
-        UpdateArchiveTarget --> SaveComplete
-        
-        SaveComplete --> ResetDirtyExplicit["Reset Unsaved Flag and Update Title Bar Path"]:::action
-        ResetDirtyExplicit --> EditorPage
-        CancelSaveAs --> EditorPage
+        ExecSave --> PurgeSoftDeleted[["Purge delete_list binaries from target"]]:::tauri
+        PurgeSoftDeleted --> PackAdditions[["Compress addition_list binaries to target"]]:::tauri
+        PackAdditions --> NormalizeManifest[["Normalize assets.json to relative paths"]]:::tauri
+        NormalizeManifest --> AtomicCommit[["Atomic Replace Target Archive / Folder"]]:::tauri
+        AtomicCommit --> RebindLocal[["Sync App Local & Re-expand resolvedPaths"]]:::tauri
+        RebindLocal --> SaveComplete["Display Success Toast & Readout: Master Target Synced"]:::action
+        SaveComplete --> EditorPage
     end
 
-    %% ====================================================
-    %% Flow 5: External Editor Change Detection (Pattern A with Re-Verification)
-    %% ====================================================
-    subgraph ExternalSyncFlow["5 External Modification Detection - Window Focus"]
-        EditorPage -->|Window Regains Focus| FocusTrigger(["Window Focus Event Triggered"]):::action
-        FocusTrigger --> CheckFolderBound{"Bound Target Type Is External Folder?"}:::cond
+    %% ----------------------------------------------------
+    %% 5. Workspace Close & Process Lock Release
+    %% ----------------------------------------------------
+    subgraph CloseFlow["5 Workspace Close & Process Lock Release Phase"]
+        EditorPage -->|Click Close or App Quit| CloseTrigger(["Trigger Close Workspace"]):::action
+        CloseTrigger --> CheckUnsavedClose{"isDirty == true?"}:::cond
         
-        CheckFolderBound -->|No - Unbound or Archive| EditorPage
-        CheckFolderBound -->|Yes| CheckExternalMtime[["Backend: Check External Metadata and Timestamp for main.md and assets.json"]]:::tauri
-        
-        CheckExternalMtime --> CompareMtime{"External mtime Newer Than Temporary Workspace?"}:::cond
-        CompareMtime -->|No| EditorPage
-        CompareMtime -->|Yes| ExternalPromptModal["Display Conflict Modal: External Changes Detected"]:::modal
-        
-        ExternalPromptModal --> UserSyncChoice{"User Choice"}:::cond
-        UserSyncChoice -->|Ignore External| EditorPage
-        UserSyncChoice -->|Reload from External| ReImportFolder[["Backend: Overwrite Copy External Target to Temporary Workspace"]]:::tauri
-        
-        ReImportFolder --> VerifyReImported[["Backend: Verify Package Structure main.md assets.json and assets/"]]:::tauri
-        VerifyReImported --> ReImportCheck{"Verification Passed?"}:::cond
-        
-        ReImportCheck -->|No - Corrupted or Missing Files| ErrorHASMModel[/"Data Error Screen /error-model"/]:::error
-        ReImportCheck -->|Yes| UpdateEditorContent["Reload Document and assets.json in Editor and Clear Unsaved Flag"]:::action
-        UpdateEditorContent --> EditorPage
-    end
-
-    %% ====================================================
-    %% Flow 6: App Close & Cleanup
-    %% ====================================================
-    subgraph CloseFlow["6 App Close and Cleanup Phase"]
-        EditorPage -->|Click Close or Window X| CloseTrigger(["Trigger Close Application Event"]):::action
-        CloseTrigger --> CheckUnsavedClose{"Unsaved Changes Exist?"}:::cond
-        
-        %% Unsaved Changes Exist -> Prompt Modal
-        CheckUnsavedClose -->|Yes| PromptCloseModal["Display Confirmation Modal"]:::modal
+        CheckUnsavedClose -->|Yes| PromptCloseModal["Unsaved Changes Modal"]:::modal
         PromptCloseModal --> UserCloseChoice{"User Selection"}:::cond
         
-        UserCloseChoice -->|Cancel| CancelClose(["Cancel Close - Return to Editor"]):::action
+        UserCloseChoice -->|Cancel| CancelClose(["Remain in Editor"]):::action
         CancelClose --> EditorPage
         
-        UserCloseChoice -->|Save and Exit| TriggerSyncOnClose[["Backend: Sync Temporary Workspace to Active Target"]]:::tauri
-        UserCloseChoice -->|Discard and Exit| CleanupTemp
+        UserCloseChoice -->|Save| ExecSave
+        UserCloseChoice -->|Discard| ReleaseHandles
         
-        TriggerSyncOnClose --> CleanupTemp[["Backend: Release Lock and Delete Temporary Workspace Directory"]]:::tauri
+        CheckUnsavedClose -->|No| ReleaseHandles[["Backend: Close Master Target File Handles"]]:::tauri
+        ReleaseHandles --> UpdateLock[["Backend: Update .lock Payload to PID: 0 / Unlocked"]]:::tauri
+        UpdateLock --> CleanupCache[["Backend: Clean Up App Local Temp Caches"]]:::tauri
+        CleanupCache --> RouteSelect["Reset Store (isLoaded = false) & Route to /select or Exit Window"]:::action
+    end
+
+    %% ----------------------------------------------------
+    %% 6. Global Menu & Theme Selector Operations
+    %% ----------------------------------------------------
+    subgraph GlobalMenuFlow["6 Global Menu, Diagnostic Lists & Theme Switching"]
+        AppLayout -->|Click Notification / Menu Icon| OpenMenu(["Open Global Menu Drawer"]):::action
+        OpenMenu --> RenderMenu["Render Error List, Warning List & Readout Status"]:::modal
         
-        %% No Unsaved Changes -> Directly Cleanup
-        CheckUnsavedClose -->|No| CleanupTemp
+        RenderMenu --> MenuAction{"Menu Action"}:::cond
+        MenuAction -->|Select Error Item| JumpLine["Close Drawer & Scroll Editor to Missing Asset Line"]:::action
+        MenuAction -->|Change Theme| SwitchTheme["Apply Theme Palette (Light / Dark / High-Contrast)"]:::action
         
-        CleanupTemp --> TerminateApp(["Terminate Application Process Cleanly"]):::action
+        SwitchTheme --> PersistTheme[["Backend: Save Preference to AppConfig & localStorage"]]:::tauri
+        PersistTheme --> ApplyCSS["Update root data-theme attribute across all routes"]:::action
+        
+        JumpLine --> EditorPage
+        ApplyCSS --> AppLayout
     end
 
 ```
 
 ---
 
-## 3. Detailed Phase Summaries
+## 4. Detailed Phase Summaries
 
-1. **App Launch and Workspace Loading Phase:**
-* Validates runtime dependencies and purges orphaned temporary directories from prior crashes.
-* Supports opening `.hasmmd` archives, external folders, or scaffolding new packages.
-* Copies/extracts files into an isolated UUID folder under `App Local`, acquires an exclusive lock, verifies structural integrity (`main.md`, `assets.json`, and `assets/`), and routes to `/editor`.
+1. **App Launch, Lock Check & Selective Import Phase:**
 
-
-2. **Text Editing, Asset Path Resolution & Periodic Autosave Loop:**
-* Sets `is_dirty = true` on user keystrokes.
-* Leverages a custom `markdown-it` renderer rule to resolve human-readable asset aliases (e.g., `diagram.png`) to physical UUID filenames in `./assets/` using `assets.json`.
-* A 10-second timer periodically checks for changes and writes updated `main.md` and `assets.json` to the `App Local` temporary workspace.
+* Checks `<UUID>/.lock` status; rejects access if another active PID holds the lock.
 
 
-3. **Asset Management Sub-window:**
-* Provides a sub-window interface to list, add, or delete media attachments.
-* Adding an asset generates a UUID filename in `assets/` and registers its display alias in `assets.json`.
-* Deleting an asset removes the physical UUID file and purges its mapping entry from `assets.json`.
+* Extracts **only** `main.md` and `assets.json` into `App Local`. Media binaries remain in ZIP for on-demand streaming (`asset-stream://`).
 
 
-4. **Explicit Save and Save As (Master Synchronization):**
-* **Save (Overwrite):** Flushes local edits (`main.md` and `assets.json`) and syncs the temporary workspace back to the active master target (compressing to `.hasmmd` ZIP or copying to the bound external folder).
-* **Save As:** Exports the temporary workspace to a new location (`.hasmmd` or folder) and updates the active target binding.
+* Dynamically resolves portable relative paths to `resolvedPath` URIs and commits payload to `usePackageStore` setting `isLoaded = true`.
 
 
-5. **External Modification Detection (Window Focus - Pattern A):**
-* Intercepts `window.onfocus` events.
-* If bound to an external folder, compares external `mtime` timestamps against the temporary workspace.
-* Prompts a conflict modal ("Reload from External" vs "Ignore") if external modifications are detected.
-* Re-verifies package structure (`main.md`, `assets.json`, `assets/`) upon re-importing external changes.
+
+2. **Routing Guard Protection Mechanism (`<WorkspaceGuard>`):**
+
+* Intercepts all direct navigation attempts to `/editor` or `/assets`.
 
 
-6. **App Close and Cleanup Phase:**
-* Intercepts window close events (`X` / `Alt+F4`).
-* Prompts confirmation if unsaved changes exist ("Save & Exit", "Discard & Exit", "Cancel").
-* Releases locks, purges the `App Local` temporary UUID directory, and exits cleanly.
+* Validates `isLoaded === true` and `uuid !== null`. If unauthorized, redirects immediately to `/select`.
 
-# 4 HASM Markdown Detailed Design Sequence (SEQ) Files
+3. **Text Editing, Red-Text Highlight & Fast Local Autosave Loop:**
 
-- **`SEQ-MD-01`**:
-  - Application launch and environment validation
-  - 3-mode import (ZIP extraction / Folder copy / Scaffold creation)
-  - Exclusive workspace lock acquisition
-  - Structural integrity verification (`main.md`, `assets.json`, `assets/`)
-  - `assets.json` in-memory caching (`AssetManifest` expansion)
-- **`SEQ-MD-02`**:
-  - Text editing detection and `is_dirty` state management
-  - Alias-to-UUID path resolution via `markdown-it` custom rules (O(1) in-memory lookup)
-  - 10-second interval timer for asynchronous App Local sync (`main.md` & `assets.json`)
-- **`SEQ-MD-03`**:
-  - Asset management sub-window display
-  - Asset addition (UUID generation, physical file write, `AssetManifest` update)
-  - Asset deletion
-  - Asset list retrieval and real-time preview refresh
-- **`SEQ-MD-04`**:
-  - Explicit Save (Overwrite: sync `main.md` + `assets.json` + `assets/` back to master target / ZIP compression)
-  - Save As (OS dialog integration and active target re-binding)
-- **`SEQ-MD-05`**:
-  - External editor modification detection (window focus `mtime` check)
-  - Conflict dialog display
-  - External data reload and re-verification (`Verify`)
-- **`SEQ-MD-06`**:
-  - Window close event (`X` / `Alt+F4`) interception
-  - Unsaved changes confirmation modal
-  - Master target synchronization
-  - Lock release and App Local temporary directory cleanup
-  - Clean process termination
-- **`SEQ-MD-07`**:
-  - Structure error screen (`/error-model`)
-  - Environment error screen (`/error-app`)
-  - Boot-time cleanup of orphaned temporary directories and crash recovery
+* Tracks live edits (`isDirty = true`). `Ctrl+S` manual shortcuts are unbound.
+
+
+* `markdown-it` resolves asset tags to `resolvedPath` URIs and wraps missing/soft-deleted assets in red warning spans and line decorators.
+
+
+* 10-second timer periodically persists UTF-8 text to `<UUID>/main.md` in `App Local`.
+
+
+
+4. **Single-Asset Management Sub-window:**
+
+* Enforces single-file drop/selection constraints and prompts Alias Naming Modal.
+
+
+* Soft-deletes assets (`isDeleted: true`) in `assets.json`.
+
+
+* Recalculates `missingAssets` upon window closure to update editor warning decorators.
+
+
+
+5. **Explicit Save & Export (Asset Delta Synchronization):**
+
+* Computes `delete_list` (`isDeleted: true`) and `addition_list`.
+
+
+* Purges deleted binaries, packs new additions, normalizes paths to relative format (`assets/<uuid>.<ext>`), and performs atomic file replacement.
+
+
+* Updates readout status to "Master Target Synced".
+
+6. **Workspace Close & Process Lock Release Phase:**
+
+* Intercepts close attempts if `isDirty === true`.
+
+
+* Releases master OS file handles.
+
+
+* Atomically updates `<UUID>/.lock` payload to `pid: 0` and `status: "Unlocked"`, resets store (`isLoaded = false`), and routes to `/select`.
+
+
+
+7. **Global Menu Notifications, Save State Indicator & Theme Switching:**
+
+* Displays persistent Warning List and Error List notifications across all routes.
+* Updates real-time save state readouts in header ("Unsaved (*)", "Saving...", "Autosaved at HH:mm:ss", "Master Target Synced").
+* Provides 16ms instant theme switching across `Light`, `Dark`, and `High-Contrast` palettes, persisted in `localStorage` and `AppConfig`.
+
+---
+
+## 5. HASM Markdown Detailed Design Sequence (SEQ) Files
+
+### 5.1 `SEQ-MD-01`: App Launch, Selective Import, Workspace Locking, and Runtime Path Resolution
+
+* Application launch, version check, and PID `.lock` validation.
+
+
+* 3-mode selective import (ZIP metadata extraction / Folder mount / Scaffold creation).
+
+
+* Runtime absolute path resolution (`relativePath` $\rightarrow$ `resolvedPath`).
+
+
+* Structural verification (`main.md`, `assets.json`) and `missingAssets` collection.
+
+
+
+### 5.2 `SEQ-MD-02`: Text Editing, Dynamic Asset Path Resolution, Missing/Deleted Red-Highlighting, and Local Autosave
+
+* Real-time text editing, diff tracking (`isDirty`), and `Ctrl+S` shortcut interception.
+
+
+* `markdown-it` dynamic path resolution & missing/soft-deleted red-text warning rendering.
+
+
+* 10-second periodic local-only autosave loop (`App Local` sandbox write).
+
+
+
+### 5.3 `SEQ-MD-03`: Asset Management Window Operations, Single-Asset Upload, Soft-Deletion, Dynamic Path Mapping, and Editor State Synchronization
+
+* Asset management window initialization & non-deleted asset filtering.
+
+
+* Single-asset upload constraint (1-file limit) & custom alias naming modal.
+
+
+* Fast dynamic path binding (`resolvedPath`) without immediate ZIP copy.
+
+
+* Real-time `main.md` reference inspection & soft-deletion (`isDeleted: true` flag).
+
+
+* Window closure state synchronization & editor red line decorator update.
+
+
+
+### 5.4 `SEQ-MD-04`: Workspace Save, Export, Asset Delta Packing, Path Normalization, and Archive Writing
+
+* Unified In-Place Save and Export As lifecycle.
+
+
+* Deletion list (`isDeleted: true`) and addition list (UUID comparison) delta computation.
+
+
+* Soft-deleted binary purge and new asset packing.
+
+
+* Manifest path normalization, atomic target archive writing (`output.tmp.zip`), and `App Local` re-binding.
+
+
+
+### 5.5 `SEQ-MD-05`: Workspace Close, Process Lock Release, and App Local Cleanup Lifecycle
+
+* Workspace close invocation & unsaved changes guard (`isDirty` dialog).
+
+
+* Master target OS file handle release (ZIP archive vs external folder).
+
+
+* Single-workspace process lock status transition (`.lock` payload set to `pid: 0` / `status: "Unlocked"`).
+
+
+* App Local cache garbage collection, store reset (`isLoaded = false`), and window termination / routing.
+
+
+
+### 5.6 `SEQ-MD-06_Others`: Global Menu Notifications, Save State Indicator, and Dynamic Color Theme Switching
+
+* Global Menu drawer for Error List (`missingAssets`) and Warning List (orphans, soft-deleted assets) notifications.
+* Continuous real-time save state indicator readout ("Unsaved (*)" $\rightarrow$ "Autosaved at HH:mm:ss" $\rightarrow$ "Master Target Synced").
+* App-wide 3-color theme switcher (`Light` / `Dark` / `High-Contrast`) with instant 16ms DOM re-skinning and `AppConfig` persistence.

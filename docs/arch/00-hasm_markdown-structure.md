@@ -6,12 +6,25 @@
 
 ```text
 <AppLocalDataDir>/<UUID>/
-├── .lock                   # Exclusive edit process lock file
+├── .lock                   # JSON process lock file (PID, status, timestamp)
 ├── main.md                 # Primary Markdown content document
-├── assets.json             # Asset alias-to-UUID metadata mapping file
-└── assets/                 # Physical media files named using UUIDs
+├── assets.json             # Asset metadata mapping (alias, UUID, resolvedPath, isDeleted flag)
+└── assets/                 # Physical media files named using UUIDs (or external target)
     ├── 3f8b9a20-1c2d-4e5f-8a9b-0c1d2e3f4a5b.png
     └── 9e8d7c6b-5a4f-3e2d-1c0b-a9b8c7d6e5f4.jpg
+
+```
+
+### 1.1 Lock File JSON Payload Specification (`.lock`)
+
+```json
+{
+  "pid": 1024,
+  "status": "Locked",
+  "workspaceUuid": "3f8b9a20-1c2d-4e5f-a678-9b0c1d2e3f4a",
+  "lastAcquiredAt": 1786533400000,
+  "lastReleasedAt": null
+}
 
 ```
 
@@ -30,19 +43,31 @@ classDiagram
         Unbound
     }
 
-    class AssetMetadata {
+    class RuntimeAssetMetadata {
         +String uuid
-        +String filename
+        +String relative_path
+        +String resolved_path
         +String mime_type
-        +u64 created_at
+        +u64 size
+        +bool is_external
+        +bool is_deleted
+        +Option~u64~ deleted_at
     }
 
     class AssetManifest {
         +String version
-        +HashMap~String, AssetMetadata~ assets
-        +get_uuid_filename(alias) Option~String~
+        +HashMap~String, RuntimeAssetMetadata~ assets
+        +get_resolved_path(alias) Option~String~
         +register_asset(alias, metadata)
-        +remove_asset(alias) Option~AssetMetadata~
+        +soft_delete_asset(alias) bool
+        +normalize_paths_for_save()
+    }
+
+    class AssetDeltaContext {
+        +Vec~String~ delete_list
+        +Vec~String~ addition_list
+        +Vec~String~ unmodified_list
+        +compute_deltas(target_index)
     }
 
     class HasmMarkdownPackage {
@@ -53,16 +78,13 @@ classDiagram
         +Option~u64~ last_autosaved_at
         +AssetManifest manifest
         +new(temp_base_path) Result~Self, PackageError~
-        +from_archive(archive_path, temp_base_path) Result~Self, PackageError~
-        +from_folder(folder_path, temp_base_path) Result~Self, PackageError~
-        +save_local(markdown_content) Result~(), PackageError~
-        +sync_to_target() Result~(), PackageError~
-        +rebind_target(new_target) Result~(), PackageError~
-        +list_assets() HashMap~String, AssetMetadata~
-        +add_asset(source_file_path, display_alias) Result~AssetMetadata, PackageError~
-        +delete_asset(display_alias) Result~(), PackageError~
-        +verify_structure() Result~(), PackageValidationError~
-        +cleanup() Result~(), PackageError~
+        +open_archive(archive_path) Result~Self, PackageError~
+        +open_folder(folder_path) Result~Self, PackageError~
+        +save_local_buffer(content) Result~(), PackageError~
+        +execute_save_or_export(export_target_path) Result~SaveExecutionPayload, PackageError~
+        +register_and_bind_single_asset(source_path, custom_alias) Result~RuntimeAssetMetadata, PackageError~
+        +soft_delete_asset_mapping(alias) Result~(), PackageError~
+        +close_and_cleanup() Result~WorkspaceClosePayload, PackageError~
     }
 
     class HasmMarkdownState {
@@ -70,9 +92,10 @@ classDiagram
         +Mutex~AppConfig~ config
     }
 
-    AssetManifest *-- AssetMetadata : contains
+    AssetManifest *-- RuntimeAssetMetadata : contains
     HasmMarkdownPackage *-- AssetManifest : caches in-memory
     HasmMarkdownPackage *-- StorageTarget : uses
+    HasmMarkdownPackage ..> AssetDeltaContext : creates during save
     HasmMarkdownState *-- HasmMarkdownPackage : manages
 
 ```
@@ -88,28 +111,44 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 // ===================================================================
-// Asset Metadata & Manifest (In-Memory Cache)
+// Process Lock Payload Structure (.lock)
 // ===================================================================
 
-/// Individual metadata entry for an asset file.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AssetMetadata {
-    /// UUID identifier of the asset file
-    pub uuid: String,
-    /// Physical filename inside assets/ directory (e.g. "3f8b9a20-1c2d-4e5f.png")
-    pub filename: String,
-    /// MIME type of the asset
-    pub mime_type: String,
-    /// Unix timestamp in milliseconds when registered
-    pub created_at: u64,
+pub struct ProcessLockPayload {
+    pub pid: u32,
+    pub status: String, // "Locked" | "Unlocked"
+    pub workspace_uuid: String,
+    pub last_acquired_at: u64,
+    pub last_released_at: Option<u64>,
 }
 
-/// In-memory representation of assets.json for O(1) lookup speed.
+// ===================================================================
+// Runtime Asset Metadata & Manifest
+// ===================================================================
+
+/// Individual metadata entry for an asset file with soft-delete support.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RuntimeAssetMetadata {
+    pub uuid: String,
+    /// Portable package-relative path (e.g. "assets/3f8b9a20.png")
+    pub relative_path: String,
+    /// Runtime absolute path or asset-stream:// URI
+    pub resolved_path: String,
+    pub mime_type: String,
+    pub size: u64,
+    pub is_external: bool,
+    /// Soft deletion flag (true = marked for deletion on next save)
+    pub is_deleted: bool,
+    pub deleted_at: Option<u64>,
+}
+
+/// In-memory asset manifest cache.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AssetManifest {
     pub version: String,
-    /// Key: Display alias (e.g., "diagram.png"), Value: AssetMetadata
-    pub assets: HashMap<String, AssetMetadata>,
+    /// Key: Custom Display Alias, Value: RuntimeAssetMetadata
+    pub assets: HashMap<String, RuntimeAssetMetadata>,
 }
 
 impl AssetManifest {
@@ -120,22 +159,36 @@ impl AssetManifest {
         }
     }
 
-    /// O(1) fast lookup for resolving human-readable aliases to physical UUID filenames.
-    pub fn get_uuid_filename(&self, alias: &str) -> Option<&str> {
-        self.assets.get(alias).map(|m| m.filename.as_str())
+    /// Resolves an alias string to an active runtime absolute path or stream URI.
+    pub fn get_resolved_path(&self, alias: &str) -> Option<&str> {
+        self.assets.get(alias).and_then(|m| {
+            if m.is_deleted { None } else { Some(m.resolved_path.as_str()) }
+        })
     }
 
-    pub fn register_asset(&mut self, alias: String, metadata: AssetMetadata) {
+    pub fn register_asset(&mut self, alias: String, metadata: RuntimeAssetMetadata) {
         self.assets.insert(alias, metadata);
     }
 
-    pub fn remove_asset(&mut self, alias: &str) -> Option<AssetMetadata> {
-        self.assets.remove(alias)
+    /// Marks an asset as soft-deleted without purging its metadata or key.
+    pub fn soft_delete_asset(&mut self, alias: &str) -> bool {
+        if let Some(metadata) = self.assets.get_mut(alias) {
+            metadata.is_deleted = true;
+            metadata.deleted_at = Some(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_millis() as u64,
+            );
+            true
+        } else {
+            false
+        }
     }
 }
 
 // ===================================================================
-// Storage Target Classification
+// Storage Target & Delta Operational Context
 // ===================================================================
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -143,6 +196,13 @@ pub enum StorageTarget {
     Archive(PathBuf),
     Folder(PathBuf),
     Unbound,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct AssetDeltaContext {
+    pub delete_list: Vec<String>,
+    pub addition_list: Vec<String>,
+    pub unmodified_list: Vec<String>,
 }
 
 // ===================================================================
@@ -161,6 +221,7 @@ pub enum PackageValidationError {
 pub enum PackageError {
     IoError { message: String },
     ZipError { message: String },
+    AliasCollision { alias: String },
     ValidationError(PackageValidationError),
     NoActiveTarget,
     AssetNotFound { alias: String },
@@ -177,136 +238,68 @@ pub struct HasmMarkdownPackage {
     pub target: StorageTarget,
     pub is_dirty: bool,
     pub last_autosaved_at: Option<u64>,
-    /// In-memory cached asset manifest to prevent repetitive JSON disk reads
     pub manifest: AssetManifest,
 }
 
 impl HasmMarkdownPackage {
-    /// Scaffold a new unbound workspace in App Local memory.
-    pub fn new(temp_base_path: &Path) -> Result<Self, PackageError> {
-        let uuid = Uuid::new_v4();
-        let temp_dir_path = temp_base_path.join(uuid.to_string());
-        
-        std::fs::create_dir_all(temp_dir_path.join("assets"))
-            .map_err(|e| PackageError::IoError { message: e.to_string() })?;
-            
-        std::fs::write(temp_dir_path.join("main.md"), "# Welcome to HASM Markdown\n")
-            .map_err(|e| PackageError::IoError { message: e.to_string() })?;
-
-        let manifest = AssetManifest::new();
-        let manifest_json = serde_json::to_string_pretty(&manifest)
-            .map_err(|e| PackageError::IoError { message: e.to_string() })?;
-            
-        std::fs::write(temp_dir_path.join("assets.json"), manifest_json)
-            .map_err(|e| PackageError::IoError { message: e.to_string() })?;
-
-        Ok(Self {
-            uuid,
-            temp_dir_path,
-            target: StorageTarget::Unbound,
-            is_dirty: false,
-            last_autosaved_at: None,
-            manifest,
-        })
-    }
-
-    /// Loads and parses assets.json into the in-memory cache upon workspace initialization.
-    pub fn load_manifest(&mut self) -> Result<(), PackageError> {
-        let json_path = self.temp_dir_path.join("assets.json");
-        if json_path.exists() {
-            let content = std::fs::read_to_string(&json_path)
-                .map_err(|e| PackageError::IoError { message: e.to_string() })?;
-            self.manifest = serde_json::from_str(&content)
-                .map_err(|e| PackageError::IoError { message: e.to_string() })?;
-        } else {
-            self.manifest = AssetManifest::new();
-        }
-        Ok(())
-    }
-
-    /// Flushes markdown content and writes updated assets.json to App Local disk.
-    pub fn save_local(&mut self, markdown_content: &str) -> Result<(), PackageError> {
+    /// Fast 10-second periodic local autosave (App Local UTF-8 text write only).
+    pub fn save_local_buffer(&mut self, markdown_content: &str) -> Result<(), PackageError> {
         let main_md_path = self.temp_dir_path.join("main.md");
-        std::fs::write(main_md_path, markdown_content)
+        let tmp_path = self.temp_dir_path.join("main.md.tmp");
+
+        std::fs::write(&tmp_path, markdown_content)
             .map_err(|e| PackageError::IoError { message: e.to_string() })?;
-            
-        // Flush in-memory manifest to assets.json
-        let manifest_json = serde_json::to_string_pretty(&self.manifest)
-            .map_err(|e| PackageError::IoError { message: e.to_string() })?;
-        std::fs::write(self.temp_dir_path.join("assets.json"), manifest_json)
+        std::fs::rename(tmp_path, main_md_path)
             .map_err(|e| PackageError::IoError { message: e.to_string() })?;
 
         self.is_dirty = false;
         self.last_autosaved_at = Some(
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as u64
+                .unwrap_or_default()
+                .as_millis() as u64,
         );
         Ok(())
     }
 
-    /// Adds a new asset: copies to physical UUID filename and updates in-memory manifest cache.
-    pub fn add_asset(&mut self, source_path: &Path, display_alias: String) -> Result<AssetMetadata, PackageError> {
+    /// Registers a single asset via absolute path binding without heavy archive copies.
+    pub fn register_and_bind_single_asset(
+        &mut self,
+        source_path: &Path,
+        custom_alias: String,
+    ) -> Result<RuntimeAssetMetadata, PackageError> {
+        if self.manifest.assets.contains_key(&custom_alias) {
+            return Err(PackageError::AliasCollision { alias: custom_alias });
+        }
+
         let asset_uuid = Uuid::new_v4().to_string();
         let extension = source_path.extension().and_then(|e| e.to_str()).unwrap_or("bin");
-        let physical_filename = format!("{}.{}", asset_uuid, extension);
-        let dest_path = self.temp_dir_path.join("assets").join(&physical_filename);
+        let relative_path = format!("assets/{}.{}", asset_uuid, extension);
+        let resolved_path = source_path.to_string_lossy().to_string();
 
-        std::fs::copy(source_path, &dest_path)
-            .map_err(|e| PackageError::IoError { message: e.to_string() })?;
-
-        let metadata = AssetMetadata {
+        let metadata = RuntimeAssetMetadata {
             uuid: asset_uuid,
-            filename: physical_filename,
+            relative_path,
+            resolved_path,
             mime_type: format!("image/{}", extension),
-            created_at: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as u64,
+            size: std::fs::metadata(source_path).map(|m| m.len()).unwrap_or(0),
+            is_external: true,
+            is_deleted: false,
+            deleted_at: None,
         };
 
-        // Update in-memory manifest cache immediately
-        self.manifest.register_asset(display_alias, metadata.clone());
+        self.manifest.register_asset(custom_alias, metadata.clone());
         self.is_dirty = true;
-
         Ok(metadata)
     }
 
-    /// Deletes an asset: removes physical UUID file and purges entry from in-memory manifest cache.
-    pub fn delete_asset(&mut self, display_alias: &str) -> Result<(), PackageError> {
-        if let Some(metadata) = self.manifest.remove_asset(display_alias) {
-            let file_path = self.temp_dir_path.join("assets").join(&metadata.filename);
-            if file_path.exists() {
-                std::fs::remove_file(file_path)
-                    .map_err(|e| PackageError::IoError { message: e.to_string() })?;
-            }
+    /// Executes soft deletion by setting is_deleted = true.
+    pub fn soft_delete_asset_mapping(&mut self, alias: &str) -> Result<(), PackageError> {
+        if self.manifest.soft_delete_asset(alias) {
             self.is_dirty = true;
             Ok(())
         } else {
-            Err(PackageError::AssetNotFound { alias: display_alias.to_string() })
+            Err(PackageError::AssetNotFound { alias: alias.to_string() })
         }
-    }
-
-    /// Structural integrity check.
-    pub fn verify_structure(&self) -> Result<(), PackageValidationError> {
-        let main_md_path = self.temp_dir_path.join("main.md");
-        if !main_md_path.exists() {
-            return Err(PackageValidationError::MissingMainMarkdown { path: main_md_path });
-        }
-        
-        let assets_json_path = self.temp_dir_path.join("assets.json");
-        if !assets_json_path.exists() {
-            return Err(PackageValidationError::MissingAssetsJson { path: assets_json_path });
-        }
-
-        let assets_dir_path = self.temp_dir_path.join("assets");
-        if !assets_dir_path.is_dir() {
-            return Err(PackageValidationError::InvalidAssetDirectory { path: assets_dir_path });
-        }
-        
-        Ok(())
     }
 }
-
-```
