@@ -2,32 +2,33 @@
 
 ## 1. Sequence Overview
 
-This sequence handles the application startup lifecycle from CLI/OS launch up to populating the React State Store, acquiring OS-level exclusive file handles, and rendering the primary Markdown editor (`/editor`).
+This sequence handles the application startup lifecycle from CLI/OS launch up to populating the React State Store, establishing single-instance workspace process locking, acquiring exclusive OS file handles, **resolving asset relative paths into runtime absolute paths (`resolvedPath`)**, and rendering the Markdown editor (`/editor`).
 
 ### Key Operations Covered
 
-1. **Multi-Instance Execution & Workspace Process Isolation:** Allows multiple application instances to run simultaneously across the OS. However, opening a specific workspace is strictly limited to a single process at a time via PID `.lock` validation and OS-level exclusive file locks.
-2. **CLI Execution & App Version Validation:** Accepts optional CLI arguments (`hasm_markdown [target_path]`). Reads app version metadata and routes to `/error-app` if corrupted.
-3. **React Loading State Management:** Sets `isLoading: true` and `loadingProgress: 0` before long-running imports to disable UI buttons and prevent double clicks.
-4. **Target Entry Mode Routing:**
-* **Mode A (ZIP Archive `.hasmmd`):** Extracts contents into `<AppLocalDataDir>/<UUID>/`.
-* **Mode B (Folder Workspace):** Copies directory recursively into `<AppLocalDataDir>/<UUID>/`.
-* **Mode C (Create New):** Scaffolds default `main.md`, `assets.json`, and `assets/` directory in App Local.
+1. **Multi-Instance Execution & Workspace Process Isolation:** Permits multiple application process windows across the OS while restricting access to a specific workspace directory to a single active process via PID `.lock` validation.
+2. **Selective Lightweight Import & Zero-Copy Asset Streaming:**
+* **Mode A (ZIP Target `.hasmmd`):** Extracts **only** lightweight metadata (`main.md` and `assets.json`) into `<AppLocalDataDir>/<UUID>/`. Asset images are **not** extracted upfront; they are read via dynamic on-demand stream directly from the ZIP archive.
+* **Mode B (Folder Workspace):** Mounts external directories directly or copies metadata without duplicating heavy media payloads.
+* **Mode C (Create New):** Scaffolds default `main.md`, `assets.json`, and empty `assets/` in App Local.
 
 
-5. **Dynamic Timeout & Stall Guard:** Emits `import_progress` events every chunk. Resets the stall countdown timer as long as bytes are being written. Times out only if write operations freeze for more than 15 seconds.
-6. **Exclusive Process Lock & Essential File OS Handles:**
-* Writes `<UUID>/.lock` storing the active Process ID (PID). If another active process PID holds the lock, aborts loading to prevent concurrent workspace access.
-* Acquires exclusive OS write/delete file handles over `<UUID>/main.md`, `<UUID>/assets.json`, and the source `.hasmmd` archive (if Mode A).
+3. **Single-Workspace Process Lock & Essential File OS Handles:**
+* Writes `<UUID>/.lock` storing the active Process ID (PID). Rejects access if another active process PID holds the lock.
+* Acquires exclusive OS write file handles over `<UUID>/main.md` and `<UUID>/assets.json`, plus an exclusive read/share lock on the source `.hasmmd` archive.
 
 
-7. **Structural Verification & Non-Fatal Asset Cross-Check:**
-* Verifies physical existence of `main.md`, `assets.json`, and `assets/`. (Fatal if missing core structures).
-* **Missing Assets Check (Non-Fatal):** Cross-checks `assets.json` against physical files in `assets/`. Missing files are collected into `missing_assets` without halting.
-* **Orphan Files Check (Non-Fatal):** Scans `assets/` for unregistered files and collects them into `orphan_files`.
+4. **Runtime Absolute Path Resolution (`relativePath` $\rightarrow$ `resolvedPath`):**
+* Reads `assets.json` containing portable package-relative paths (`assets/<uuid_filename>`).
+* Rust dynamically expands every relative entry into an active runtime absolute path (`resolvedPath`), binding it to the current OS environment (e.g. `App Local` path, external folder path, or `asset-stream://` URI) in memory before handing off to React.
 
 
-8. **State Commitment & Direct Editor Navigation:** Commits `PackageStatePayload` (carrying missing asset details and warnings) to `usePackageStore`, resets `isLoading: false`, and directly routes to `/editor`.
+5. **Structural Verification & Non-Fatal Asset Cross-Check:**
+* Verifies physical existence of `main.md` and `assets.json`.
+* Cross-checks `assets.json` entries against the ZIP archive index or external directory. Missing asset references are collected into `missingAssets` without blocking workspace loading.
+
+
+6. **State Commitment & Direct Editor Navigation:** Commits `PackageStatePayload` (carrying resolved absolute paths) to `usePackageStore`, resets `isLoading: false`, and directly routes to `/editor`.
 
 ---
 
@@ -59,60 +60,44 @@ sequenceDiagram
     end
     deactivate Rust
 
-    %% Phase 2: Selection & Mode-Specific Imports (With Progress & Stall Timeout)
+    %% Phase 2: Selection & Selective Lightweight Import (Metadata Only)
     activate React
     alt Route 2-A: ZIP Archive Mode (.hasmmd)
         alt CLI Path Provided
-            React->>React: setIsLoading(true, "Extracting archive...")
-            React->>React: Listen to "import_progress" event
-            React->>Rust: invoke("import_archive", { archive_path: cli_target_path })
+            React->>React: setIsLoading(true, "Opening workspace archive...")
+            React->>Rust: invoke("open_archive_workspace", { archive_path: cli_target_path })
         else UI Selection
             React->>User: Render File Selection Page (/select)
             User->>React: Select .hasmmd / .zip File
-            React->>React: setIsLoading(true, "Extracting archive...")
-            React->>React: Listen to "import_progress" event
-            React->>Rust: invoke("import_archive", { archive_path })
+            React->>React: setIsLoading(true, "Opening workspace archive...")
+            React->>Rust: invoke("open_archive_workspace", { archive_path })
         end
         deactivate React
         activate Rust
         
         Rust->>AppLocal: Generate new UUID & Create directory <AppLocalDataDir>/<UUID>/
-        Rust->>Rust: Calculate Dynamic Timeout based on Archive Size + Stall Guard
         
-        loop Unzip Chunk / File Copy
-            Rust->>ExtStorage: Read & Extract Zip Chunk
-            ExtStorage-->>AppLocal: Write file
-            Rust->>Rust: Reset Stall Timer (Countdown reset on progress)
-            Rust-->>React: emit("import_progress", { percentage, current_file, processed_bytes, total_bytes })
-            React->>React: setLoadingProgress(percentage)
-        end
+        %% Selective Extraction: Metadata Only (Instant Open)
+        Rust->>ExtStorage: Scan ZIP Index (Central Directory)
+        Rust->>ExtStorage: Extract main.md & assets.json ONLY to <UUID>/
+        Note over Rust,ExtStorage: Asset binaries remain in ZIP for on-demand streaming (Zero Upfront Copy)
 
     else Route 2-B: Folder Workspace Mode
         activate React
         alt CLI Path Provided
-            React->>React: setIsLoading(true, "Copying workspace folder...")
-            React->>React: Listen to "import_progress" event
-            React->>Rust: invoke("import_folder", { folder_path: cli_target_path })
+            React->>React: setIsLoading(true, "Mounting workspace folder...")
+            React->>Rust: invoke("open_folder_workspace", { folder_path: cli_target_path })
         else UI Selection
             React->>User: Render File Selection Page (/select)
             User->>React: Select External Folder Directory
-            React->>React: setIsLoading(true, "Copying workspace folder...")
-            React->>React: Listen to "import_progress" event
-            React->>Rust: invoke("import_folder", { folder_path })
+            React->>React: setIsLoading(true, "Mounting workspace folder...")
+            React->>Rust: invoke("open_folder_workspace", { folder_path })
         end
         deactivate React
         activate Rust
         
         Rust->>AppLocal: Generate new UUID & Create directory <AppLocalDataDir>/<UUID>/
-        Rust->>Rust: Calculate Dynamic Timeout based on Total Directory Size
-        
-        loop File Copy
-            Rust->>ExtStorage: Read file
-            ExtStorage-->>AppLocal: Copy file
-            Rust->>Rust: Reset Stall Timer (Countdown reset on progress)
-            Rust-->>React: emit("import_progress", { percentage, current_file, processed_bytes, total_bytes })
-            React->>React: setLoadingProgress(percentage)
-        end
+        Rust->>ExtStorage: Read main.md & assets.json from Folder -> Mount directly
 
     else Route 2-C: Create New Mode
         activate React
@@ -124,21 +109,11 @@ sequenceDiagram
         activate Rust
         
         Rust->>AppLocal: Generate new UUID & Create directory <AppLocalDataDir>/<UUID>/
-        Rust->>AppLocal: Scaffold initial main.md, assets.json, and assets/ directory
+        Rust->>AppLocal: Scaffold initial main.md, assets.json, and empty assets/ directory
         Rust->>Rust: Set StorageTarget::Unbound
     end
 
-    %% Stall Detection / Failure Branch
-    alt Import Stalled (No byte written for > 15s) or IO Error
-        Rust->>AppLocal: Purge Incomplete <UUID>/ Directory
-        Rust-->>React: Return PackageError::ImportStalled / IoError
-        activate React
-        React->>React: setIsLoading(false)
-        React->>User: Display Toast Error ("Import Stalled or Failed") & Stay on /select
-        deactivate React
-    end
-
-    %% Phase 3: Single-Instance Workspace Lock & OS File Handle Acquisition
+    %% Phase 3: Single-Instance Lock, OS Handles & Runtime Path Resolution
     Rust->>AppLocal: Read <UUID>/.lock
     alt Lock File Exists with Active Process PID
         AppLocal-->>Rust: Active PID detected in OS process table
@@ -150,48 +125,53 @@ sequenceDiagram
     else Workspace Free
         Rust->>AppLocal: Write <UUID>/.lock (PID: current_process_id)
         
-        %% Core File Physical Locks
+        %% Core File Physical Locks & ZIP Share Lock
         Rust->>AppLocal: Open Exclusive Write File Handle on <UUID>/main.md
         Rust->>AppLocal: Open Exclusive Write File Handle on <UUID>/assets.json
         opt Mode A (ZIP Target)
-            Rust->>ExtStorage: Open Exclusive Read/Share Lock on target .hasmmd archive
+            Rust->>ExtStorage: Open Exclusive Read/Share Lock on target .hasmmd archive (Keep File Handle Open for Streaming)
         end
     end
 
     Rust->>AppLocal: Read <UUID>/assets.json
-    AppLocal-->>Rust: Return assets.json content
-    Rust->>Rust: Parse assets.json -> AssetManifest (HashMap<String, AssetMetadata>)
+    AppLocal-->>Rust: Return relative assets.json content
+    
+    %% Runtime Absolute Path Expansion Step
+    loop Expand Relative Paths to Runtime Absolute Paths
+        alt Mode A (ZIP Target)
+            Rust->>Rust: Bind relativePath -> resolvedPath ("asset-stream://<UUID>/<asset_uuid>")
+        else Mode B / Mode C (Folder / Local Target)
+            Rust->>Rust: Join workspace root path + relativePath -> resolvedPath (Absolute OS Path)
+        end
+    end
+    
+    Rust->>Rust: Cache expanded RuntimeAssetManifest (HashMap<Alias, RuntimeAssetMetadata>)
 
-    %% Phase 4: Structural Verification, Cross-Check & React State Commitment
-    Rust->>AppLocal: Check existence of main.md, assets.json, and assets/
-    alt Structure Check Failed (Missing main.md, assets.json, or assets/ directory entirely)
-        AppLocal-->>Rust: Core File or Directory Missing
-        Rust-->>React: Return PackageValidationError::MissingMainMarkdown / MissingAssetsJson / InvalidAssetDirectory
+    %% Phase 4: Verification, Asset Index Cross-Check & State Commitment
+    Rust->>AppLocal: Check existence of main.md and assets.json
+    alt Core Metadata Missing
+        AppLocal-->>Rust: main.md or assets.json Missing
+        Rust-->>React: Return PackageValidationError::MissingMainMarkdown / MissingAssetsJson
         activate React
         React->>React: setIsLoading(false)
         React->>User: Render Data Error Page (/error-model)
         deactivate React
-    else Core Structure Intact
-        Rust->>AppLocal: Cross-check manifest entries against assets/ physical files
-        opt Missing Physical Files
+    else Core Metadata Intact
+        Rust->>ExtStorage: Cross-check manifest asset keys against ZIP index / external assets/
+        opt Referenced Asset Missing from Archive Index or Disk
             Rust->>Rust: Collect missing asset details into Vec<MissingAssetInfo>
         end
         
-        Rust->>AppLocal: Scan assets/ for unregistered orphan files
-        opt Orphan Files Found
-            Rust->>Rust: Collect orphan filenames into Vec<PackageWarning>
-        end
-        
         Rust->>Rust: Store HasmMarkdownPackage into Mutex<Option<HasmMarkdownPackage>>
-        Rust-->>React: Return Ok(PackageStatePayload { ..., missing_assets, warnings })
+        Rust-->>React: Return Ok(PackageStatePayload { manifest_with_resolved_paths, missing_assets, warnings })
         deactivate Rust
         
         %% React State Commitment & Direct Editor Route
         activate React
-        React->>React: setPackageStore(payload) [Update React Context / Zustand Store]
+        React->>React: setPackageStore(payload) [Commit store with runtime resolved absolute paths]
         React->>React: Initialize markdown-it with manifest asset map & missing assets list
         React->>React: setIsLoading(false)
-        React->>User: Render Markdown Editor Page (/editor) [Delegates missing asset red text styling & FS Watcher to SEQ-MD-02]
+        React->>User: Render Markdown Editor Page (/editor) [Uses resolvedPath for zero-delay preview rendering]
         deactivate React
     end
 
@@ -201,70 +181,41 @@ sequenceDiagram
 
 ## 3. Data Contracts & State Specifications
 
-### 3.1 React UI State (`usePackageStore`)
+### 3.1 Runtime Asset Manifest Payload (`PackageStatePayload`)
 
 ```typescript
-export interface PackageUIState {
-  isLoading: boolean;              // Global blocking loading flag
-  loadingMessage: string | null;   // Active loading label
-  loadingProgress: number;        // Progress percentage (0 to 100)
-  packageData: PackageStatePayload | null; // Active workspace data (includes missing_assets)
-  error: PackageError | PackageValidationError | null; // Fatal system errors only
-}
-
-```
-
-### 3.2 Response Payload (`PackageStatePayload`)
-
-```typescript
-export interface MissingAssetInfo {
-  alias: string;             // Display name referenced in Markdown (e.g. "diagram.png")
-  expectedFilename: string;  // Expected physical UUID filename (e.g. "3f8b9a20-1c2d.png")
+export interface RuntimeAssetMetadata {
+  uuid: string;             // Asset UUID
+  relativePath: string;     // Portable package relative path (e.g., "assets/3f8b9a20.png")
+  resolvedPath: string;     // Absolute runtime path (e.g., "C:\Users\...\assets\3f8b9a20.png" or "asset-stream://<UUID>/<asset_uuid>")
+  mimeType: string;         // MIME string
+  size: number;             // Byte size
+  isExternal: boolean;      // True if referencing external OS file directly
 }
 
 export interface PackageStatePayload {
   uuid: string;                     // Temporary workspace UUID
   tempDirPath: string;              // Absolute path to <AppLocalDataDir>/<UUID>/
   targetType: 'Archive' | 'Folder' | 'Unbound'; // StorageTarget variant
-  targetPath: string | null;        // Active master target path on disk
+  targetPath: string | null;        // Active master target path on disk (.hasmmd path)
   isDirty: boolean;                 // Initial unsaved changes flag (false)
   manifest: {
     version: string;
-    assets: Record<string, {
-      uuid: string;
-      filename: string;
-      mimeType: string;
-      createdAt: number;
-    }>;
+    assets: Record<string, RuntimeAssetMetadata>; // Maps Alias -> Runtime Metadata containing absolute resolvedPath
   };
-  missingAssets: MissingAssetInfo[];// Non-fatal list of referenced assets with missing physical files
-  warnings: PackageWarning[];       // Non-fatal warnings (e.g., orphan files)
+  missingAssets: MissingAssetInfo[];// Referenced assets missing from ZIP index or folder
+  warnings: PackageWarning[];       // Unregistered orphan assets in ZIP
 }
 
 ```
 
 ---
 
-## 4. Error Handling & Multi-Instance Lock Strategy
+## 4. Path Resolution Strategy Rules
 
-1. **Multi-Instance Coexistence:**
-* Multiple `hasm_markdown` process windows can exist independently on the OS simultaneously.
-* Multi-instance conflict validation is isolated strictly per workspace via `<UUID>/.lock` (PID check) and OS-level file handle reservation.
-
-
-2. **Core File OS Physical Locking:**
-* **`main.md` & `assets.json`:** Opened with OS exclusive write/delete file handles (`FILE_SHARE_READ` allowed, write/delete blocked for external processes) for the duration of the editor session.
-* **ZIP Archive Target (`.hasmmd`):** Exclusive read lock prevents external users from moving, renaming, or deleting the source archive while active.
-* **Asset Images (`assets/*`):** Left physically unlocked to permit external graphics software editing, relying on `SEQ-MD-02` FileSystem Watchers (`notify`) for non-destructive hot-reloading.
-
-
-3. **Error & Lock Conflict Matrix:**
-
-| Scenario | Component | Action | Resulting UI / State |
-| --- | --- | --- | --- |
-| **App Version Read Failure** | Rust Backend | Catch version reading error | Redirect to `/error-app` screen |
-| **Import Stalled (> 15s No I/O)** | Rust Backend | Trigger Stall Guard, purge `<UUID>/` | Set `isLoading: false`, show Toast error |
-| **Workspace Already Open in Active PID** | Rust Backend | Detect existing active PID in `.lock` | Set `isLoading: false`, show Lock Conflict Modal |
-| **`main.md` / `assets.json` Lock Failure** | Rust Backend | File locked by another process | Set `isLoading: false`, show File Lock Toast error |
-| **Missing `main.md` / `assets.json**` | Rust Backend | Fail `verify_structure()` | Set `isLoading: false`, redirect to `/error-model` |
-| **Missing Physical Asset File(s)** | Rust Backend | Collect missing aliases into `missingAssets` | Route directly to `/editor` (Red-text handled by `SEQ-MD-02`) |
+1. **Relative Storage on Disk:**
+`assets.json` stored on disk inside `.hasmmd` or workspace folders **always** uses workspace-relative paths (`assets/<uuid_filename>`) for maximum portability across operating systems and users.
+2. **Absolute Resolution in Memory:**
+During startup (Phase 3 of `SEQ-MD-01`), Rust parses `assets.json` and dynamically resolves every `relativePath` into an environment-specific absolute `resolvedPath`.
+3. **Seamless Hand-off to Frontend:**
+React receives `PackageStatePayload` pre-populated with `resolvedPath`, eliminating the need for client-side path calculations and guaranteeing instant image preview rendering upon mounting `/editor`.
