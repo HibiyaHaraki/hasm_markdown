@@ -18,7 +18,7 @@
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-opener": "^2",
     "bootstrap": "^5.3.8",
-    "markdown-it": "^14.1.1",
+    "markdown-it": "^15.0.0",
     "react": "^18.3.1",
     "react-bootstrap": "^2.10.10",
     "react-dom": "^18.3.1"
