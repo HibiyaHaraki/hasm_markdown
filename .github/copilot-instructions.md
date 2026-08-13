@@ -32,9 +32,13 @@
 
 - Add or update focused tests when changing observable behavior, especially for documented evaluation cases.
 - Run the narrowest relevant check first. Available checks include:
+  - `npm run check:seq-md-02`
   - `npm run check:seq-md-01`
   - `npm run check:tauri-build`
   - `npm run check:react-render`
   - `npm run check`
 - Keep tests deterministic and avoid relying on local absolute paths, timing-sensitive behavior, or network access.
 - Report validation run results and any checks that could not be run.
+- Logging format of the test script is fixed
+  - If test fail, please provide detail error messages
+  - IF test pass, please return RESULT, TEST ID, and TEST NAME
