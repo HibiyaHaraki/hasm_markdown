@@ -155,6 +155,8 @@ pub fn run_with_launch_path(launch_path: Option<String>) {
             commands::workspace::create_new_package,
             commands::workspace::close_and_cleanup_workspace,
             commands::editor::save_local_markdown_buffer,
+            commands::asset::register_and_bind_single_asset_path,
+            commands::asset::soft_delete_asset_mapping,
             get_launch_target
         ])
         .run(tauri::generate_context!())

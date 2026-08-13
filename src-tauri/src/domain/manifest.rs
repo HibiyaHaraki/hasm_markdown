@@ -3,6 +3,14 @@ use crate::models::payload::{AssetManifest, RuntimeAssetMetadata};
 use crate::services::path_resolver::{resolve_archive_asset_path, resolve_asset_path};
 use std::path::Path;
 
+pub fn validate_alias(manifest: &AssetManifest, alias: &str) -> Result<(), PackageError> {
+    let alias = alias.trim();
+    if alias.is_empty() || alias.contains('/') || alias.contains('\\') || manifest.assets.contains_key(alias) {
+        return Err(PackageError::AliasCollision("Alias or reserved name already exists in workspace history.".to_string()));
+    }
+    Ok(())
+}
+
 pub fn parse_and_resolve(
     raw: &str,
     target_root: &Path,
@@ -32,4 +40,18 @@ pub fn portable_json(manifest: &AssetManifest) -> Result<String, PackageError> {
 #[allow(dead_code)]
 fn _default_asset() -> RuntimeAssetMetadata {
     RuntimeAssetMetadata::default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_alias;
+    use crate::models::payload::{AssetManifest, RuntimeAssetMetadata};
+
+    #[test]
+    fn validate_alias_reserves_soft_deleted_entries() {
+        let mut manifest = AssetManifest::default();
+        manifest.assets.insert("old.png".to_string(), RuntimeAssetMetadata { is_deleted: true, ..Default::default() });
+        assert!(validate_alias(&manifest, "old.png").is_err());
+        assert!(validate_alias(&manifest, "new.png").is_ok());
+    }
 }
