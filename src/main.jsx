@@ -34,6 +34,22 @@ import { traceLog, debugLog, infoLog, warnLog, errorLog } from "./hasm_logger/sr
 const GENERATED_THEME_CSS = buildThemeClassCss(".Main");
 const isTauriRuntime = typeof window !== "undefined" && Boolean(window.__TAURI_INTERNALS__);
 const EMPTY_MARKDOWN = "# HASM Markdown\n\nCreate or open a workspace to begin.";
+const EVALUATION_FIXTURE = {
+  uuid: "eval-md-02",
+  targetType: "Folder",
+  lastSavedContent: "![present](asset:present)\n![deleted](asset:deleted)",
+  manifest: {
+    version: "1",
+    assets: {
+      present: { uuid: "present.png", resolvedPath: "C:/eval/assets/present.png" },
+      second: { uuid: "second.png", resolvedPath: "C:/eval/assets/second.png" },
+      deleted: { uuid: "deleted.png", resolvedPath: "C:/eval/assets/deleted.png", isDeleted: true },
+    },
+  },
+  missingAssets: [{ alias: "unknown", expectedRelativePath: "assets/unknown.png" }],
+};
+const isEditorEvaluation = typeof window !== "undefined"
+  && new URLSearchParams(window.location.search).get("eval") === "md02";
 
 function normalizePackagePayload(result, fallbackMarkdown = EMPTY_MARKDOWN) {
   const packageValue = Array.isArray(result) ? result[0] : result;
@@ -104,15 +120,18 @@ function BootScreen({ phase, error, onOpen }) {
 function App() {
 
   // Define Markdown Status
-  const [markdown, setMarkdown] = useState(EMPTY_MARKDOWN);
+  const [markdown, setMarkdown] = useState(
+    isEditorEvaluation ? EVALUATION_FIXTURE.lastSavedContent : EMPTY_MARKDOWN,
+  );
 
   // Define HASMMD Package Status
-  const [currentPackage, setCurrentPackage] = useState(null);
+  const [currentPackage, setCurrentPackage] = useState(isEditorEvaluation ? EVALUATION_FIXTURE : null);
 
   // Define Color Pattern Status
   const [colorPattern, setColorPattern] = useState(DEFAULT_COLOR_PATTERN);
+  const [editorStatus, setEditorStatus] = useState("Ready");
   const [phase, setPhase] = useState(
-    isTauriRuntime || window.location.pathname === "/editor" ? "select" : "editor",
+    isEditorEvaluation ? "editor" : isTauriRuntime || window.location.pathname === "/editor" ? "select" : "editor",
   );
   const [bootError, setBootError] = useState("");
 
@@ -120,6 +139,7 @@ function App() {
     const payload = normalizePackagePayload(result);
     setCurrentPackage(payload);
     setMarkdown(payload.rawContent);
+    setEditorStatus("Ready");
     setPhase("editor");
     setBootError("");
   }, []);
@@ -230,11 +250,13 @@ function App() {
           colorPattern={colorPattern}
           onColorPatternChange={setColorPattern}
           onWorkspaceOpen={loadWorkspace}
+          editorStatus={editorStatus}
         />
         <HASM_Markdown_Editor
           markdown={markdown}
           setMarkdown={setMarkdown}
           onPackageChange={setCurrentPackage}
+          onStatusChange={setEditorStatus}
           currentPackage={currentPackage}
         />
       </Container>

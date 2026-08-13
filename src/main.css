@@ -98,6 +98,12 @@
     font-weight: bold;
 }
 
+.Menu_Status {
+    margin: 0 16px;
+    color: var(--text-color);
+    font-size: 0.8rem;
+}
+
 .Mnnu_FileName {
     font-size: 0.8rem;
     opacity: 0.8;
@@ -131,6 +137,18 @@
     overflow: hidden;
     white-space: pre;
     border-right: 1px solid #333;
+}
+
+.editor-warning-line {
+    display: inline-block;
+    width: 100%;
+    color: #b42318;
+    background: #fee4e2;
+}
+
+.missing-asset-warning {
+    color: #b42318;
+    font-weight: 600;
 }
 
 .HASM_Markdown_Editor_EditorCol_Editor_Form,
