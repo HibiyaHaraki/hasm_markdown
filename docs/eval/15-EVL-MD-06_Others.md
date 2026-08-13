@@ -36,7 +36,7 @@ This document defines the test matrix, acceptance criteria, and traceability map
 
 ## 4. Automated Evaluation Script
 
-`scripts/check-seq-md-06.mjs` follows the existing sequence-evaluation harness. It starts Vite on port `4178`, drives Playwright, records each test result, and exits non-zero if any case fails.
+`scripts/check-seq-md-06.mjs` follows the existing sequence-evaluation harness. It starts Vite on port `4178`, drives Playwright, records each test result, writes `.eval-reports/md-06-evaluation-report.html`, prints a `REPORT_FILE` marker, and exits non-zero if any case fails.
 
 | Test ID | Automated assertion |
 | --- | --- |
@@ -59,3 +59,4 @@ This document defines the test matrix, acceptance criteria, and traceability map
 | `npm run check:react-render` | PASS: React rendering smoke test has no runtime errors (`checkReactRendering`) |
 | `npm run check:tauri-build` | PASS: Tauri backend build check; 22 tests passed, 0 failed (`checkTauriBuild`) |
 | `npm run check:seq-md-06` | PASS: 11/11 SEQ-MD-06 cases passed (`checkSeqMd06`) |
+| `.eval-reports/md-06-evaluation-report.html` | HTML report containing all 11 case results and pass/fail details |

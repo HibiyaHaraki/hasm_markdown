@@ -1,3 +1,4 @@
+import { mkdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import http from "node:http";
 import { chromium } from "playwright";
@@ -11,6 +12,36 @@ const RED = "\x1b[31m";
 const RESET = "\x1b[0m";
 const results = [];
 const assert = (value, message) => { if (!value) throw new Error(message); };
+const reportRoot = ".eval-reports";
+const reportPath = `${reportRoot}/md-06-evaluation-report.html`;
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function createHtmlReport() {
+  mkdirSync(reportRoot, { recursive: true });
+  const passed = results.filter((result) => result.pass).length;
+  const rows = results
+    .sort((left, right) => left.id.localeCompare(right.id))
+    .map((result) => {
+      const status = result.pass ? "PASS" : "FAIL";
+      const detail = result.pass ? "Completed successfully." : result.detail;
+      return `<article class="case ${status.toLowerCase()}">
+<h2>${escapeHtml(result.id)}: ${escapeHtml(result.name)}</h2>
+<dl><dt>Test Step</dt><dd>${escapeHtml(result.name)}</dd><dt>Expected Behavior</dt><dd>Complete the documented SEQ-MD-06 evaluation case successfully.</dd><dt>Actual Behavior</dt><dd>${escapeHtml(detail)}</dd><dt>Test Step Result</dt><dd><strong>${status}</strong></dd></dl>
+</article>`;
+    })
+    .join("\n");
+  const report = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>MD-06 Evaluation Report</title><style>body{font-family:system-ui,sans-serif;max-width:1200px;margin:auto;padding:24px;color:#1f2937;background:#f8fafc}.summary{padding:16px;background:#fff;border:1px solid #cbd5e1}.case{background:#fff;border:1px solid #cbd5e1;border-left:6px solid #16a34a;padding:16px;margin:16px 0}.case.fail{border-left-color:#dc2626}dl{display:grid;grid-template-columns:180px 1fr;gap:6px 12px}dt{font-weight:700}dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}@media(max-width:800px){dl{display:block}dt{margin-top:8px}}</style></head><body><h1>MD-06: Global Menu, Save State, and Theme Evaluation Report</h1><section class="summary"><p>Generated ${escapeHtml(new Date().toISOString())}.</p><p>Result: <strong>${passed}/${results.length} passed</strong>.</p></section>${rows}</body></html>`;
+  writeFileSync(reportPath, report, "utf8");
+  console.log(`REPORT_FILE ${reportPath}`);
+}
 
 async function record(id, name, check) {
   try {
@@ -202,5 +233,6 @@ for (const result of results.sort((left, right) => left.id.localeCompare(right.i
   else console.error(`${RED}FAIL${RESET} ${result.id} ${result.name}\n${result.detail}`);
 }
 const failed = results.filter((result) => !result.pass);
+createHtmlReport();
 console.log(`${failed.length ? RED : GREEN}Result: ${results.length - failed.length}/${results.length} passed${RESET}`);
 process.exit(failed.length ? 1 : 0);
