@@ -32,3 +32,6 @@ jobs:
 
       - name: Run repository checks
         run: npm run check:tauri-build
+
+      - name: Run SEQ-MD-01 evaluation
+        run: npm run check:seq-md-01
