@@ -26,8 +26,9 @@ import "./main.css";
 // Bootstrap
 import { Container } from "react-bootstrap";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { appLocalDataDir } from "@tauri-apps/api/path";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 
 // Logger
 import { traceLog, debugLog, infoLog, warnLog, errorLog } from "./hasm_logger/src/react/logger.js";
@@ -63,11 +64,21 @@ const ASSET_EVALUATION_FIXTURE = {
   missingAssets: [{ alias: "deleted", expectedRelativePath: "assets/deleted.png", referencedLines: [3] }],
   warnings: [],
 };
+const SAVE_EVALUATION_FIXTURE = {
+  uuid: "eval-md-04",
+  targetType: "Folder",
+  targetPath: "C:/eval/workspace",
+  lastSavedContent: "# Save fixture",
+  manifest: { version: "1", assets: {} },
+  missingAssets: [],
+  warnings: [],
+};
 const evaluationMode = typeof window !== "undefined"
   ? new URLSearchParams(window.location.search).get("eval")
   : null;
 const isEditorEvaluation = evaluationMode === "md02";
 const isAssetEvaluation = evaluationMode === "md03";
+const isSaveEvaluation = evaluationMode === "md04";
 
 function normalizePackagePayload(result, fallbackMarkdown = EMPTY_MARKDOWN) {
   const packageValue = Array.isArray(result) ? result[0] : result;
@@ -131,6 +142,18 @@ function BootScreen({ phase, error, onOpen }) {
   );
 }
 
+function SaveProgress({ progress }) {
+  if (!progress) return null;
+  return (
+    <div className="SaveProgress" role="dialog" aria-modal="true" aria-label="Saving workspace">
+      <strong>Saving workspace</strong>
+      <span>{progress.stage}</span>
+      <progress max="100" value={progress.percentage}>{progress.percentage}%</progress>
+      <span>{Math.round(progress.percentage)}%</span>
+    </div>
+  );
+}
+
 // ###################################################
 // Function : App
 // Description : Definition of App Componentincluding all component
@@ -138,7 +161,7 @@ function BootScreen({ phase, error, onOpen }) {
 function App() {
 
   // Define Markdown Status
-  const initialFixture = isEditorEvaluation ? EVALUATION_FIXTURE : isAssetEvaluation ? ASSET_EVALUATION_FIXTURE : null;
+  const initialFixture = isEditorEvaluation ? EVALUATION_FIXTURE : isAssetEvaluation ? ASSET_EVALUATION_FIXTURE : isSaveEvaluation ? SAVE_EVALUATION_FIXTURE : null;
   const [markdown, setMarkdown] = useState(initialFixture?.lastSavedContent ?? EMPTY_MARKDOWN);
 
   // Define HASMMD Package Status
@@ -147,12 +170,63 @@ function App() {
   // Define Color Pattern Status
   const [colorPattern, setColorPattern] = useState(DEFAULT_COLOR_PATTERN);
   const [editorStatus, setEditorStatus] = useState("Ready");
+  const [saveProgress, setSaveProgress] = useState(null);
+  const [isSavingPackage, setIsSavingPackage] = useState(false);
   const [isAssetWindowOpen, setIsAssetWindowOpen] = useState(false);
   const editorRef = React.useRef(null);
   const [phase, setPhase] = useState(
     initialFixture ? "editor" : isTauriRuntime || window.location.pathname === "/editor" ? "select" : "editor",
   );
   const [bootError, setBootError] = useState("");
+
+  const savePackage = useCallback(async (exportTargetPath = null) => {
+    if (!isTauriRuntime || !currentPackage?.uuid || isSavingPackage) return;
+    setIsSavingPackage(true);
+    setSaveProgress({ stage: "Starting", percentage: 0 });
+    try {
+      const result = await invoke("execute_package_save_or_export", {
+        uuid: currentPackage.uuid,
+        exportTargetPath,
+      });
+      const payload = normalizePackagePayload(result, markdown);
+      setCurrentPackage(payload);
+      setMarkdown(payload.rawContent);
+      setEditorStatus("Workspace saved successfully");
+    } catch (error) {
+      errorLog("[SEQ-MD-04][SAVE][ERROR] package save failed", error);
+      setEditorStatus(`Save failed: ${String(error)}`);
+    } finally {
+      setSaveProgress(null);
+      setIsSavingPackage(false);
+    }
+  }, [currentPackage, isSavingPackage, markdown]);
+
+  const saveAsPackage = useCallback(async () => {
+    if (!isTauriRuntime || isSavingPackage) return;
+    const selected = await save({
+      filters: [{ name: "HASM Markdown", extensions: ["hasmmd"] }],
+      defaultPath: currentPackage?.targetPath ?? undefined,
+    });
+    if (selected) await savePackage(selected.toLowerCase().endsWith(".hasmmd") ? selected : `${selected}.hasmmd`);
+  }, [currentPackage?.targetPath, isSavingPackage, savePackage]);
+
+  const exportFolder = useCallback(async () => {
+    if (!isTauriRuntime || isSavingPackage) return;
+    const selected = await open({ directory: true, multiple: false });
+    if (selected && !Array.isArray(selected)) await savePackage(selected);
+  }, [isSavingPackage, savePackage]);
+
+  useEffect(() => {
+    if (!isTauriRuntime) return undefined;
+    let disposed = false;
+    const cleanup = listen("save_progress", (event) => {
+      if (!disposed) setSaveProgress(event.payload);
+    });
+    return () => {
+      disposed = true;
+      cleanup.then((dispose) => dispose());
+    };
+  }, []);
 
   const insertAssetAtCursor = useCallback((alias) => {
     const editor = editorRef.current;
@@ -289,6 +363,10 @@ function App() {
           onWorkspaceOpen={loadWorkspace}
           editorStatus={editorStatus}
           onAssetsOpen={() => setIsAssetWindowOpen(true)}
+          onSave={() => savePackage()}
+          onSaveAs={saveAsPackage}
+          onExportFolder={exportFolder}
+          saveDisabled={isSavingPackage}
         />
         <HASM_Markdown_Editor
           markdown={markdown}
@@ -307,6 +385,7 @@ function App() {
             onClose={() => setIsAssetWindowOpen(false)}
           />
         )}
+        <SaveProgress progress={saveProgress} />
       </Container>
     </>
   );

@@ -70,3 +70,9 @@ jobs:
       
       - name: Run SEQ-MD-03 evaluation
         run: npm run check:seq-md-03
+
+      - name: Run SEQ-MD-04 evaluation
+        run: npm run check:seq-md-04
+
+      - name: Run normal workflow evaluation
+        run: npm run check:normal-workflow

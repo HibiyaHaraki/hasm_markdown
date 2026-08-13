@@ -14,6 +14,8 @@
     "check:seq-md-01": "node scripts/check-seq-md-01.mjs",
     "check:seq-md-02": "node scripts/check-seq-md-02.mjs",
     "check:seq-md-03": "node scripts/check-seq-md-03.mjs",
+    "check:seq-md-04": "node scripts/check-seq-md-04.mjs",
+    "check:normal-workflow": "node scripts/check-normal-workflow.mjs",
     "check": "npm run check:tauri-build && npm run check:react-render"
   },
   "dependencies": {

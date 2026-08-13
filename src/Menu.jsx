@@ -49,6 +49,10 @@ function Menu({
   onWorkspaceOpen,
   editorStatus,
   onAssetsOpen,
+  onSave,
+  onSaveAs,
+  onExportFolder,
+  saveDisabled,
 }) {
 
   // Tauri : Open Exist Package
@@ -130,7 +134,9 @@ function Menu({
           <NavDropdown.Item onClick={handleOpen}>Open Archive</NavDropdown.Item>
           <NavDropdown.Item onClick={() => onWorkspaceOpen?.("folder")}>Open Folder</NavDropdown.Item>
           <NavDropdown.Divider />
-          <NavDropdown.Item onClick={handleSaveAs}>Save As</NavDropdown.Item>
+          <NavDropdown.Item onClick={onSave} disabled={saveDisabled}>Save</NavDropdown.Item>
+          <NavDropdown.Item onClick={onSaveAs} disabled={saveDisabled}>Save As</NavDropdown.Item>
+          <NavDropdown.Item onClick={onExportFolder} disabled={saveDisabled}>Export Folder</NavDropdown.Item>
         </NavDropdown>
         <button type="button" className="Menu_AssetsButton" onClick={onAssetsOpen}>Assets</button>
         <NavDropdown title="Theme" id="theme-nav-dropdown" className="m-2">

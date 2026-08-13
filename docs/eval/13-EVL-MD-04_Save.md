@@ -2,6 +2,8 @@
 
 This document defines the comprehensive test matrix, acceptance criteria, and traceability mapping for validating workspace save and export operations, including deletion list generation (`isDeleted: true`), addition list generation (UUID comparison), delta execution, soft-deleted binary purging, atomic ZIP file replacement, archive manifest relative path normalization, App Local synchronization, and runtime absolute path re-binding (`resolvedPath`).
 
+The executable evaluation command is `npm run check:seq-md-04`. It reports individual frontend and Rust save cases using the fixed PASS/FAIL format and exercises progress updates, in-place save invocation, Save As cancellation, dirty-state commitment, delta planning, deletion purging, and path normalization.
+
 ---
 
 ## 1. Desktop App Level Tests (E2E / System Integration)

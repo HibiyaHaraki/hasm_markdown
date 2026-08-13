@@ -19,6 +19,10 @@ pub struct WorkspaceSession {
 }
 
 impl WorkspaceSession {
+    pub fn release_handles(&mut self) {
+        self.handles.clear();
+    }
+
     pub fn close(self) -> Result<(), PackageError> {
         drop(self.handles);
         lock::release(&self.lock_path)
