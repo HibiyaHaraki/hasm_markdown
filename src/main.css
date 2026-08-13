@@ -135,6 +135,21 @@
     gap: 8px;
 }
 
+.SaveProgress {
+    position: fixed;
+    z-index: 1200;
+    top: 50%;
+    left: 50%;
+    display: grid;
+    gap: 8px;
+    width: min(320px, calc(100vw - 32px));
+    padding: 20px;
+    transform: translate(-50%, -50%);
+    color: var(--text-color);
+    background: var(--textbackground-color);
+    border: 1px solid var(--main-color);
+}
+
 .AssetWindow_Header h2 {
     margin: 0;
     font-size: 1.1rem;
