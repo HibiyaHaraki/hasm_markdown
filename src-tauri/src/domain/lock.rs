@@ -89,4 +89,16 @@ mod tests {
         let _ = std::fs::remove_file(path);
         let _ = child.kill();
     }
+
+    #[test]
+    fn release_writes_unlocked_payload_and_retains_lock_file() {
+        let path = std::env::temp_dir().join(format!("hasm-seq-md-05-release-{}.lock", std::process::id()));
+        acquire(&path).unwrap();
+        super::release(&path).unwrap();
+        let payload: LockPayload = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(payload.pid, 0);
+        assert_eq!(payload.status, "Unlocked");
+        assert!(path.is_file());
+        let _ = std::fs::remove_file(path);
+    }
 }

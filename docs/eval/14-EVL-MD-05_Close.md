@@ -2,6 +2,8 @@
 
 This document defines the comprehensive test matrix, acceptance criteria, and traceability mapping for validating the workspace close lifecycle. It covers dirty state interception (`isDirty`), target-specific OS file handle release (`Mode A` ZIP vs `Mode B` Folder), process lock status transition (`.lock` payload update to `PID: 0` / `Unlocked`), `App Local` sandbox cache garbage collection, and frontend store reset.
 
+The executable evaluation command is `npm run check:seq-md-05`. It reports individual dirty-close choices, archive/folder handle cases, moved-package reopen/edit coverage, store routing checks, and Rust lock-transition, cleanup, and remount cases using the fixed PASS/FAIL format.
+
 ---
 
 ## 1. Desktop App Level Tests (E2E / System Integration)
@@ -13,6 +15,7 @@ This document defines the comprehensive test matrix, acceptance criteria, and tr
 | **`TC-MD-05-E2E-003`** | `REQ-MD-05-001` `REQ-MD-05-004` | Positive (Dirty Close Discard) | Attempt Close with Unsaved Changes and Click Discard | 1. Modify text buffer (`isDirty = true`). 2. Click "Close Workspace". 3. Click "Discard Changes" in Modal. | 1. Bypasses save execution. 2. Unmounts workspace immediately. 3. Buffer edits are discarded. |
 | **`TC-MD-05-E2E-004`** | `REQ-MD-05-010` `REQ-MD-05-021` | Positive (Mode A Close & Lock Check) | Close ZIP Archive Workspace (`Mode A`) and Verify OS Lock State | 1. Mount `.hasmmd` archive. 2. Close workspace. 3. Inspect target `.hasmmd` via external OS process. 4. Inspect `<UUID>/.lock`. | 1. OS write/share lock on `.hasmmd` is completely released. 2. File can be renamed/moved in OS File Explorer. 3. `<UUID>/.lock` contains `pid: 0` and `status: "Unlocked"`. |
 | **`TC-MD-05-E2E-005`** | `REQ-MD-05-011` | Positive (Mode B Close & Lock Check) | Close Folder Workspace (`Mode B`) and Verify OS Lock State | 1. Mount external folder workspace. 2. Close workspace. 3. Attempt external text edit on `main.md`. | 1. OS write lock on external `main.md` and `assets.json` is released. 2. External application can edit and save `main.md` without permission errors. |
+| **`TC-MD-05-E2E-006`** | `REQ-MD-05-010` `REQ-MD-05-011` | Positive (Moved Package Reopen) | Save, Move Package, Reopen, and Edit | 1. Save the package. 2. Move the archive/folder to a different path. 3. Open the moved package. 4. Edit its Markdown. | 1. The moved package opens successfully. 2. Metadata and asset paths are rebound for the new location. 3. Markdown remains editable and dirty tracking works. |
 
 ---
 

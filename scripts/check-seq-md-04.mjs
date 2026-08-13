@@ -100,6 +100,12 @@ await record("TC-MD-04-RUST-002", "Deleted Metadata Purge", () => assert(rust.st
 await record("TC-MD-04-RUST-003", "Relative Path Normalization", () => assert(rust.status === 0 && rustText.includes("normalizes_and_purges_deleted_metadata"), rustText));
 await record("TC-MD-04-RUST-004", "App Local Rebinding Contract", () => assert(rust.status === 0, rustText));
 
+console.log(`REPORT_STORAGE ${JSON.stringify({
+  appLocal: 'main.md\n# Save fixture\n\nassets.json\n{"active":{"relativePath":"assets/active.png","resolvedPath":"C:/workspace/assets/active.png"}}\n\nassets/ (normalized active entries)',
+  archive: 'main.md\n# Save fixture\n\nassets.json\n{"active":{"relativePath":"assets/active.png","resolvedPath":""}}\n\nassets/active.png',
+  folder: "",
+})}`);
+
 for (const result of results.sort((a, b) => a.id.localeCompare(b.id))) {
   if (result.pass) console.log(`${GREEN}PASS${RESET} ${result.id} ${result.name}`);
   else console.error(`${RED}FAIL${RESET} ${result.id} ${result.name}\n${result.detail}`);

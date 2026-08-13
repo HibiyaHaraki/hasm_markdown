@@ -2,7 +2,7 @@
 
 This evaluation covers the normal user journey across workspace creation, Markdown editing, asset registration, soft deletion, missing-asset diagnostics, archive export/reopen, and folder export. It intentionally complements the focused MD-01 through MD-04 evaluations instead of replacing them.
 
-The executable command is `npm run check:normal-workflow`. Each step prints an individual PASS/FAIL result using the repository evaluation format.
+The executable command is `npm run check:normal-workflow`. This workflow intentionally uses the standalone repository evaluation format rather than the Playwright Test reporter. Each step prints an individual PASS/FAIL result and generates `.eval-reports/normal-workflow-report.html` with Test Step, Expected Behavior, Actual Behavior, Test Step Result, and App Local/archive/folder storage snapshots.
 
 ## Workflow
 
@@ -18,8 +18,21 @@ The executable command is `npm run check:normal-workflow`. Each step prints an i
 | `TC-MD-07-008` | MD-04 | Save as `.hasmmd` | Deleted metadata is purged, active assets are normalized, and the archive target is committed. |
 | `TC-MD-07-009` | MD-01/MD-02 | Reopen the saved archive | Markdown and active asset paths are restored using the archive streaming protocol. |
 | `TC-MD-07-010` | MD-03/MD-04 | Edit, add/delete assets, and export as folder | The folder target contains normalized metadata, active additions, and no soft-deleted records. |
-| `TC-MD-07-011` | MD-05 | Close and reopen the application | Requires the MD-05 close implementation; this remains a separate acceptance gate. |
+| `TC-MD-07-011` | MD-02/MD-03/MD-05 | Close, reopen, edit, add, and delete cycle 1 | Reopen the package, edit Markdown, add an asset, include it in Markdown, delete an asset, verify diagnostics, then close. |
+| `TC-MD-07-012` | MD-02/MD-03/MD-05 | Close, reopen, edit, add, and delete cycle 2 | Repeat the full edit/add/include/delete/diagnostic/close flow after the second remount. |
+| `TC-MD-07-013` | MD-02/MD-03/MD-05 | Close, reopen, edit, add, and delete cycle 3 | Repeat the full edit/add/include/delete/diagnostic/close flow after the third remount. |
 
 ## Scope Note
 
-`TC-MD-07-011` is documented now so the complete normal journey is visible, but the executable workflow reports it as pending until `SEQ-MD-05` implements close interception, lock release, App Local cleanup, and application relaunch. The focused `check-seq-md-01` through `check-seq-md-04` commands remain the executable gates for the implemented portions.
+Each of `TC-MD-07-011` through `TC-MD-07-013` performs this detailed sequence:
+
+1. Close the current workspace and release its lock.
+2. Open the saved package again.
+3. Edit Markdown and verify the buffer is editable.
+4. Add a new asset with an external resolved path.
+5. Insert the new asset alias into Markdown.
+6. Delete an existing asset and mark it `isDeleted` with `deletedAt`.
+7. Verify the deleted asset appears in the missing-asset diagnostics.
+8. Close the workspace and continue to the next cycle.
+
+The focused `check-seq-md-05` command covers the browser Save/Discard/Cancel choices and Rust lock/cleanup behavior.

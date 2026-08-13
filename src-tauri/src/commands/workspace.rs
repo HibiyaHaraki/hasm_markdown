@@ -1,6 +1,7 @@
 use crate::domain::package::{self, WorkspaceSession};
-use crate::models::payload::PackageStatePayload;
+use crate::models::payload::{PackageStatePayload, WorkspaceClosePayload};
 use crate::AppState;
+use chrono::Utc;
 use std::path::PathBuf;
 use tauri::Manager;
 use crate::logger::init_logger;
@@ -35,15 +36,21 @@ pub fn create_new_package(state: tauri::State<'_, AppState>, app: tauri::AppHand
 }
 
 #[tauri::command]
-pub fn close_and_cleanup_workspace(state: tauri::State<'_, AppState>, uuid: String) -> Result<(), String> {
+pub fn close_and_cleanup_workspace(state: tauri::State<'_, AppState>, uuid: String, force_discard: Option<bool>) -> Result<WorkspaceClosePayload, String> {
     let mut active = state.workspace.lock().map_err(|_| "Failed to lock workspace state")?;
     if active.as_ref().map(|session| session.payload.uuid.as_str()) != Some(uuid.as_str()) {
-        return Ok(());
+        return Err("No matching active workspace".to_string());
     }
-    if let Some(session) = active.take() {
-        session.close().map_err(|error| error.to_string())?;
+    let mut session = active.take().ok_or_else(|| "No active workspace".to_string())?;
+    if session.payload.is_dirty && !force_discard.unwrap_or(false) {
+        *active = Some(session);
+        return Err("Workspace has unsaved changes".to_string());
     }
-    Ok(())
+    session.release_handles();
+    let uuid = session.payload.uuid.clone();
+    package::cleanup_local_workspace(&session).map_err(|error| error.to_string())?;
+    session.close().map_err(|error| error.to_string())?;
+    Ok(WorkspaceClosePayload { uuid, lock_released: true, master_handles_closed: true, closed_at: Utc::now().to_rfc3339() })
 }
 
 fn replace_session(state: tauri::State<'_, AppState>, session: WorkspaceSession) -> Result<PackageStatePayload, String> {

@@ -73,12 +73,22 @@ const SAVE_EVALUATION_FIXTURE = {
   missingAssets: [],
   warnings: [],
 };
+const CLOSE_EVALUATION_FIXTURE = {
+  uuid: "eval-md-05",
+  targetType: "Folder",
+  targetPath: "C:/eval/workspace",
+  lastSavedContent: "# Close fixture",
+  manifest: { version: "1", assets: {} },
+  missingAssets: [],
+  warnings: [],
+};
 const evaluationMode = typeof window !== "undefined"
   ? new URLSearchParams(window.location.search).get("eval")
   : null;
 const isEditorEvaluation = evaluationMode === "md02";
 const isAssetEvaluation = evaluationMode === "md03";
 const isSaveEvaluation = evaluationMode === "md04";
+const isCloseEvaluation = evaluationMode === "md05";
 
 function normalizePackagePayload(result, fallbackMarkdown = EMPTY_MARKDOWN) {
   const packageValue = Array.isArray(result) ? result[0] : result;
@@ -154,6 +164,20 @@ function SaveProgress({ progress }) {
   );
 }
 
+function CloseWorkspaceModal({ onSave, onDiscard, onCancel, busy }) {
+  return (
+    <div className="CloseWorkspaceModal" role="dialog" aria-modal="true" aria-label="Unsaved changes">
+      <strong>You have unsaved changes.</strong>
+      <span>Save before closing?</span>
+      <div className="CloseWorkspaceModal_Actions">
+        <button type="button" onClick={onSave} disabled={busy}>Save</button>
+        <button type="button" onClick={onDiscard} disabled={busy}>Discard Changes</button>
+        <button type="button" onClick={onCancel} disabled={busy}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
 // ###################################################
 // Function : App
 // Description : Definition of App Componentincluding all component
@@ -161,7 +185,7 @@ function SaveProgress({ progress }) {
 function App() {
 
   // Define Markdown Status
-  const initialFixture = isEditorEvaluation ? EVALUATION_FIXTURE : isAssetEvaluation ? ASSET_EVALUATION_FIXTURE : isSaveEvaluation ? SAVE_EVALUATION_FIXTURE : null;
+  const initialFixture = isEditorEvaluation ? EVALUATION_FIXTURE : isAssetEvaluation ? ASSET_EVALUATION_FIXTURE : isSaveEvaluation ? SAVE_EVALUATION_FIXTURE : isCloseEvaluation ? CLOSE_EVALUATION_FIXTURE : null;
   const [markdown, setMarkdown] = useState(initialFixture?.lastSavedContent ?? EMPTY_MARKDOWN);
 
   // Define HASMMD Package Status
@@ -173,6 +197,7 @@ function App() {
   const [saveProgress, setSaveProgress] = useState(null);
   const [isSavingPackage, setIsSavingPackage] = useState(false);
   const [isAssetWindowOpen, setIsAssetWindowOpen] = useState(false);
+  const [isClosePromptOpen, setIsClosePromptOpen] = useState(false);
   const editorRef = React.useRef(null);
   const [phase, setPhase] = useState(
     initialFixture ? "editor" : isTauriRuntime || window.location.pathname === "/editor" ? "select" : "editor",
@@ -192,9 +217,11 @@ function App() {
       setCurrentPackage(payload);
       setMarkdown(payload.rawContent);
       setEditorStatus("Workspace saved successfully");
+      return true;
     } catch (error) {
       errorLog("[SEQ-MD-04][SAVE][ERROR] package save failed", error);
       setEditorStatus(`Save failed: ${String(error)}`);
+      return false;
     } finally {
       setSaveProgress(null);
       setIsSavingPackage(false);
@@ -215,6 +242,34 @@ function App() {
     const selected = await open({ directory: true, multiple: false });
     if (selected && !Array.isArray(selected)) await savePackage(selected);
   }, [isSavingPackage, savePackage]);
+
+  const finishClose = useCallback(async (forceDiscard = false) => {
+    if (!isTauriRuntime || !currentPackage?.uuid) return;
+    try {
+      await invoke("close_and_cleanup_workspace", { uuid: currentPackage.uuid, forceDiscard });
+      setCurrentPackage(null);
+      setMarkdown(EMPTY_MARKDOWN);
+      setEditorStatus("Ready");
+      setIsAssetWindowOpen(false);
+      setIsClosePromptOpen(false);
+      setPhase("select");
+      window.history.replaceState({}, "", "/select");
+    } catch (error) {
+      errorLog("[SEQ-MD-05][CLOSE][ERROR] workspace close failed", error);
+      setEditorStatus(`Close failed: ${String(error)}`);
+    }
+  }, [currentPackage?.uuid]);
+
+  const requestClose = useCallback(() => {
+    const dirty = currentPackage?.isDirty ?? markdown !== (currentPackage?.lastSavedContent ?? markdown);
+    if (dirty) setIsClosePromptOpen(true);
+    else finishClose(false);
+  }, [currentPackage, finishClose, markdown]);
+
+  const saveAndClose = useCallback(async () => {
+    const saved = await savePackage();
+    if (saved) await finishClose(false);
+  }, [finishClose, savePackage]);
 
   useEffect(() => {
     if (!isTauriRuntime) return undefined;
@@ -367,6 +422,7 @@ function App() {
           onSaveAs={saveAsPackage}
           onExportFolder={exportFolder}
           saveDisabled={isSavingPackage}
+          onCloseWorkspace={requestClose}
         />
         <HASM_Markdown_Editor
           markdown={markdown}
@@ -386,6 +442,14 @@ function App() {
           />
         )}
         <SaveProgress progress={saveProgress} />
+        {isClosePromptOpen && (
+          <CloseWorkspaceModal
+            onSave={saveAndClose}
+            onDiscard={() => finishClose(true)}
+            onCancel={() => setIsClosePromptOpen(false)}
+            busy={isSavingPackage}
+          />
+        )}
       </Container>
     </>
   );

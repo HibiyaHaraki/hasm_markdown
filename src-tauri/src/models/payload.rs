@@ -76,6 +76,15 @@ pub struct PackageStatePayload {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceClosePayload {
+    pub uuid: String,
+    pub lock_released: bool,
+    pub master_handles_closed: bool,
+    pub closed_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LockPayload {
     pub pid: u32,
     pub status: String,

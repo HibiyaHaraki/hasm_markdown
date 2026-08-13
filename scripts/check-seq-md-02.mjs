@@ -216,6 +216,12 @@ await checkResolverContract();
 await checkBrowserContract();
 await checkRustContract();
 
+console.log(`REPORT_STORAGE ${JSON.stringify({
+  appLocal: 'main.md\n![present](asset:present)\n![deleted](asset:deleted)\n\nassets.json\n{"present":{"resolvedPath":"C:/eval/assets/present.png"},"deleted":{"isDeleted":true}}\n\nassets/ (not copied in archive metadata-only mode)',
+  archive: 'main.md\n![present](asset:present)\n![deleted](asset:deleted)\n\nassets.json\n{"present":{"relativePath":"assets/present.png"},"deleted":{"isDeleted":true}}\n\nassets/ (streamed from archive)',
+  folder: "",
+})}`);
+
 for (const result of results.sort((left, right) => left.id.localeCompare(right.id))) {
   if (result.pass) console.log(`${GREEN}PASS${RESET} ${result.id} ${result.name}`);
   else console.error(`${RED}FAIL${RESET} ${result.id} ${result.name}\n${result.detail}`);

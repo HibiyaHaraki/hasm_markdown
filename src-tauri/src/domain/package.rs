@@ -104,6 +104,12 @@ fn finish_mount(
     let mut handles = Vec::new();
     handles.push(OpenOptions::new().read(true).write(true).open(temp_dir.join("main.md"))?);
     handles.push(OpenOptions::new().read(true).write(true).open(temp_dir.join("assets.json"))?);
+    if matches!(target_type, TargetType::Folder) {
+        if let Some(folder) = target_path {
+            handles.push(OpenOptions::new().read(true).write(true).open(folder.join("main.md"))?);
+            handles.push(OpenOptions::new().read(true).write(true).open(folder.join("assets.json"))?);
+        }
+    }
     if let Some(path) = archive_path { handles.push(File::open(path)?); }
 
     Ok(WorkspaceSession {
@@ -189,6 +195,16 @@ pub fn write_markdown(session: &WorkspaceSession, markdown: &str) -> Result<(), 
     file.flush()?;
     file.sync_all()?;
     fs::rename(temporary_path, path)?;
+    Ok(())
+}
+
+pub fn cleanup_local_workspace(session: &WorkspaceSession) -> Result<(), PackageError> {
+    let root = Path::new(&session.payload.temp_dir_path);
+    for entry in fs::read_dir(root)? {
+        let path = entry?.path();
+        if path.file_name().and_then(|name| name.to_str()) == Some(".lock") { continue; }
+        if path.is_dir() { fs::remove_dir_all(path)?; } else { fs::remove_file(path)?; }
+    }
     Ok(())
 }
 
@@ -332,5 +348,24 @@ mod tests {
         let (missing, _) = super::inspect_assets(&manifest, "# Doc\n![asset](asset:deleted)\n", std::path::Path::new("."), None).unwrap();
         assert_eq!(missing[0].alias, "deleted");
         assert_eq!(missing[0].referenced_lines, vec![2]);
+    }
+
+    #[test]
+    fn cleanup_local_workspace_removes_buffers_but_keeps_lock() {
+        let base = std::env::temp_dir().join(format!("hasm-seq-md-05-cleanup-{}", std::process::id()));
+        std::fs::create_dir_all(base.join("assets")).unwrap();
+        std::fs::write(base.join("main.md"), "temporary").unwrap();
+        std::fs::write(base.join("assets.json"), "{}").unwrap();
+        std::fs::write(base.join(".lock"), "{}").unwrap();
+        let session = WorkspaceSession {
+            payload: PackageStatePayload { uuid: "cleanup".to_string(), temp_dir_path: base.to_string_lossy().into_owned(), target_type: TargetType::Unbound, target_path: None, is_loaded: true, is_dirty: false, raw_content: String::new(), last_saved_content: String::new(), manifest: AssetManifest::default(), missing_assets: Vec::new(), warnings: Vec::new() },
+            lock_path: base.join(".lock"),
+            handles: Vec::new(),
+        };
+        super::cleanup_local_workspace(&session).unwrap();
+        assert!(base.join(".lock").exists());
+        assert!(!base.join("main.md").exists());
+        assert!(!base.join("assets").exists());
+        let _ = std::fs::remove_dir_all(base);
     }
 }

@@ -150,6 +150,27 @@
     border: 1px solid var(--main-color);
 }
 
+.CloseWorkspaceModal {
+    position: fixed;
+    z-index: 1250;
+    top: 50%;
+    left: 50%;
+    display: grid;
+    gap: 10px;
+    width: min(360px, calc(100vw - 32px));
+    padding: 20px;
+    transform: translate(-50%, -50%);
+    color: var(--text-color);
+    background: var(--textbackground-color);
+    border: 1px solid var(--main-color);
+}
+
+.CloseWorkspaceModal_Actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
 .AssetWindow_Header h2 {
     margin: 0;
     font-size: 1.1rem;
