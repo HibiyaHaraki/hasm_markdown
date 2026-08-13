@@ -132,7 +132,7 @@ async function checkBrowserContract() {
     });
 
     await record("TC-MD-02-REACT-004-DIRTY", "Dirty Flag and Revert", async () => {
-      assert((await page.locator(".Menu_Status").textContent()).includes("Unsaved changes *"), "dirty status was not shown");
+      assert((await page.locator(".Menu_Status").textContent()).includes("Unsaved Changes (*)"), "dirty status was not shown");
       assert(await page.locator(".HASM_Markdown_Editor").getAttribute("data-dirty") === "true", "dirty flag was not set");
       await editor.fill("![present](asset:present)\n![deleted](asset:deleted)");
       assert((await page.locator(".Menu_Status").textContent()).trim() === "Ready", "reverting to saved content did not clear dirty status");
@@ -181,7 +181,7 @@ async function checkBrowserContract() {
       await autosavePage.waitForTimeout(400);
       const successfulSaves = await autosavePage.evaluate(() => window.__md02Invokes.filter(({ command }) => command === "save_local_markdown_buffer"));
       assert(successfulSaves.length === 1 && successfulSaves[0].args.content === "changed", "dirty buffer did not autosave exactly once");
-      assert((await autosavePage.locator(".Menu_Status").textContent()).includes("Autosaved locally at"), "autosave success status was not shown");
+      assert((await autosavePage.locator(".Menu_Status").textContent()).includes("Autosaved Locally at"), "autosave success status was not shown");
     });
 
     await record("TC-MD-02-E2E-005", "Local Autosave Failure Recovery", async () => {

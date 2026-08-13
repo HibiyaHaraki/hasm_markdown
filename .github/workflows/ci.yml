@@ -77,5 +77,8 @@ jobs:
       - name: Run SEQ-MD-05 evaluation
         run: npm run check:seq-md-05
 
+      - name: Run SEQ-MD-06 evaluation
+        run: npm run check:seq-md-06
+
       - name: Run normal workflow evaluation
         run: npm run check:normal-workflow

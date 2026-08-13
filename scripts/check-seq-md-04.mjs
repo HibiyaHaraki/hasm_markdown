@@ -80,8 +80,8 @@ try {
     assert(call?.args.uuid === "eval-md-04" && call.args.exportTargetPath === null, "in-place save payload was incorrect");
   });
   await record("TC-MD-04-REACT-002", "Store Commit and Dirty Reset", async () => {
-    await page.getByText("Workspace saved successfully").waitFor();
-    assert((await page.locator(".Menu_Status").textContent()).includes("Workspace saved successfully"), "save success was not committed to UI");
+    await page.getByText("Master Target Synced").waitFor();
+    assert((await page.locator(".Menu_Status").textContent()).includes("Master Target Synced"), "master sync status was not committed to UI");
   });
   await record("TC-MD-04-E2E-002", "Save As Cancellation", async () => {
     await page.getByText("File").click();

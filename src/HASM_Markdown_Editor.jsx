@@ -35,7 +35,7 @@ import { traceLog, debugLog, infoLog, warnLog, errorLog } from "./hasm_logger/sr
 // Function : HASM_Markdown_Editor
 // Description : Definition of HASM Markdown Editor Component
 // ###################################################
-function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatusChange, onEditorReady, currentPackage }) {
+function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatusChange, onEditorReady, onAutosaveComplete, currentPackage }) {
 
   // Define Refs for component state management
   // * lineNumbersRef: Reference to the line numbers display container
@@ -103,7 +103,9 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
         });
         onPackageChange?.(pkg);
         lastSavedMarkdownRef.current = content;
-        onStatusChange?.(`Autosaved locally at ${new Date().toLocaleTimeString()}`);
+        const savedAt = new Date();
+        onAutosaveComplete?.(savedAt.toISOString());
+        onStatusChange?.(`Autosaved locally at ${savedAt.toLocaleTimeString()}`);
       } catch (err) {
         errorLog("[SEQ-MD-02][AUTOSAVE][ERROR] local markdown save failed", err);
         onStatusChange?.("Local autosave failed: Disk write error");

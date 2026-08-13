@@ -10,7 +10,7 @@ This sequence defines the global cross-cutting UI services available across all 
 
 
 2. **Real-time Save State Readout:** A synchronized UI indicator displaying the live status (`Dirty / Unsaved (*)` vs `Autosaved Locally at HH:mm:ss` vs `Master Target Synced`).
-3. **App-wide 3-Color Theme Selector:** Real-time theme switching across 3 standardized color palettes (**`Light`**, **`Dark`**, and **`High-Contrast`**), persisting user selection into `AppConfig` memory and `localStorage`.
+3. **App-wide Color Pattern Selector:** Real-time theme switching across every pattern exported by the shared `src/hasm_color_pattern` submodule. The standard compatibility patterns are **`Light`** (`sand`), **`Dark`** (`classic`), and **`High-Contrast`** (`high-contrast`); all other exported patterns are available through local preference persistence.
 
 ---
 
@@ -70,13 +70,13 @@ sequenceDiagram
     end
 
     %% Phase 3: App-wide 3-Color Theme Switching
-    User->>GlobalMenu: Select Color Theme Palette (Light | Dark | High-Contrast)
+    User->>GlobalMenu: Select any color pattern exported by hasm_color_pattern
     activate GlobalMenu
     GlobalMenu->>ThemeProvider: setAppTheme(selectedTheme)
     deactivate GlobalMenu
     activate ThemeProvider
 
-    ThemeProvider->>ThemeProvider: Apply CSS Custom Properties / Data Attribute (data-theme="high-contrast")
+    ThemeProvider->>ThemeProvider: Apply submodule CSS Custom Properties / Data Attribute (data-theme="<pattern-id>")
     ThemeProvider->>ThemeProvider: Persist selection to localStorage ("hasm_theme_preference")
 
     ThemeProvider->>Rust: invoke("update_app_theme_config", { theme: selectedTheme })
@@ -130,6 +130,12 @@ The Global Menu notification badges (Error List / Warning List) are rendered ins
 2. **Instant Theme Switching SLA:**
 Changing color sets toggles standard CSS variables at the root `<html>` element (`data-theme`), completing full UI re-skinning within **16ms (1 frame)** without requiring application restart or page refresh.
 3. **High-Contrast Warning Guarantee:**
-When `High-Contrast` theme is selected, error tags, missing asset line decorators, and red-text warning spans are rendered using pure high-visibility red (`#ff0000` / `#ffffff` background) to ensure accessibility compliance.
+When the `high-contrast` pattern is selected, error tags, missing asset line decorators, and red-text warning spans are rendered using pure high-visibility red (`#ff0000` / `#ffffff` background) to ensure accessibility compliance.
+
+## 5. Implemented Ownership
+
+The current implementation keeps the global shell in `src/main.jsx` and `src/Menu.jsx` rather than introducing a separate router/store layer. `Menu` is rendered before both the boot screen and editor content, so diagnostics, theme selection, and status remain available during boot. `main.jsx` imports `COLOR_PATTERN_OPTIONS`, validates selections with `isValidColorPattern`, resolves each selection through `getPatternById`, and applies the exported variables to the root shell. It maps the legacy backend modes `Light`, `Dark`, and `High-Contrast` to `sand`, `classic`, and `high-contrast`; other patterns persist locally. It also owns cross-route state aggregation, boot restoration, editor line selection, and save-state transitions. The Rust command facade in `src-tauri/src/commands/mod.rs` writes and reads `AppConfig.json` atomically under the Tauri application config directory for the standard compatibility modes.
+
+Validation is covered by `npm run check:react-render`, `npm run check:tauri-build`, and `npm run check:seq-md-06`.
 
 ---

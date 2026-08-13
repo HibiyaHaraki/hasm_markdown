@@ -119,7 +119,7 @@ sequenceDiagram
 
     React->>SaveModal: Close Progress Modal
     deactivate SaveModal
-    React->>User: Display Success Toast ("Workspace saved successfully") & Update Window Header
+    React->>User: Display Success Toast ("Master Target Synced") & Update Window Header
     deactivate React
 
 ```
