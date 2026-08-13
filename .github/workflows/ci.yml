@@ -67,3 +67,6 @@ jobs:
       
       - name: Run SEQ-MD-02 evaluation
         run: npm run check:seq-md-02
+      
+      - name: Run SEQ-MD-03 evaluation
+        run: npm run check:seq-md-03
