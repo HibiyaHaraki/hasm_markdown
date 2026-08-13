@@ -19,6 +19,11 @@ import "./main.css";
 import { invoke } from "@tauri-apps/api/core"; // Tauri command invocation
 
 const isTauriRuntime = typeof window !== "undefined" && Boolean(window.__TAURI_INTERNALS__);
+const autosaveIntervalMs = typeof window !== "undefined"
+  && new URLSearchParams(window.location.search).get("eval") === "md02"
+  && new URLSearchParams(window.location.search).get("autosave") === "1"
+  ? 100
+  : 10000;
 
 // Markdown parser and asset resolution
 import { createAssetMarkdownIt, findMissingAssetLines } from "./assetResolverPlugin.js";
@@ -114,7 +119,7 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
 
     saveTimerRef.current = setInterval(() => {
       saveCurrentMarkdown();
-    }, 10000);
+    }, autosaveIntervalMs);
 
     return () => {
       if (saveTimerRef.current) {
@@ -138,6 +143,7 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
   infoLog("Render HASM Markdown Editor");
   return (
     <Row 
+      data-dirty={isDirty}
       className="HASM_Markdown_Editor flex-grow-1 g-0 overflow-hidden"
     >
       {/* Left Panel: Markdown Editor */}
@@ -176,8 +182,9 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
             className="HASM_Markdown_Editor_EditorCol_Editor_Form flex-grow-1 border-0 rounded-0 shadow-none"
             value={markdown}
             onChange={(e) => {
-              setMarkdown(e.target.value);
-              onStatusChange?.("Unsaved changes *");
+              const nextMarkdown = e.target.value;
+              setMarkdown(nextMarkdown);
+              onStatusChange?.(nextMarkdown === (currentPackage?.lastSavedContent ?? "") ? "Ready" : "Unsaved changes *");
             }}
             placeholder="Type your markdown here..."
           />
@@ -194,7 +201,9 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
         >
           PREVIEW
         </div>
-        <div 
+        <div
+          role="status"
+          aria-live="polite"
           className="HASM_Markdown_Editor_ViewerCol_Viewer p-4 overflow-auto flex-grow-1 text-start bg-white text-dark"
           dangerouslySetInnerHTML={{ __html: html }}
         />

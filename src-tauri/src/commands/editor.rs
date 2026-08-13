@@ -6,9 +6,9 @@ use log::debug;
 
 #[tauri::command]
 pub fn save_local_markdown_buffer(state: tauri::State<'_, AppState>, uuid: String, content: String) -> Result<PackageStatePayload, String> {
-    // SEQ-MD-01 leaves the editor with a committed local buffer for later autosave phases.
+    // SEQ-MD-02 writes only the local Markdown buffer; package archival is a separate action.
     init_logger();
-    debug!("[SEQ-MD-01][IPC] save_local_markdown_buffer uuid={} bytes={}", uuid, content.len());
+    debug!("[SEQ-MD-02][IPC] save_local_markdown_buffer uuid={} bytes={}", uuid, content.len());
     let mut active = state.workspace.lock().map_err(|_| "Failed to lock workspace state")?;
     let session = active.as_mut().ok_or_else(|| "No active workspace".to_string())?;
     if session.payload.uuid != uuid { return Err("Workspace UUID does not match active session".to_string()); }

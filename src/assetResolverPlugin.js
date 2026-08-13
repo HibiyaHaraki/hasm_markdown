@@ -35,7 +35,7 @@ export function assetResolverPlugin(md, { manifest = { assets: {} }, missingAsse
     const metadata = manifest?.assets?.[alias];
     if (assetIsMissing(alias, manifest, missingAssets)) {
       const tag = `![${token.content ?? ""}](asset:${alias})`;
-      return `<span class="missing-asset-warning">${md.utils.escapeHtml(tag)} - Missing file</span>`;
+      return `<span class="missing-asset-warning">${md.utils.escapeHtml(tag)} - Missing File</span>`;
     }
 
     const resolvedPath = metadata.resolvedPath ?? "";

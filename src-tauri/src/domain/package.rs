@@ -151,7 +151,8 @@ pub fn write_markdown(session: &WorkspaceSession, markdown: &str) -> Result<(), 
 
 #[cfg(test)]
 mod tests {
-    use super::open_archive;
+    use super::{open_archive, write_markdown, WorkspaceSession};
+    use crate::models::payload::{AssetManifest, PackageStatePayload, TargetType};
     use std::fs::File;
     use std::io::Write;
     use zip::write::SimpleFileOptions;
@@ -178,9 +179,11 @@ mod tests {
         archive.start_file("main.md", options).unwrap();
         archive.write_all(b"# Selective\n").unwrap();
         archive.start_file("assets.json", options).unwrap();
-        archive.write_all(br#"{"version":"1","assets":{"hero":{"uuid":"hero.png","relativePath":"assets/hero.png"}}}"#).unwrap();
+        archive.write_all(br#"{"version":"1","assets":{"hero":{"uuid":"hero.png","relativePath":"assets/hero.png"},"second":{"uuid":"second.png","relativePath":"assets/second.png"}}}"#).unwrap();
         archive.start_file("assets/hero.png", options).unwrap();
         archive.write_all(b"heavy-media").unwrap();
+        archive.start_file("assets/second.png", options).unwrap();
+        archive.write_all(b"second-media").unwrap();
         archive.finish().unwrap();
 
         let session = open_archive(&base, &archive_path).unwrap();
@@ -189,7 +192,69 @@ mod tests {
         assert!(temp_dir.join("assets.json").is_file());
         assert!(!temp_dir.join("assets/hero.png").exists());
         assert_eq!(session.payload.manifest.assets["hero"].resolved_path, format!("asset-stream://{}/hero.png", session.payload.uuid));
+        assert_eq!(session.payload.manifest.assets.len(), 2);
         session.close().unwrap();
+        let _ = std::fs::remove_dir_all(base);
+    }
+
+    #[test]
+    fn local_autosave_atomically_replaces_utf8_markdown() {
+        let base = std::env::temp_dir().join(format!("hasm-seq-md-02-atomic-{}", std::process::id()));
+        std::fs::create_dir_all(&base).unwrap();
+        let markdown_path = base.join("main.md");
+        std::fs::write(&markdown_path, "old").unwrap();
+        let session = WorkspaceSession {
+            payload: PackageStatePayload {
+                uuid: "test".to_string(),
+                temp_dir_path: base.to_string_lossy().into_owned(),
+                target_type: TargetType::Unbound,
+                target_path: None,
+                is_loaded: true,
+                is_dirty: true,
+                raw_content: "old".to_string(),
+                last_saved_content: "old".to_string(),
+                manifest: AssetManifest::default(),
+                missing_assets: Vec::new(),
+                warnings: Vec::new(),
+            },
+            lock_path: base.join(".lock"),
+            handles: Vec::new(),
+        };
+
+        write_markdown(&session, "日本語\nasset:second").unwrap();
+
+        assert_eq!(std::fs::read_to_string(&markdown_path).unwrap(), "日本語\nasset:second");
+        assert!(!base.join("main.md.tmp").exists());
+        let _ = std::fs::remove_dir_all(base);
+    }
+
+    #[test]
+    fn local_autosave_preserves_existing_markdown_when_temp_write_fails() {
+        let base = std::env::temp_dir().join(format!("hasm-seq-md-02-failure-{}", std::process::id()));
+        std::fs::create_dir_all(&base).unwrap();
+        let markdown_path = base.join("main.md");
+        std::fs::write(&markdown_path, "keep me").unwrap();
+        std::fs::create_dir(base.join("main.md.tmp")).unwrap();
+        let session = WorkspaceSession {
+            payload: PackageStatePayload {
+                uuid: "test".to_string(),
+                temp_dir_path: base.to_string_lossy().into_owned(),
+                target_type: TargetType::Unbound,
+                target_path: None,
+                is_loaded: true,
+                is_dirty: true,
+                raw_content: "keep me".to_string(),
+                last_saved_content: "keep me".to_string(),
+                manifest: AssetManifest::default(),
+                missing_assets: Vec::new(),
+                warnings: Vec::new(),
+            },
+            lock_path: base.join(".lock"),
+            handles: Vec::new(),
+        };
+
+        assert!(write_markdown(&session, "new content").is_err());
+        assert_eq!(std::fs::read_to_string(&markdown_path).unwrap(), "keep me");
         let _ = std::fs::remove_dir_all(base);
     }
 
