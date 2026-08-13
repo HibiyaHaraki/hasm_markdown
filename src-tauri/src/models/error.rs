@@ -8,6 +8,7 @@ pub enum PackageError {
     MissingMetadata(String),
     WorkspaceLocked(u32),
     InvalidTarget(String),
+    AliasCollision(String),
 }
 
 impl Display for PackageError {
@@ -19,6 +20,7 @@ impl Display for PackageError {
             Self::MissingMetadata(message) => write!(formatter, "{message}"),
             Self::WorkspaceLocked(pid) => write!(formatter, "Workspace is locked by process {pid}"),
             Self::InvalidTarget(message) => write!(formatter, "{message}"),
+            Self::AliasCollision(message) => write!(formatter, "{message}"),
         }
     }
 }

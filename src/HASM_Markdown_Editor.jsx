@@ -35,7 +35,7 @@ import { traceLog, debugLog, infoLog, warnLog, errorLog } from "./hasm_logger/sr
 // Function : HASM_Markdown_Editor
 // Description : Definition of HASM Markdown Editor Component
 // ###################################################
-function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatusChange, currentPackage }) {
+function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatusChange, onEditorReady, currentPackage }) {
 
   // Define Refs for component state management
   // * lineNumbersRef: Reference to the line numbers display container
@@ -172,6 +172,7 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
           </div>
           <Form.Control
             as="textarea"
+            ref={onEditorReady}
             onScroll={handleScroll}
             onKeyDown={(event) => {
               if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {

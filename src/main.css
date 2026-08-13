@@ -104,6 +104,89 @@
     font-size: 0.8rem;
 }
 
+.Menu_AssetsButton {
+    margin: 0 8px;
+    padding: 4px 10px;
+    border: 1px solid currentColor;
+    color: var(--text-color);
+    background: transparent;
+}
+
+.AssetWindow {
+    position: fixed;
+    z-index: 1100;
+    top: 48px;
+    right: 0;
+    bottom: 0;
+    width: min(360px, 100vw);
+    padding: 16px;
+    overflow: auto;
+    color: var(--text-color);
+    background: var(--textbackground-color);
+    border-left: 1px solid var(--main-color);
+}
+
+.AssetWindow_Header,
+.AssetWindow_Alerts,
+.AssetWindow_List li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.AssetWindow_Header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.AssetWindow_Alerts {
+    justify-content: flex-start;
+    margin: 12px 0;
+    font-size: 0.85rem;
+}
+
+.AssetWindow_Dropzone {
+    margin: 12px 0;
+    padding: 24px 12px;
+    border: 1px dashed currentColor;
+    text-align: center;
+}
+
+.AssetWindow_AliasForm {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.AssetWindow_AliasForm label {
+    display: grid;
+    gap: 4px;
+}
+
+.AssetWindow_AliasForm input {
+    min-width: 0;
+}
+
+.AssetWindow_Error {
+    color: #b42318;
+}
+
+.AssetWindow_Status {
+    margin: 12px 0;
+    font-size: 0.85rem;
+}
+
+.AssetWindow_List {
+    padding: 0;
+    list-style: none;
+}
+
+.AssetWindow_List li {
+    padding: 8px 0;
+    border-bottom: 1px solid currentColor;
+}
+
 .Mnnu_FileName {
     font-size: 0.8rem;
     opacity: 0.8;

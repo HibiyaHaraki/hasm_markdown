@@ -2,6 +2,8 @@
 
 This document defines the comprehensive test matrix, acceptance criteria, and traceability mapping for validating Asset Window rendering, single-file drop/select constraints, custom alias naming, dynamic path binding (`resolvedPath`), real-time `main.md` reference inspection before deletion, soft-deletion via `isDeleted: true` flag in `assets.json`, progress streaming events (`asset_register_progress` / `asset_delete_progress`), and editor red-text state synchronization upon window closure.
 
+The executable evaluation command is `npm run check:seq-md-03`. It reports each UI, browser, and Rust case individually using the fixed colored PASS/FAIL format. It uses a deterministic multi-asset browser fixture and the Rust suite covers alias reservation and deleted-reference line tracking.
+
 ---
 
 ## 1. Desktop App Level Tests (E2E / System Integration)

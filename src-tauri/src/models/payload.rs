@@ -18,6 +18,8 @@ pub struct RuntimeAssetMetadata {
     pub is_external: bool,
     #[serde(default)]
     pub is_deleted: bool,
+    #[serde(default)]
+    pub deleted_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

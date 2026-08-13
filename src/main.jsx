@@ -14,6 +14,7 @@ import ReactDOM from "react-dom/client";
 // JSXs
 import Menu from "./Menu"; // Menu Component
 import HASM_Markdown_Editor from "./HASM_Markdown_Editor"; // HASM Markdown Editor Component
+import AssetWindow from "./AssetWindow";
 import {
   DEFAULT_COLOR_PATTERN,
   buildThemeClassCss,
@@ -48,8 +49,25 @@ const EVALUATION_FIXTURE = {
   },
   missingAssets: [{ alias: "unknown", expectedRelativePath: "assets/unknown.png" }],
 };
-const isEditorEvaluation = typeof window !== "undefined"
-  && new URLSearchParams(window.location.search).get("eval") === "md02";
+const ASSET_EVALUATION_FIXTURE = {
+  uuid: "eval-md-03",
+  targetType: "Folder",
+  lastSavedContent: "# Assets\n\n![deleted](asset:deleted)",
+  manifest: {
+    version: "1",
+    assets: {
+      active: { uuid: "active.png", resolvedPath: "C:/eval/assets/active.png" },
+      deleted: { uuid: "deleted.png", resolvedPath: "C:/eval/assets/deleted.png", isDeleted: true },
+    },
+  },
+  missingAssets: [{ alias: "deleted", expectedRelativePath: "assets/deleted.png", referencedLines: [3] }],
+  warnings: [],
+};
+const evaluationMode = typeof window !== "undefined"
+  ? new URLSearchParams(window.location.search).get("eval")
+  : null;
+const isEditorEvaluation = evaluationMode === "md02";
+const isAssetEvaluation = evaluationMode === "md03";
 
 function normalizePackagePayload(result, fallbackMarkdown = EMPTY_MARKDOWN) {
   const packageValue = Array.isArray(result) ? result[0] : result;
@@ -120,20 +138,39 @@ function BootScreen({ phase, error, onOpen }) {
 function App() {
 
   // Define Markdown Status
-  const [markdown, setMarkdown] = useState(
-    isEditorEvaluation ? EVALUATION_FIXTURE.lastSavedContent : EMPTY_MARKDOWN,
-  );
+  const initialFixture = isEditorEvaluation ? EVALUATION_FIXTURE : isAssetEvaluation ? ASSET_EVALUATION_FIXTURE : null;
+  const [markdown, setMarkdown] = useState(initialFixture?.lastSavedContent ?? EMPTY_MARKDOWN);
 
   // Define HASMMD Package Status
-  const [currentPackage, setCurrentPackage] = useState(isEditorEvaluation ? EVALUATION_FIXTURE : null);
+  const [currentPackage, setCurrentPackage] = useState(initialFixture);
 
   // Define Color Pattern Status
   const [colorPattern, setColorPattern] = useState(DEFAULT_COLOR_PATTERN);
   const [editorStatus, setEditorStatus] = useState("Ready");
+  const [isAssetWindowOpen, setIsAssetWindowOpen] = useState(false);
+  const editorRef = React.useRef(null);
   const [phase, setPhase] = useState(
-    isEditorEvaluation ? "editor" : isTauriRuntime || window.location.pathname === "/editor" ? "select" : "editor",
+    initialFixture ? "editor" : isTauriRuntime || window.location.pathname === "/editor" ? "select" : "editor",
   );
   const [bootError, setBootError] = useState("");
+
+  const insertAssetAtCursor = useCallback((alias) => {
+    const editor = editorRef.current;
+    const insertion = `![alt](asset:${alias})`;
+    if (!editor) {
+      setMarkdown((value) => `${value}${value.endsWith("\n") ? "" : "\n"}${insertion}\n`);
+      return;
+    }
+    const start = editor.selectionStart;
+    const end = editor.selectionEnd;
+    const next = `${markdown.slice(0, start)}${insertion}${markdown.slice(end)}`;
+    setMarkdown(next);
+    requestAnimationFrame(() => {
+      editor.focus();
+      const position = start + insertion.length;
+      editor.setSelectionRange(position, position);
+    });
+  }, [markdown]);
 
   const commitPackage = useCallback((result) => {
     const payload = normalizePackagePayload(result);
@@ -251,14 +288,25 @@ function App() {
           onColorPatternChange={setColorPattern}
           onWorkspaceOpen={loadWorkspace}
           editorStatus={editorStatus}
+          onAssetsOpen={() => setIsAssetWindowOpen(true)}
         />
         <HASM_Markdown_Editor
           markdown={markdown}
           setMarkdown={setMarkdown}
           onPackageChange={setCurrentPackage}
           onStatusChange={setEditorStatus}
+          onEditorReady={(element) => { editorRef.current = element; }}
           currentPackage={currentPackage}
         />
+        {isAssetWindowOpen && (
+          <AssetWindow
+            currentPackage={currentPackage}
+            markdown={markdown}
+            onPackageChange={setCurrentPackage}
+            onInsertAsset={insertAssetAtCursor}
+            onClose={() => setIsAssetWindowOpen(false)}
+          />
+        )}
       </Container>
     </>
   );

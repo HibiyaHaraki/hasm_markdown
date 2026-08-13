@@ -48,6 +48,7 @@ function Menu({
   onColorPatternChange,
   onWorkspaceOpen,
   editorStatus,
+  onAssetsOpen,
 }) {
 
   // Tauri : Open Exist Package
@@ -131,6 +132,7 @@ function Menu({
           <NavDropdown.Divider />
           <NavDropdown.Item onClick={handleSaveAs}>Save As</NavDropdown.Item>
         </NavDropdown>
+        <button type="button" className="Menu_AssetsButton" onClick={onAssetsOpen}>Assets</button>
         <NavDropdown title="Theme" id="theme-nav-dropdown" className="m-2">
           {COLOR_PATTERN_OPTIONS.map((pattern) => (
             <NavDropdown.Item

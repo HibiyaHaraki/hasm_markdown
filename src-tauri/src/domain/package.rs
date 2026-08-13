@@ -94,7 +94,7 @@ fn finish_mount(
     let target_root = target_path.unwrap_or(&temp_dir);
     let manifest = manifest::parse_and_resolve(&raw_manifest, target_root, archive_uuid)?;
     debug!("[SEQ-MD-01][PATH-RESOLUTION] resolved manifest assets={} archive={}", manifest.assets.len(), archive_uuid.is_some());
-    let (missing_assets, warnings) = inspect_assets(&manifest, target_root, archive_path)?;
+    let (missing_assets, warnings) = inspect_assets(&manifest, &markdown, target_root, archive_path)?;
     if !missing_assets.is_empty() { warn!("[SEQ-MD-01][VALIDATION] missing_assets={}", missing_assets.len()); }
 
     let mut handles = Vec::new();
@@ -123,19 +123,58 @@ fn finish_mount(
 
 fn inspect_assets(
     manifest: &AssetManifest,
+    markdown: &str,
     root: &Path,
     archive_path: Option<&Path>,
 ) -> Result<(Vec<MissingAssetInfo>, Vec<PackageWarning>), PackageError> {
     let archive_entries = if let Some(path) = archive_path { Some(zip_engine::list_asset_entries(path)?.into_iter().collect::<HashSet<_>>()) } else { None };
     let mut missing = Vec::new();
+    let references = referenced_asset_aliases(markdown);
     for (alias, asset) in &manifest.assets {
         let exists = if let Some(entries) = &archive_entries { entries.contains(&asset.relative_path) } else { root.join(&asset.relative_path).is_file() };
-        if !exists && !asset.is_deleted {
-            missing.push(MissingAssetInfo { alias: alias.clone(), expected_relative_path: asset.relative_path.clone(), referenced_lines: Vec::new() });
+        if references.iter().any(|(reference, _)| reference == alias) && (!exists || asset.is_deleted) {
+            missing.push(MissingAssetInfo { alias: alias.clone(), expected_relative_path: asset.relative_path.clone(), referenced_lines: references.iter().filter_map(|(reference, line)| (reference == alias).then_some(*line)).collect() });
         }
+    }
+    for (alias, lines) in references.iter().filter(|(alias, _)| !manifest.assets.contains_key(alias)).fold(std::collections::HashMap::<String, Vec<usize>>::new(), |mut result, (alias, line)| { result.entry(alias.clone()).or_default().push(*line); result }) {
+        missing.push(MissingAssetInfo { alias, expected_relative_path: String::new(), referenced_lines: lines });
     }
     let warnings = Vec::new();
     Ok((missing, warnings))
+}
+
+pub fn recalculate_asset_state(session: &WorkspaceSession) -> Result<(Vec<MissingAssetInfo>, Vec<PackageWarning>), PackageError> {
+    let root = session.payload.target_path.as_deref().map(Path::new).unwrap_or_else(|| Path::new(&session.payload.temp_dir_path));
+    let archive_path = matches!(session.payload.target_type, crate::models::payload::TargetType::Archive)
+        .then(|| Path::new(session.payload.target_path.as_deref().unwrap_or("")));
+    inspect_assets(&session.payload.manifest, &session.payload.raw_content, root, archive_path)
+}
+
+pub fn referenced_asset_aliases(markdown: &str) -> Vec<(String, usize)> {
+    markdown.lines().enumerate().flat_map(|(index, line)| {
+        let mut result = Vec::new();
+        let mut remainder = line;
+        while let Some(start) = remainder.find("asset:") {
+            let value = &remainder[start + 6..];
+            let end = value.find(|character: char| character == ')' || character.is_whitespace()).unwrap_or(value.len());
+            if end > 0 { result.push((value[..end].to_string(), index + 1)); }
+            remainder = &value[end..];
+            if end == 0 { break; }
+        }
+        result
+    }).collect()
+}
+
+pub fn persist_manifest(session: &WorkspaceSession) -> Result<(), PackageError> {
+    let path = Path::new(&session.payload.temp_dir_path).join("assets.json");
+    let temporary_path = path.with_extension("json.tmp");
+    let content = manifest::portable_json(&session.payload.manifest)?;
+    let mut file = File::create(&temporary_path)?;
+    file.write_all(content.as_bytes())?;
+    file.flush()?;
+    file.sync_all()?;
+    fs::rename(temporary_path, path)?;
+    Ok(())
 }
 
 pub fn write_markdown(session: &WorkspaceSession, markdown: &str) -> Result<(), PackageError> {
@@ -274,5 +313,20 @@ mod tests {
         assert!(!std::path::Path::new(&session.payload.temp_dir_path).join("assets/note.txt").exists());
         session.close().unwrap();
         let _ = std::fs::remove_dir_all(base);
+    }
+
+    #[test]
+    fn deleted_referenced_assets_are_missing_with_line_numbers() {
+        let manifest = AssetManifest {
+            version: "1".to_string(),
+            assets: [("deleted".to_string(), crate::models::payload::RuntimeAssetMetadata {
+                is_deleted: true,
+                relative_path: "assets/deleted.png".to_string(),
+                ..Default::default()
+            })].into_iter().collect(),
+        };
+        let (missing, _) = super::inspect_assets(&manifest, "# Doc\n![asset](asset:deleted)\n", std::path::Path::new("."), None).unwrap();
+        assert_eq!(missing[0].alias, "deleted");
+        assert_eq!(missing[0].referenced_lines, vec![2]);
     }
 }
