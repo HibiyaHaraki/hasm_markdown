@@ -9,6 +9,11 @@
 mod hasm_markdown;
 #[path = "hasm_logger/src/tauri/logger.rs"]
 mod logger;
+pub mod cli;
+mod commands;
+mod domain;
+mod models;
+mod services;
 
 // Crates
 use crate::logger::init_logger;
@@ -17,8 +22,16 @@ use log::{debug, error, info, trace, warn};
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-struct AppState {
-    app: Mutex<HASMMarkdown>,
+pub(crate) struct AppState {
+    pub(crate) app: Mutex<HASMMarkdown>,
+    pub(crate) workspace: Mutex<Option<domain::package::WorkspaceSession>>,
+    pub(crate) launch_path: Mutex<Option<String>>,
+}
+
+#[tauri::command]
+fn get_launch_target(state: tauri::State<'_, AppState>) -> Result<Option<String>, String> {
+    // SEQ-MD-01 / Phase 1: the GUI reads the CLI target and chooses archive or folder mode.
+    state.launch_path.lock().map(|path| path.clone()).map_err(|_| "Failed to lock launch state".to_string())
 }
 
 #[tauri::command]
@@ -119,16 +132,30 @@ fn check_hasmmd(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    run_with_launch_path(None);
+}
+
+pub fn run_with_launch_path(launch_path: Option<String>) {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
-        .manage(AppState { app: Mutex::new(HASMMarkdown::new()) })
+        .manage(AppState {
+            app: Mutex::new(HASMMarkdown::new()),
+            workspace: Mutex::new(None),
+            launch_path: Mutex::new(launch_path),
+        })
         .invoke_handler(tauri::generate_handler![
             open_hasmmd,
             save_local_package,
             save_hasmmd,
-            create_new_hasmmd
+            create_new_hasmmd,
+            commands::workspace::open_archive_workspace,
+            commands::workspace::open_folder_workspace,
+            commands::workspace::create_new_package,
+            commands::workspace::close_and_cleanup_workspace,
+            commands::editor::save_local_markdown_buffer,
+            get_launch_target
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

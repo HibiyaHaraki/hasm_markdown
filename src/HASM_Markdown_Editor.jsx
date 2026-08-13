@@ -17,7 +17,6 @@ import "./main.css";
 
 // Tauri
 import { invoke } from "@tauri-apps/api/core"; // Tauri command invocation
-import { appLocalDataDir } from "@tauri-apps/api/path"; // Get application local data directory
 
 const isTauriRuntime = typeof window !== "undefined" && Boolean(window.__TAURI_INTERNALS__);
 
@@ -31,7 +30,7 @@ import { traceLog, debugLog, infoLog, warnLog, errorLog } from "./hasm_logger/sr
 // Function : HASM_Markdown_Editor
 // Description : Definition of HASM Markdown Editor Component
 // ###################################################
-function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange }) {
+function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, currentPackage }) {
 
   // Define Refs for component state management
   // * lineNumbersRef: Reference to the line numbers display container
@@ -39,7 +38,6 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange }) {
   // * saveTimerRef: Reference to auto-save timer interval
   // * lastSavedMarkdownRef: Track last saved markdown to prevent unnecessary saves
   const lineNumbersRef = useRef(null);
-  const initializedRef = useRef(false);
   const saveTimerRef = useRef(null);
   const lastSavedMarkdownRef = useRef(markdown);
 
@@ -55,48 +53,23 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange }) {
     return Array.from({ length: lines }, (_, i) => i + 1).join("\n");
   }, [markdown]);
 
-  // Initialize new document if no file is specified
-  useEffect(() => {
-    if (!isTauriRuntime) {
-      warnLog("Tauri runtime is not available; skipping package open.");
-      return;
-    }
-    if (initializedRef.current) {
-      return;
-    }
-    initializedRef.current = true;
-
-    const initializeNewDocument = async () => {
-      try {
-        const basePath = await appLocalDataDir();
-        const pkg = await invoke("create_new_hasmmd", { basePath });
-        onPackageChange?.(pkg);
-        setMarkdown("# New HASM Markdown\n\nStart editing here.");
-      } catch (err) {
-        console.error("Failed to initialize new document:", err);
-      }
-    };
-
-    initializeNewDocument();
-  }, []);
-
   // Auto-save markdown content at regular intervals (every 10 seconds)
   useEffect(() => {
-    if (!initializedRef.current) {
-      return;
-    }
-
     const saveCurrentMarkdown = async () => {
-      if (lastSavedMarkdownRef.current === markdown || !isTauriRuntime) {
+      if (lastSavedMarkdownRef.current === markdown || !isTauriRuntime || !currentPackage?.uuid) {
         return;
       }
 
       try {
-        const pkg = await invoke("save_local_package", { markdown });
+        debugLog("[SEQ-MD-01][AUTOSAVE] invoke save_local_markdown_buffer", { uuid: currentPackage.uuid });
+        const pkg = await invoke("save_local_markdown_buffer", {
+          uuid: currentPackage.uuid,
+          content: markdown,
+        });
         onPackageChange?.(pkg);
         lastSavedMarkdownRef.current = markdown;
       } catch (err) {
-        errorLog("Failed to auto-save markdown:", err);
+        errorLog("[SEQ-MD-01][AUTOSAVE][ERROR] local markdown save failed", err);
       }
     };
 
@@ -114,7 +87,7 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange }) {
         saveTimerRef.current = null;
       }
     };
-  }, [markdown]);
+  }, [markdown, currentPackage]);
 
   // Create markdown parser instance (memoized to avoid recreation)
   const md = useMemo(() => new MarkdownIt(), []);

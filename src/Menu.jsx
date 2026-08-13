@@ -46,6 +46,7 @@ function Menu({
   setMarkdown,
   colorPattern,
   onColorPatternChange,
+  onWorkspaceOpen,
 }) {
 
   // Tauri : Open Exist Package
@@ -56,35 +57,10 @@ function Menu({
     }
 
     try {
-      // Step 1. Get App Local Path
-      const basePath = await appLocalDataDir();
-      const archiveDefaultPath = await resolveArchiveDefaultPath(currentPackage);
-
-      // Step 2. Select single hasmmd file from file dialog
-      const selected = await open({
-        multiple: false,
-        filters: [{ name: 'HASM Markdown', extensions: ['hasmmd'] }],
-        defaultPath: archiveDefaultPath,
-      });
-
-      if (selected) {
-        // Step 3. Check selected file has correct extension (.hasmmd)
-        const hasmmdPath = selected.toLowerCase().endsWith(".hasmmd")
-          ? selected
-          : `${selected}.hasmmd`;
-
-        // Step 4. Call Rust Function (open_hasmmd) and get local package info and markdown
-        if (!isTauriRuntime) {
-          return;
-        }
-        const [pkg, content] = await invoke("open_hasmmd", { basePath, hasmmdPath });
-
-        // Step 5. Update Local Package info and Markdown content
-        onPackageChange?.(pkg);
-        setMarkdown?.(content);
-      }
+      infoLog("[SEQ-MD-01][UI] archive selection requested");
+      onWorkspaceOpen?.("archive");
     } catch (err) {
-      errorLog("Failed to open package:", err);
+      errorLog("[SEQ-MD-01][UI][ERROR] failed to open archive", err);
     }
   };
 
@@ -96,6 +72,7 @@ function Menu({
     }
 
     try {
+      debugLog("[SEQ-MD-01][UI] save-as flow requested");
       const archiveDefaultPath = await resolveArchiveDefaultPath(currentPackage);
 
       // Step 1. Select single hasmmd file from file dialog
@@ -140,7 +117,8 @@ function Menu({
       </Navbar.Brand>
       <Nav className="me-auto">
         <NavDropdown title="File" id="basic-nav-dropdown" className="m-2">
-          <NavDropdown.Item onClick={handleOpen}>Open</NavDropdown.Item>
+          <NavDropdown.Item onClick={handleOpen}>Open Archive</NavDropdown.Item>
+          <NavDropdown.Item onClick={() => onWorkspaceOpen?.("folder")}>Open Folder</NavDropdown.Item>
           <NavDropdown.Divider />
           <NavDropdown.Item onClick={handleSaveAs}>Save As</NavDropdown.Item>
         </NavDropdown>
