@@ -15,10 +15,7 @@ import ReactDOM from "react-dom/client";
 import Menu from "./Menu"; // Menu Component
 import HASM_Markdown_Editor from "./HASM_Markdown_Editor"; // HASM Markdown Editor Component
 import AssetWindow from "./AssetWindow";
-import {
-  DEFAULT_COLOR_PATTERN,
-  buildThemeClassCss,
-} from "./hasm_color_pattern/src/index.js";
+import { getMarkdownThemeVariables, getPatternById, getThemeVariables } from "./hasm_color_pattern/src/index.js";
 
 // CSS
 import "./main.css";
@@ -33,7 +30,12 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 // Logger
 import { traceLog, debugLog, infoLog, warnLog, errorLog } from "./hasm_logger/src/react/logger.js";
 
-const GENERATED_THEME_CSS = buildThemeClassCss(".Main");
+const DEFAULT_THEME = "Dark";
+const THEME_PATTERN_IDS = {
+  Light: "sand",
+  Dark: "classic",
+  "High-Contrast": "high-contrast",
+};
 const isTauriRuntime = typeof window !== "undefined" && Boolean(window.__TAURI_INTERNALS__);
 const EMPTY_MARKDOWN = "# HASM Markdown\n\nCreate or open a workspace to begin.";
 const EVALUATION_FIXTURE = {
@@ -48,7 +50,7 @@ const EVALUATION_FIXTURE = {
       deleted: { uuid: "deleted.png", resolvedPath: "C:/eval/assets/deleted.png", isDeleted: true },
     },
   },
-  missingAssets: [{ alias: "unknown", expectedRelativePath: "assets/unknown.png" }],
+  missingAssets: [{ alias: "unknown", expectedRelativePath: "assets/unknown.png", referencedLines: [2] }],
 };
 const ASSET_EVALUATION_FIXTURE = {
   uuid: "eval-md-03",
@@ -192,8 +194,14 @@ function App() {
   const [currentPackage, setCurrentPackage] = useState(initialFixture);
 
   // Define Color Pattern Status
-  const [colorPattern, setColorPattern] = useState(DEFAULT_COLOR_PATTERN);
+  const [colorPattern, setColorPattern] = useState(() => {
+    if (typeof window === "undefined") return DEFAULT_THEME;
+    const storedTheme = localStorage.getItem("hasm_theme_preference");
+    return ["Light", "Dark", "High-Contrast"].includes(storedTheme) ? storedTheme : DEFAULT_THEME;
+  });
   const [editorStatus, setEditorStatus] = useState("Ready");
+  const [lastAutosavedAt, setLastAutosavedAt] = useState(null);
+  const [lastMasterSyncedAt, setLastMasterSyncedAt] = useState(null);
   const [saveProgress, setSaveProgress] = useState(null);
   const [isSavingPackage, setIsSavingPackage] = useState(false);
   const [isAssetWindowOpen, setIsAssetWindowOpen] = useState(false);
@@ -216,7 +224,8 @@ function App() {
       const payload = normalizePackagePayload(result, markdown);
       setCurrentPackage(payload);
       setMarkdown(payload.rawContent);
-      setEditorStatus("Workspace saved successfully");
+      setEditorStatus("Master Target Synced");
+      setLastMasterSyncedAt(new Date().toISOString());
       return true;
     } catch (error) {
       errorLog("[SEQ-MD-04][SAVE][ERROR] package save failed", error);
@@ -227,6 +236,59 @@ function App() {
       setIsSavingPackage(false);
     }
   }, [currentPackage, isSavingPackage, markdown]);
+
+  const handleThemeChange = useCallback(async (theme) => {
+    if (!["Light", "Dark", "High-Contrast"].includes(theme)) return;
+    setColorPattern(theme);
+    localStorage.setItem("hasm_theme_preference", theme);
+    document.documentElement.dataset.theme = theme.toLowerCase();
+    infoLog("[SEQ-MD-06][THEME] theme applied", { theme });
+    if (isTauriRuntime) {
+      try {
+        await invoke("update_app_theme_config", { theme });
+      } catch (error) {
+        warnLog("[SEQ-MD-06][THEME][ERROR] theme persistence failed", error);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = colorPattern.toLowerCase();
+  }, [colorPattern]);
+
+  useEffect(() => {
+    if (!isTauriRuntime) return;
+    invoke("get_app_theme_config")
+      .then((theme) => {
+        if (["Light", "Dark", "High-Contrast"].includes(theme)) {
+          setColorPattern(theme);
+          localStorage.setItem("hasm_theme_preference", theme);
+        }
+      })
+      .catch((error) => warnLog("[SEQ-MD-06][THEME][ERROR] theme restore failed", error));
+  }, []);
+
+  const saveState = isSavingPackage || currentPackage?.isSaving
+    ? { label: "Saving / Syncing..." }
+    : editorStatus.startsWith("Local autosave failed")
+      ? { label: editorStatus }
+    : currentPackage?.isDirty || markdown !== (currentPackage?.lastSavedContent ?? markdown)
+      ? { label: "Unsaved Changes (*)" }
+      : editorStatus.startsWith("Autosaved locally") && lastAutosavedAt
+        ? { label: "Autosaved Locally", timestamp: lastAutosavedAt }
+        : lastMasterSyncedAt
+        ? { label: "Master Target Synced", timestamp: lastMasterSyncedAt }
+        : lastAutosavedAt
+          ? { label: "Autosaved Locally", timestamp: lastAutosavedAt }
+          : { label: editorStatus };
+
+  const themePattern = getPatternById(THEME_PATTERN_IDS[colorPattern] ?? THEME_PATTERN_IDS[DEFAULT_THEME]);
+  const themeVariables = {
+    ...getThemeVariables(themePattern.id),
+    ...getMarkdownThemeVariables(themePattern.id),
+    "--theme-warning-background": colorPattern === "High-Contrast" ? "#ffffff" : themePattern.colors.softColor,
+    "--theme-danger": colorPattern === "High-Contrast" ? "#ff0000" : themePattern.colors.dangerColor,
+  };
 
   const saveAsPackage = useCallback(async () => {
     if (!isTauriRuntime || isSavingPackage) return;
@@ -299,6 +361,17 @@ function App() {
       const position = start + insertion.length;
       editor.setSelectionRange(position, position);
     });
+  }, [markdown]);
+
+  const selectDiagnostic = useCallback((asset) => {
+    const editor = editorRef.current;
+    const line = asset?.referencedLines?.[0];
+    if (!editor || !line) return;
+    const lines = markdown.split("\n");
+    const start = lines.slice(0, line - 1).reduce((total, value) => total + value.length + 1, 0);
+    editor.focus();
+    editor.setSelectionRange(start, start + lines[line - 1].length);
+    editor.scrollTop = Math.max(0, (line - 1) * 24);
   }, [markdown]);
 
   const commitPackage = useCallback((result) => {
@@ -401,38 +474,37 @@ function App() {
 
   // Return App Component
   infoLog("Render App", { phase });
-  if (phase !== "editor") {
-    return <BootScreen phase={phase} error={bootError} onOpen={loadWorkspace} />;
-  }
   return (
     <>
-      <style>{GENERATED_THEME_CSS}</style>
-      <Container fluid className={`Main theme-${colorPattern} p-0 d-flex flex-column`}>
+      <Container fluid className={`Main theme-${themePattern.id} p-0 d-flex flex-column`} style={themeVariables}>
         <Menu
           markdown={markdown}
           currentPackage={currentPackage}
           onPackageChange={setCurrentPackage}
           setMarkdown={setMarkdown}
           colorPattern={colorPattern}
-          onColorPatternChange={setColorPattern}
+          onColorPatternChange={handleThemeChange}
           onWorkspaceOpen={loadWorkspace}
           editorStatus={editorStatus}
-          onAssetsOpen={() => setIsAssetWindowOpen(true)}
+          onAssetsOpen={currentPackage ? () => setIsAssetWindowOpen(true) : undefined}
           onSave={() => savePackage()}
           onSaveAs={saveAsPackage}
           onExportFolder={exportFolder}
-          saveDisabled={isSavingPackage}
+          saveDisabled={!currentPackage || isSavingPackage}
           onCloseWorkspace={requestClose}
+          saveState={saveState}
+          onDiagnosticSelect={selectDiagnostic}
         />
-        <HASM_Markdown_Editor
+        {phase !== "editor" ? <BootScreen phase={phase} error={bootError} onOpen={loadWorkspace} /> : <HASM_Markdown_Editor
           markdown={markdown}
           setMarkdown={setMarkdown}
           onPackageChange={setCurrentPackage}
           onStatusChange={setEditorStatus}
+          onAutosaveComplete={setLastAutosavedAt}
           onEditorReady={(element) => { editorRef.current = element; }}
           currentPackage={currentPackage}
-        />
-        {isAssetWindowOpen && (
+        />}
+        {phase === "editor" && isAssetWindowOpen && (
           <AssetWindow
             currentPackage={currentPackage}
             markdown={markdown}
@@ -441,8 +513,8 @@ function App() {
             onClose={() => setIsAssetWindowOpen(false)}
           />
         )}
-        <SaveProgress progress={saveProgress} />
-        {isClosePromptOpen && (
+        {phase === "editor" && <SaveProgress progress={saveProgress} />}
+        {phase === "editor" && isClosePromptOpen && (
           <CloseWorkspaceModal
             onSave={saveAndClose}
             onDiscard={() => finishClose(true)}

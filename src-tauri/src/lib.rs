@@ -158,6 +158,8 @@ pub fn run_with_launch_path(launch_path: Option<String>) {
             commands::asset::register_and_bind_single_asset_path,
             commands::asset::soft_delete_asset_mapping,
             commands::save::execute_package_save_or_export,
+            commands::update_app_theme_config,
+            commands::get_app_theme_config,
             get_launch_target
         ])
         .run(tauri::generate_context!())

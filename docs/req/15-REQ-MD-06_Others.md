@@ -36,4 +36,8 @@
 * **`REQ-MD-06-100` (Instant Theme Switch SLA):** Theme palette switching shall complete DOM style re-calculation within **16ms (1 frame)** across all active components.
 * **`REQ-MD-06-101` (Non-Blocking Diagnostic Subscription):** Subscribing to store updates for live error/warning badge counts and save state readouts shall not introduce rendering lag in the main Markdown editor during continuous keystrokes.
 
+## 3. Implementation Traceability
+
+The requirements are implemented by the root shell in `src/main.jsx`, the diagnostics/theme surface in `src/Menu.jsx`, variables consumed from `src/hasm_color_pattern`, and the `get_app_theme_config` / `update_app_theme_config` commands in `src-tauri/src/commands/mod.rs`. The shell is rendered on boot and editor states. Soft-deleted referenced assets are presented in the Warning List while physically missing or unknown aliases remain in the Error List.
+
 ---

@@ -5,25 +5,26 @@
 }
 
 .BootScreen {
-    min-height: 100vh;
+    flex: 1;
+    min-height: 0;
     display: grid;
     place-items: center;
     padding: 32px;
-    color: #17324d;
-    background: radial-gradient(circle at 10% 10%, #d7f0e7 0, transparent 34%), #f3efe6;
+    color: var(--text-color);
+    background: var(--textbackground-color);
 }
 
 .BootScreen_Panel {
     width: min(620px, 100%);
     padding: 48px;
-    border: 1px solid #b6c8c0;
-    background: rgba(255, 255, 255, 0.86);
-    box-shadow: 16px 16px 0 #d5dfd8;
+    border: 1px solid var(--theme-border, currentColor);
+    background: var(--theme-surface, var(--textbackground-color));
+    box-shadow: 16px 16px 0 var(--theme-soft, currentColor);
 }
 
 .BootScreen_Kicker {
     margin: 0 0 12px;
-    color: #b04a35;
+    color: var(--theme-danger, currentColor);
     font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.16em;
@@ -39,7 +40,7 @@
 .BootScreen_Message {
     max-width: 40em;
     margin: 20px 0 28px;
-    color: #52666b;
+    color: var(--theme-muted, currentColor);
 }
 
 .BootScreen_Actions {
@@ -51,8 +52,8 @@
 .BootScreen_Actions button {
     min-height: 42px;
     padding: 8px 14px;
-    border: 1px solid #17324d;
-    color: #17324d;
+    border: 1px solid var(--text-color);
+    color: var(--text-color);
     background: transparent;
     cursor: pointer;
 }
@@ -63,14 +64,14 @@
 }
 
 .BootScreen_Actions_Primary {
-    color: #fff !important;
-    background: #17324d !important;
+    color: var(--textbackground-color) !important;
+    background: var(--text-color) !important;
 }
 
 .BootScreen small {
     display: block;
     margin-top: 24px;
-    color: #7a6f62;
+    color: var(--theme-muted, currentColor);
 }
 
 /* Menu.jsx */
@@ -103,6 +104,59 @@
     color: var(--text-color);
     font-size: 0.8rem;
 }
+
+.Menu_DiagnosticsButton {
+    margin: 0 8px;
+    padding: 4px 10px;
+    border: 1px solid currentColor;
+    color: var(--text-color);
+    background: transparent;
+}
+
+.Menu_Badge {
+    display: inline-grid;
+    min-width: 1.4em;
+    min-height: 1.4em;
+    place-items: center;
+    padding: 0 0.25em;
+    color: #fff;
+    background: var(--theme-danger, #b42318);
+    border-radius: 999px;
+    font-size: 0.75em;
+}
+
+.GlobalMenu {
+    position: fixed;
+    z-index: 1150;
+    top: 42px;
+    right: 0;
+    bottom: 0;
+    width: min(390px, 100vw);
+    padding: 20px;
+    overflow: auto;
+    color: var(--text-color);
+    background: var(--textbackground-color);
+    border-left: 2px solid var(--main-color);
+    box-shadow: -12px 0 28px rgba(0, 0, 0, 0.2);
+}
+
+.GlobalMenu_Header,
+.GlobalMenu_SaveState,
+.GlobalMenu_Section h3 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.GlobalMenu_Header h2 { margin: 2px 0 18px; }
+.GlobalMenu_Kicker { font-size: 0.7rem; letter-spacing: 0.14em; opacity: 0.7; }
+.GlobalMenu_SaveState { padding: 12px; margin-bottom: 20px; border: 1px solid currentColor; }
+.GlobalMenu_Section { border-top: 1px solid currentColor; padding-top: 12px; margin-top: 18px; }
+.GlobalMenu_Section ul { padding: 0; list-style: none; }
+.GlobalMenu_Section li { padding: 8px 0; border-bottom: 1px solid currentColor; }
+.GlobalMenu_Section li button { display: grid; gap: 3px; width: 100%; padding: 0; border: 0; color: inherit; background: transparent; text-align: left; }
+.GlobalMenu_Empty { opacity: 0.72; }
 
 .Menu_AssetsButton {
     margin: 0 8px;
@@ -261,12 +315,12 @@
 .editor-warning-line {
     display: inline-block;
     width: 100%;
-    color: #b42318;
-    background: #fee4e2;
+    color: var(--theme-danger, #b42318);
+    background: var(--theme-warning-background, var(--theme-soft, #fee4e2));
 }
 
 .missing-asset-warning {
-    color: #b42318;
+    color: var(--theme-danger, #b42318);
     font-weight: 600;
 }
 

@@ -8,12 +8,12 @@
 // ###################################################
 
 // Bootstrap
+import { useState } from "react";
 import { Navbar, Nav, NavDropdown } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 // CSS
 import "./main.css";
-import { COLOR_PATTERN_OPTIONS, isValidColorPattern } from "./hasm_color_pattern/src/index.js";
 
 // Tauri
 import { invoke } from "@tauri-apps/api/core";
@@ -54,7 +54,22 @@ function Menu({
   onExportFolder,
   saveDisabled,
   onCloseWorkspace,
+  saveState,
+  onDiagnosticSelect,
 }) {
+  const [isGlobalMenuOpen, setIsGlobalMenuOpen] = useState(false);
+  const missingAssets = currentPackage?.missingAssets ?? [];
+  const warnings = currentPackage?.warnings ?? [];
+  const softDeletedReferences = missingAssets.filter((asset) => currentPackage?.manifest?.assets?.[asset.alias]?.isDeleted);
+  const errorAssets = missingAssets.filter((asset) => !currentPackage?.manifest?.assets?.[asset.alias]?.isDeleted);
+  const statusText = saveState?.label === "Autosaved Locally" && saveState.timestamp
+    ? `Autosaved Locally at ${new Date(saveState.timestamp).toLocaleTimeString()}`
+    : saveState?.label ?? editorStatus;
+  const themeOptions = [
+    { id: "Light", label: "Light" },
+    { id: "Dark", label: "Dark" },
+    { id: "High-Contrast", label: "High-Contrast" },
+  ];
 
   // Tauri : Open Exist Package
   const handleOpen = async () => {
@@ -109,8 +124,12 @@ function Menu({
   };
 
   // Return Menu Component
-  infoLog("Render Menu");
+  infoLog("[SEQ-MD-06][UI] render global shell", {
+    errors: errorAssets.length,
+    warnings: warnings.length + softDeletedReferences.length,
+  });
   return (
+    <>
     <Navbar 
       variant="dark" 
       expand={false}
@@ -124,11 +143,11 @@ function Menu({
       </Navbar.Brand>
       <span
         className="Menu_Status"
-        role={editorStatus.startsWith("Local autosave failed") ? "alert" : "status"}
+        role={statusText.startsWith("Local autosave failed") ? "alert" : "status"}
         aria-live="polite"
         aria-atomic="true"
       >
-        {editorStatus}
+        {statusText}
       </span>
       <Nav className="me-auto">
         <NavDropdown title="File" id="basic-nav-dropdown" className="m-2">
@@ -141,24 +160,74 @@ function Menu({
           <NavDropdown.Divider />
           <NavDropdown.Item onClick={onCloseWorkspace} disabled={saveDisabled}>Close Workspace</NavDropdown.Item>
         </NavDropdown>
-        <button type="button" className="Menu_AssetsButton" onClick={onAssetsOpen}>Assets</button>
+        <button type="button" className="Menu_AssetsButton" onClick={onAssetsOpen} disabled={!onAssetsOpen}>Assets</button>
         <NavDropdown title="Theme" id="theme-nav-dropdown" className="m-2">
-          {COLOR_PATTERN_OPTIONS.map((pattern) => (
+          {themeOptions.map((pattern) => (
             <NavDropdown.Item
               key={pattern.id}
               active={colorPattern === pattern.id}
               onClick={() => {
-                if (isValidColorPattern(pattern.id)) {
-                  onColorPatternChange?.(pattern.id);
-                }
+                onColorPatternChange?.(pattern.id);
               }}
             >
-              {pattern.markdownLabel ?? pattern.label}
+              {pattern.label}
             </NavDropdown.Item>
           ))}
         </NavDropdown>
+        <button
+          type="button"
+          className="Menu_DiagnosticsButton"
+          onClick={() => setIsGlobalMenuOpen(true)}
+          aria-label="Open diagnostics menu"
+          aria-expanded={isGlobalMenuOpen}
+        >
+          Diagnostics <span className="Menu_Badge">{errorAssets.length + warnings.length + softDeletedReferences.length}</span>
+        </button>
       </Nav>      
     </Navbar>
+    {isGlobalMenuOpen && (
+      <aside className="GlobalMenu" aria-label="Global diagnostics menu">
+        <div className="GlobalMenu_Header">
+          <div>
+            <span className="GlobalMenu_Kicker">WORKSPACE STATUS</span>
+            <h2>Diagnostics</h2>
+          </div>
+          <button type="button" onClick={() => setIsGlobalMenuOpen(false)} aria-label="Close diagnostics">Close</button>
+        </div>
+        <div className="GlobalMenu_SaveState" role="status" aria-live="polite">
+          <strong>{saveState?.label ?? editorStatus}</strong>
+          {saveState?.timestamp && <time dateTime={saveState.timestamp}>{saveState.timestamp}</time>}
+        </div>
+        <section className="GlobalMenu_Section" aria-labelledby="global-errors-title">
+          <h3 id="global-errors-title">Errors <span className="Menu_Badge">{errorAssets.length}</span></h3>
+          {errorAssets.length === 0 ? <p className="GlobalMenu_Empty">Zero errors</p> : (
+            <ul>
+              {errorAssets.map((asset) => (
+                <li key={`${asset.alias}-${asset.expectedRelativePath}`}>
+                  <button type="button" onClick={() => {
+                    onDiagnosticSelect?.(asset);
+                    setIsGlobalMenuOpen(false);
+                  }}>
+                    <strong>{asset.alias}</strong>
+                    <span>Missing file{asset.referencedLines?.length ? ` on line${asset.referencedLines.length === 1 ? "" : "s"} ${asset.referencedLines.join(", ")}` : ""}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+        <section className="GlobalMenu_Section" aria-labelledby="global-warnings-title">
+          <h3 id="global-warnings-title">Warnings <span className="Menu_Badge">{warnings.length + softDeletedReferences.length}</span></h3>
+          {warnings.length + softDeletedReferences.length === 0 ? <p className="GlobalMenu_Empty">Zero warnings</p> : (
+            <ul>
+              {softDeletedReferences.map((asset) => <li key={`deleted-${asset.alias}`}>Soft-deleted reference: {asset.alias}</li>)}
+              {warnings.map((warning, index) => <li key={`${warning.alias ?? warning.path ?? "warning"}-${index}`}>{warning.alias ?? warning.path ?? String(warning)}</li>)}
+            </ul>
+          )}
+        </section>
+      </aside>
+    )}
+    </>
   );
 }
 

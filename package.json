@@ -16,6 +16,7 @@
     "check:seq-md-03": "node scripts/check-seq-md-03.mjs",
     "check:seq-md-04": "node scripts/check-seq-md-04.mjs",
     "check:seq-md-05": "node scripts/check-seq-md-05.mjs",
+    "check:seq-md-06": "node scripts/check-seq-md-06.mjs",
     "check:normal-workflow": "node scripts/check-normal-workflow.mjs",
     "check:all-evals": "node scripts/check-all-evals.mjs",
     "check:playwright-evals": "node scripts/check-all-evals.mjs",
