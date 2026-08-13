@@ -47,6 +47,7 @@ function Menu({
   colorPattern,
   onColorPatternChange,
   onWorkspaceOpen,
+  editorStatus,
 }) {
 
   // Tauri : Open Exist Package
@@ -115,6 +116,7 @@ function Menu({
       >
         HASM
       </Navbar.Brand>
+      <span className="Menu_Status" aria-live="polite">{editorStatus}</span>
       <Nav className="me-auto">
         <NavDropdown title="File" id="basic-nav-dropdown" className="m-2">
           <NavDropdown.Item onClick={handleOpen}>Open Archive</NavDropdown.Item>

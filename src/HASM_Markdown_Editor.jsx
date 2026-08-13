@@ -8,7 +8,7 @@
 // ###################################################
 
 // React
-import { useMemo, useRef, useEffect } from "react"; // React hooks for state and lifecycle management
+import { useMemo, useRef, useEffect, useState } from "react"; // React hooks for state and lifecycle management
 import { Row, Col, Form } from "react-bootstrap"; // Bootstrap layout and form components
 import "bootstrap/dist/css/bootstrap.min.css";
 
@@ -20,8 +20,8 @@ import { invoke } from "@tauri-apps/api/core"; // Tauri command invocation
 
 const isTauriRuntime = typeof window !== "undefined" && Boolean(window.__TAURI_INTERNALS__);
 
-// Markdown Parser
-import MarkdownIt from "markdown-it"; // Markdown to HTML parser
+// Markdown parser and asset resolution
+import { createAssetMarkdownIt, findMissingAssetLines } from "./assetResolverPlugin.js";
 
 // Logger
 import { traceLog, debugLog, infoLog, warnLog, errorLog } from "./hasm_logger/src/react/logger.js";
@@ -30,7 +30,7 @@ import { traceLog, debugLog, infoLog, warnLog, errorLog } from "./hasm_logger/sr
 // Function : HASM_Markdown_Editor
 // Description : Definition of HASM Markdown Editor Component
 // ###################################################
-function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, currentPackage }) {
+function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatusChange, currentPackage }) {
 
   // Define Refs for component state management
   // * lineNumbersRef: Reference to the line numbers display container
@@ -39,7 +39,33 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, currentP
   // * lastSavedMarkdownRef: Track last saved markdown to prevent unnecessary saves
   const lineNumbersRef = useRef(null);
   const saveTimerRef = useRef(null);
-  const lastSavedMarkdownRef = useRef(markdown);
+  const lastSavedMarkdownRef = useRef(currentPackage?.lastSavedContent ?? markdown);
+  const markdownRef = useRef(markdown);
+  const isSavingRef = useRef(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const manifest = currentPackage?.manifest ?? { assets: {} };
+  const missingAssets = currentPackage?.missingAssets ?? [];
+  const isDirty = markdown !== (currentPackage?.lastSavedContent ?? lastSavedMarkdownRef.current);
+  const missingLines = useMemo(
+    () => findMissingAssetLines(markdown, manifest, missingAssets),
+    [markdown, manifest, missingAssets],
+  );
+
+  useEffect(() => {
+    markdownRef.current = markdown;
+    if (currentPackage?.lastSavedContent !== undefined) {
+      lastSavedMarkdownRef.current = currentPackage.lastSavedContent;
+    }
+  }, [markdown, currentPackage?.lastSavedContent]);
+
+  useEffect(() => {
+    onPackageChange?.((previous) => ({
+      ...previous,
+      rawContent: markdown,
+      isDirty,
+    }));
+  }, [isDirty, markdown, onPackageChange]);
 
   // Synchronize line numbers scroll with editor scroll
   const handleScroll = (e) => {
@@ -56,20 +82,29 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, currentP
   // Auto-save markdown content at regular intervals (every 10 seconds)
   useEffect(() => {
     const saveCurrentMarkdown = async () => {
-      if (lastSavedMarkdownRef.current === markdown || !isTauriRuntime || !currentPackage?.uuid) {
+      const content = markdownRef.current;
+      if (lastSavedMarkdownRef.current === content || isSavingRef.current || !isTauriRuntime || !currentPackage?.uuid) {
         return;
       }
 
+      isSavingRef.current = true;
+      setIsSaving(true);
+      onStatusChange?.("Saving locally...");
       try {
-        debugLog("[SEQ-MD-01][AUTOSAVE] invoke save_local_markdown_buffer", { uuid: currentPackage.uuid });
+        debugLog("[SEQ-MD-02][AUTOSAVE] invoke save_local_markdown_buffer", { uuid: currentPackage.uuid });
         const pkg = await invoke("save_local_markdown_buffer", {
           uuid: currentPackage.uuid,
-          content: markdown,
+          content,
         });
         onPackageChange?.(pkg);
-        lastSavedMarkdownRef.current = markdown;
+        lastSavedMarkdownRef.current = content;
+        onStatusChange?.(`Autosaved locally at ${new Date().toLocaleTimeString()}`);
       } catch (err) {
-        errorLog("[SEQ-MD-01][AUTOSAVE][ERROR] local markdown save failed", err);
+        errorLog("[SEQ-MD-02][AUTOSAVE][ERROR] local markdown save failed", err);
+        onStatusChange?.("Local autosave failed: Disk write error");
+      } finally {
+        isSavingRef.current = false;
+        setIsSaving(false);
       }
     };
 
@@ -87,10 +122,14 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, currentP
         saveTimerRef.current = null;
       }
     };
-  }, [markdown, currentPackage]);
+  }, [currentPackage?.uuid, onPackageChange, onStatusChange]);
 
-  // Create markdown parser instance (memoized to avoid recreation)
-  const md = useMemo(() => new MarkdownIt(), []);
+  const md = useMemo(() => createAssetMarkdownIt({
+    manifest,
+    missingAssets,
+    uuid: currentPackage?.uuid,
+    targetType: currentPackage?.targetType,
+  }), [currentPackage?.targetType, currentPackage?.uuid, manifest, missingAssets]);
 
   // Convert markdown text to HTML for preview rendering
   const html = useMemo(() => md.render(markdown), [markdown, md]);
@@ -118,14 +157,28 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, currentP
             ref={lineNumbersRef}
             className="HASM_Markdown_Editor_EditorCol_Editor_LineNum"
           >
-            {lineNumbers}
+            {lineNumbers.split("\n").map((lineNumber) => (
+              <span key={lineNumber} className={missingLines.has(Number(lineNumber)) ? "editor-warning-line" : ""}>
+                {lineNumber}
+                {"\n"}
+              </span>
+            ))}
           </div>
           <Form.Control
             as="textarea"
             onScroll={handleScroll}
+            onKeyDown={(event) => {
+              if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+                event.preventDefault();
+                event.stopPropagation();
+              }
+            }}
             className="HASM_Markdown_Editor_EditorCol_Editor_Form flex-grow-1 border-0 rounded-0 shadow-none"
             value={markdown}
-            onChange={(e) => setMarkdown(e.target.value)}
+            onChange={(e) => {
+              setMarkdown(e.target.value);
+              onStatusChange?.("Unsaved changes *");
+            }}
             placeholder="Type your markdown here..."
           />
         </div>

@@ -30,6 +30,8 @@ This document defines the comprehensive test matrix, acceptance criteria, and tr
 
 ## 3. Rust Level Tests (Backend Engine & Fast Local Disk I/O)
 
+The browser smoke check (`npm run check:react-render`) covers the editor and preview mount without a Tauri runtime. The backend check (`npm run check:tauri-build`) covers the Rust workspace tests, including metadata-only archive mounting, folder path resolution, and local markdown persistence.
+
 | Test ID | Trace Requirement ID | Test Type | Rust Module / Function | Test Steps | Expected Result |
 | --- | --- | --- | --- | --- | --- |
 | **`TC-MD-01-RUST-001`** | `REQ-MD-02-023` | Positive (Fast Local Write) | `commands::save_local_markdown_buffer` | 1. Invoke `save_local_markdown_buffer` with UTF-8 text payload. | 1. Atomic write executed to `<AppLocalDataDir>/<UUID>/main.md`. 2. Operation completes within 5ms without touching ZIP archives. |

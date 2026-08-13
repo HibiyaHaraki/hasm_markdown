@@ -114,6 +114,8 @@ sequenceDiagram
 
 ## 3. Data Contracts & State Specifications
 
+The current React implementation keeps the existing lightweight textarea editor. Its line-number gutter acts as the warning decorator surface, while the preview uses a `markdown-it` asset resolver plugin. Active folder assets use `asset://<resolvedPath>`, archive assets retain `asset-stream://<UUID>/<asset_uuid>`, and missing or soft-deleted aliases render as escaped `.missing-asset-warning` spans.
+
 ### 3.1 Editor Local State (`usePackageStore` / Editor Context)
 
 ```typescript

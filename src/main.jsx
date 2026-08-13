@@ -111,6 +111,7 @@ function App() {
 
   // Define Color Pattern Status
   const [colorPattern, setColorPattern] = useState(DEFAULT_COLOR_PATTERN);
+  const [editorStatus, setEditorStatus] = useState("Ready");
   const [phase, setPhase] = useState(
     isTauriRuntime || window.location.pathname === "/editor" ? "select" : "editor",
   );
@@ -120,6 +121,7 @@ function App() {
     const payload = normalizePackagePayload(result);
     setCurrentPackage(payload);
     setMarkdown(payload.rawContent);
+    setEditorStatus("Ready");
     setPhase("editor");
     setBootError("");
   }, []);
@@ -230,11 +232,13 @@ function App() {
           colorPattern={colorPattern}
           onColorPatternChange={setColorPattern}
           onWorkspaceOpen={loadWorkspace}
+          editorStatus={editorStatus}
         />
         <HASM_Markdown_Editor
           markdown={markdown}
           setMarkdown={setMarkdown}
           onPackageChange={setCurrentPackage}
+          onStatusChange={setEditorStatus}
           currentPackage={currentPackage}
         />
       </Container>

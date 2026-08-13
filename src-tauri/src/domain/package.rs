@@ -144,6 +144,7 @@ pub fn write_markdown(session: &WorkspaceSession, markdown: &str) -> Result<(), 
     let mut file = File::create(&temporary_path)?;
     file.write_all(markdown.as_bytes())?;
     file.flush()?;
+    file.sync_all()?;
     fs::rename(temporary_path, path)?;
     Ok(())
 }
