@@ -2,7 +2,7 @@
 
 This evaluation covers the normal user journey across workspace creation, Markdown editing, asset registration, soft deletion, missing-asset diagnostics, archive export/reopen, and folder export. It intentionally complements the focused MD-01 through MD-04 evaluations instead of replacing them.
 
-The executable command is `npm run check:normal-workflow`. Each step prints an individual PASS/FAIL result using the repository evaluation format.
+The executable command is `npm run check:normal-workflow`. This workflow intentionally uses the standalone repository evaluation format rather than the Playwright Test reporter. Each step prints an individual PASS/FAIL result and generates `.eval-reports/normal-workflow-report.html` with Test Step, Expected Behavior, Actual Behavior, Test Step Result, and App Local/archive/folder storage snapshots.
 
 ## Workflow
 

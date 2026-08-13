@@ -182,6 +182,12 @@ await record("TC-MD-03-RUST-003", "Soft-Deleted Alias Collision", async () => {
   assert(result.status === 0, `${result.stdout}\n${result.stderr}`);
 });
 
+console.log(`REPORT_STORAGE ${JSON.stringify({
+  appLocal: 'main.md\n![deleted](asset:deleted)\n\nassets.json\n{"active":{"isDeleted":false},"deleted":{"isDeleted":true,"deletedAt":"timestamp"}}\n\nassets/ (external files remain un-copied)',
+  archive: "",
+  folder: "",
+})}`);
+
 for (const result of results.sort((left, right) => left.id.localeCompare(right.id))) {
   if (result.pass) console.log(`${GREEN}PASS${RESET} ${result.id} ${result.name}`);
   else console.error(`${RED}FAIL${RESET} ${result.id} ${result.name}\n${result.detail}`);

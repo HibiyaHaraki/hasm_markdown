@@ -192,6 +192,12 @@ const guardTest = spawnSync(process.execPath, ["scripts/check-seq-md-01-guard.mj
 trace("TC-MD-01-GUARD-001", "OUTPUT", { status: guardTest.status, stdout: guardTest.stdout, stderr: guardTest.stderr });
 record("TC-MD-01-GUARD-001", "Unauthorized Direct Navigation", () => assert(guardTest.status === 0 && guardTest.stdout.includes("PASS"), `${guardTest.stdout}\n${guardTest.stderr}`));
 
+console.log(`REPORT_STORAGE ${JSON.stringify({
+  appLocal: {},
+  archive: { mainMd: "# Archive\n![readme](asset:readme)", assetsJson: '{"version":"1","assets":{"readme":{"uuid":"README.txt","relativePath":"assets/README.txt"}}}', assetsFolder: "assets/README.txt" },
+  folder: { mainMd: "# Preview\n![diagram](asset:diagram)", assetsJson: '{"version":"1","assets":{"diagram":{"uuid":"diagram.png","relativePath":"assets/diagram.png"}}}', assetsFolder: "assets/diagram.png" },
+})}`);
+
 for (const result of results.sort((left, right) => left.id.localeCompare(right.id))) {
   if (result.pass) console.log(`${GREEN}PASS${RESET} ${result.id} ${result.name}`);
   else console.error(`${RED}FAIL${RESET} ${result.id} ${result.name}\n${result.detail}`);

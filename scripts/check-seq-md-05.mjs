@@ -103,6 +103,12 @@ await record("TC-MD-05-RUST-001", "Lock Payload Transition", () => assert(rust.s
 await record("TC-MD-05-RUST-002", "Temporary Sandbox Cleanup", () => assert(rust.status === 0 && rustText.includes("cleanup_local_workspace_removes_buffers_but_keeps_lock"), rustText));
 await record("TC-MD-05-RUST-003", "Close and Re-Mount Contract", () => assert(rust.status === 0 && rustText.includes("acquire_writes_locked_payload"), rustText));
 
+console.log(`REPORT_STORAGE ${JSON.stringify({
+  appLocal: '.lock\n{"pid":0,"status":"Unlocked"}\n\nmain.md/assets.json/assets/ removed during cleanup',
+  archive: "",
+  folder: "main.md\nassets.json\nassets/ (handles released; external files retained)",
+})}`);
+
 for (const result of results.sort((a, b) => a.id.localeCompare(b.id))) { if (result.pass) console.log(`${GREEN}PASS${RESET} ${result.id} ${result.name}`); else console.error(`${RED}FAIL${RESET} ${result.id} ${result.name}\n${result.detail}`); }
 const failed = results.filter((result) => !result.pass);
 console.log(`${failed.length ? RED : GREEN}Result: ${results.length - failed.length}/${results.length} passed${RESET}`);

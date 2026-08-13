@@ -17,6 +17,9 @@
     "check:seq-md-04": "node scripts/check-seq-md-04.mjs",
     "check:seq-md-05": "node scripts/check-seq-md-05.mjs",
     "check:normal-workflow": "node scripts/check-normal-workflow.mjs",
+    "check:all-evals": "node scripts/check-all-evals.mjs",
+    "check:playwright-evals": "node scripts/check-all-evals.mjs",
+    "check:playwright-native": "playwright test",
     "check": "npm run check:tauri-build && npm run check:react-render"
   },
   "dependencies": {
@@ -30,6 +33,7 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tauri-apps/cli": "^2",
     "@vitejs/plugin-react": "^6.0.2",
     "playwright": "^1.62.1",

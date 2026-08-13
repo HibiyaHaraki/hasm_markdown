@@ -34,6 +34,10 @@ coverage/
 src-tauri/target/
 src-tauri/.tauri/
 
+# Evaluation reports
+.eval-reports/
+test-results
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
