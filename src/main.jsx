@@ -15,7 +15,14 @@ import ReactDOM from "react-dom/client";
 import Menu from "./Menu"; // Menu Component
 import HASM_Markdown_Editor from "./HASM_Markdown_Editor"; // HASM Markdown Editor Component
 import AssetWindow from "./AssetWindow";
-import { getMarkdownThemeVariables, getPatternById, getThemeVariables } from "./hasm_color_pattern/src/index.js";
+import {
+  COLOR_PATTERN_OPTIONS,
+  DEFAULT_COLOR_PATTERN,
+  getMarkdownThemeVariables,
+  getPatternById,
+  getThemeVariables,
+  isValidColorPattern,
+} from "./hasm_color_pattern/src/index.js";
 
 // CSS
 import "./main.css";
@@ -30,11 +37,10 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 // Logger
 import { traceLog, debugLog, infoLog, warnLog, errorLog } from "./hasm_logger/src/react/logger.js";
 
-const DEFAULT_THEME = "Dark";
-const THEME_PATTERN_IDS = {
-  Light: "sand",
-  Dark: "classic",
-  "High-Contrast": "high-contrast",
+const BACKEND_THEME_MODES = {
+  sand: "Light",
+  classic: "Dark",
+  "high-contrast": "High-Contrast",
 };
 const isTauriRuntime = typeof window !== "undefined" && Boolean(window.__TAURI_INTERNALS__);
 const EMPTY_MARKDOWN = "# HASM Markdown\n\nCreate or open a workspace to begin.";
@@ -195,9 +201,14 @@ function App() {
 
   // Define Color Pattern Status
   const [colorPattern, setColorPattern] = useState(() => {
-    if (typeof window === "undefined") return DEFAULT_THEME;
+    if (typeof window === "undefined") return DEFAULT_COLOR_PATTERN;
     const storedTheme = localStorage.getItem("hasm_theme_preference");
-    return ["Light", "Dark", "High-Contrast"].includes(storedTheme) ? storedTheme : DEFAULT_THEME;
+    const restoredPattern = {
+      Light: "sand",
+      Dark: "classic",
+      "High-Contrast": "high-contrast",
+    }[storedTheme] ?? storedTheme;
+    return isValidColorPattern(restoredPattern) ? restoredPattern : DEFAULT_COLOR_PATTERN;
   });
   const [editorStatus, setEditorStatus] = useState("Ready");
   const [lastAutosavedAt, setLastAutosavedAt] = useState(null);
@@ -238,14 +249,15 @@ function App() {
   }, [currentPackage, isSavingPackage, markdown]);
 
   const handleThemeChange = useCallback(async (theme) => {
-    if (!["Light", "Dark", "High-Contrast"].includes(theme)) return;
+    if (!isValidColorPattern(theme)) return;
     setColorPattern(theme);
     localStorage.setItem("hasm_theme_preference", theme);
-    document.documentElement.dataset.theme = theme.toLowerCase();
-    infoLog("[SEQ-MD-06][THEME] theme applied", { theme });
-    if (isTauriRuntime) {
+    document.documentElement.dataset.theme = theme;
+    infoLog("[SEQ-MD-06][THEME] color pattern applied", { pattern: theme });
+    const backendTheme = BACKEND_THEME_MODES[theme];
+    if (isTauriRuntime && backendTheme) {
       try {
-        await invoke("update_app_theme_config", { theme });
+        await invoke("update_app_theme_config", { theme: backendTheme });
       } catch (error) {
         warnLog("[SEQ-MD-06][THEME][ERROR] theme persistence failed", error);
       }
@@ -260,9 +272,14 @@ function App() {
     if (!isTauriRuntime) return;
     invoke("get_app_theme_config")
       .then((theme) => {
-        if (["Light", "Dark", "High-Contrast"].includes(theme)) {
-          setColorPattern(theme);
-          localStorage.setItem("hasm_theme_preference", theme);
+        const restoredPattern = BACKEND_THEME_MODES[theme] ? {
+          Light: "sand",
+          Dark: "classic",
+          "High-Contrast": "high-contrast",
+        }[theme] : theme;
+        if (isValidColorPattern(restoredPattern)) {
+          setColorPattern(restoredPattern);
+          localStorage.setItem("hasm_theme_preference", restoredPattern);
         }
       })
       .catch((error) => warnLog("[SEQ-MD-06][THEME][ERROR] theme restore failed", error));
@@ -282,12 +299,12 @@ function App() {
           ? { label: "Autosaved Locally", timestamp: lastAutosavedAt }
           : { label: editorStatus };
 
-  const themePattern = getPatternById(THEME_PATTERN_IDS[colorPattern] ?? THEME_PATTERN_IDS[DEFAULT_THEME]);
+  const themePattern = getPatternById(colorPattern, DEFAULT_COLOR_PATTERN);
   const themeVariables = {
     ...getThemeVariables(themePattern.id),
     ...getMarkdownThemeVariables(themePattern.id),
-    "--theme-warning-background": colorPattern === "High-Contrast" ? "#ffffff" : themePattern.colors.softColor,
-    "--theme-danger": colorPattern === "High-Contrast" ? "#ff0000" : themePattern.colors.dangerColor,
+    "--theme-warning-background": colorPattern === "high-contrast" ? "#ffffff" : themePattern.colors.softColor,
+    "--theme-danger": colorPattern === "high-contrast" ? "#ff0000" : themePattern.colors.dangerColor,
   };
 
   const saveAsPackage = useCallback(async () => {
@@ -483,6 +500,7 @@ function App() {
           onPackageChange={setCurrentPackage}
           setMarkdown={setMarkdown}
           colorPattern={colorPattern}
+          colorPatternOptions={COLOR_PATTERN_OPTIONS}
           onColorPatternChange={handleThemeChange}
           onWorkspaceOpen={loadWorkspace}
           editorStatus={editorStatus}

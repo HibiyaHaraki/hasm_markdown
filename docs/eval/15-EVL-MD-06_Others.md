@@ -1,6 +1,6 @@
 # EVL-MD-06: Global Menu Notifications, Save State Indicator, and Dynamic Color Theme Switching Evaluation Specification
 
-This document defines the test matrix, acceptance criteria, and traceability mapping for validating cross-cutting UI services across all application routes. It covers Global Menu diagnostic aggregation (Error List / Warning List), real-time save state readouts, and app-wide 3-color theme switching (`Light`, `Dark`, `High-Contrast`) with local persistence.
+This document defines the test matrix, acceptance criteria, and traceability mapping for validating cross-cutting UI services across all application routes. It covers Global Menu diagnostic aggregation (Error List / Warning List), real-time save state readouts, and app-wide color-pattern switching using the complete `hasm_color_pattern` catalog with local persistence.
 
 ---
 
@@ -19,7 +19,7 @@ This document defines the test matrix, acceptance criteria, and traceability map
 
 | Test ID | Trace Requirement ID | Test Type | Component / Target | Test Steps | Expected Result |
 | --- | --- | --- | --- | --- | --- |
-| **`TC-MD-06-REACT-001`** | `REQ-MD-06-021` `REQ-MD-06-100` | Positive (Instant Theme Switching SLA) | `src/main.jsx` + `src/hasm_color_pattern/src/index.js` | 1. Trigger theme toggle between `Light`, `Dark`, and `High-Contrast`. 2. Measure root shell variable update latency. | 1. Root `<html>` element `data-theme` attribute updates instantly. 2. Root shell variables come from the shared submodule and style recalculation completes within 16ms (1 frame). |
+| **`TC-MD-06-REACT-001`** | `REQ-MD-06-021` `REQ-MD-06-100` | Positive (Instant Pattern Switching SLA) | `src/main.jsx` + `src/hasm_color_pattern/src/index.js` | 1. Trigger pattern selection from the complete submodule option list. 2. Measure root shell variable update latency. | 1. Root `<html>` element `data-theme` attribute updates instantly. 2. Root shell variables come from the shared submodule and style recalculation completes within 16ms (1 frame). |
 | **`TC-MD-06-REACT-002`** | `REQ-MD-06-022` | Positive (High-Contrast Red Contrast) | `src/main.css` + `src/HASM_Markdown_Editor.jsx` | 1. Switch to "High-Contrast" theme. 2. Render missing asset error spans and editor decorators. | 1. Error spans enforce high-visibility pure red (`#ff0000` text / `#ffffff` contrast background) adhering to accessibility standards. |
 | **`TC-MD-06-REACT-003`** | `REQ-MD-06-013` | Positive (Master Sync Status) | `src/Menu.jsx` + `src/main.jsx` | 1. Execute explicit save action (`SEQ-MD-04`). | 1. Save state indicator updates readout to "Master Target Synced". |
 | **`TC-MD-06-REACT-004`** | `REQ-MD-06-001` `REQ-MD-06-002` `REQ-MD-06-003` | Positive (Zero Diagnostic State) | `src/Menu.jsx` | 1. Open Global Menu during boot with no workspace. | 1. Error and warning counts are zero. 2. Global save-state readout is visible. |
@@ -41,7 +41,7 @@ This document defines the test matrix, acceptance criteria, and traceability map
 | Test ID | Automated assertion |
 | --- | --- |
 | `TC-MD-06-E2E-001` | The root `Menu` and diagnostics trigger remain visible on `/editor` boot state; workspace-only actions are disabled. |
-| `TC-MD-06-REACT-001` | Light, Dark, and High-Contrast resolve to the `sand`, `classic`, and `high-contrast` patterns exported by `hasm_color_pattern`; localStorage and backend persistence are invoked. |
+| `TC-MD-06-REACT-001` | The selector is populated from `COLOR_PATTERN_OPTIONS`; `sand`, `classic`, and `high-contrast` resolve to submodule values, with standard backend persistence and local pattern-ID persistence. |
 | `TC-MD-06-REACT-002` | High-Contrast applies `#ff0000` warning text and `#ffffff` warning background variables. |
 | `TC-MD-06-E2E-002` | Missing asset diagnostics render, close the drawer, and select the referenced editor line. |
 | `TC-MD-06-E2E-003` | Dirty editor state changes to a local autosave timestamp after one autosave IPC call. |

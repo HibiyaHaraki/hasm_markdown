@@ -45,6 +45,7 @@ function Menu({
   onPackageChange,
   setMarkdown,
   colorPattern,
+  colorPatternOptions,
   onColorPatternChange,
   onWorkspaceOpen,
   editorStatus,
@@ -65,11 +66,6 @@ function Menu({
   const statusText = saveState?.label === "Autosaved Locally" && saveState.timestamp
     ? `Autosaved Locally at ${new Date(saveState.timestamp).toLocaleTimeString()}`
     : saveState?.label ?? editorStatus;
-  const themeOptions = [
-    { id: "Light", label: "Light" },
-    { id: "Dark", label: "Dark" },
-    { id: "High-Contrast", label: "High-Contrast" },
-  ];
 
   // Tauri : Open Exist Package
   const handleOpen = async () => {
@@ -162,7 +158,7 @@ function Menu({
         </NavDropdown>
         <button type="button" className="Menu_AssetsButton" onClick={onAssetsOpen} disabled={!onAssetsOpen}>Assets</button>
         <NavDropdown title="Theme" id="theme-nav-dropdown" className="m-2">
-          {themeOptions.map((pattern) => (
+          {(colorPatternOptions ?? []).map((pattern) => (
             <NavDropdown.Item
               key={pattern.id}
               active={colorPattern === pattern.id}
@@ -170,7 +166,7 @@ function Menu({
                 onColorPatternChange?.(pattern.id);
               }}
             >
-              {pattern.label}
+              {pattern.markdownLabel ?? pattern.label}
             </NavDropdown.Item>
           ))}
         </NavDropdown>

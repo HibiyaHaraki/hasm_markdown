@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import http from "node:http";
 import { chromium } from "playwright";
-import { getMarkdownThemeVariables, getPatternById, getThemeVariables } from "../src/hasm_color_pattern/src/index.js";
+import { COLOR_PATTERN_OPTIONS, getMarkdownThemeVariables, getPatternById, getThemeVariables } from "../src/hasm_color_pattern/src/index.js";
 
 const root = process.cwd();
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
@@ -113,18 +113,16 @@ try {
   await bootPage.reload({ waitUntil: "networkidle" });
 
   await record("TC-MD-06-REACT-001", "Submodule Theme Mapping", async () => {
-    const expected = {
-      Light: getPatternById("sand").colors.mainColor,
-      Dark: getPatternById("classic").colors.mainColor,
-      "High-Contrast": getPatternById("high-contrast").colors.mainColor,
-    };
-    for (const [label, patternId] of Object.entries({ Light: "sand", Dark: "classic", "High-Contrast": "high-contrast" })) {
+    for (const pattern of COLOR_PATTERN_OPTIONS) {
+      const patternId = pattern.id;
       await bootPage.getByText("Theme", { exact: true }).click();
-      await bootPage.locator(".dropdown-item").filter({ hasText: label }).click();
+      await bootPage.locator(".dropdown-item").filter({ hasText: pattern.markdownLabel ?? pattern.label }).click();
       const color = await bootPage.locator(".Main").evaluate((element) => getComputedStyle(element).getPropertyValue("--main-color").trim());
-      assert(color.toLowerCase() === expected[label].toLowerCase(), `${label} did not use submodule pattern ${patternId}`);
+      assert(color.toLowerCase() === getPatternById(patternId).colors.mainColor.toLowerCase(), `${patternId} did not use the submodule pattern`);
     }
-    assert(await bootPage.evaluate(() => localStorage.getItem("hasm_theme_preference")) === "High-Contrast", "theme preference was not stored locally");
+    await bootPage.getByText("Theme", { exact: true }).click();
+    await bootPage.locator(".dropdown-item").filter({ hasText: "High Contrast" }).click();
+    assert(await bootPage.evaluate(() => localStorage.getItem("hasm_theme_preference")) === "high-contrast", "theme preference was not stored locally");
     const calls = await bootPage.evaluate(() => window.__md06Calls.filter(({ command }) => command === "update_app_theme_config"));
     themeCalls.push(...calls);
     assert(calls.at(-1)?.args.theme === "High-Contrast", "theme preference was not sent to backend");
@@ -141,7 +139,7 @@ try {
   await record("TC-MD-06-E2E-004", "Theme Preference Restored on Boot", async () => {
     await bootPage.reload({ waitUntil: "networkidle" });
     assert(await bootPage.locator("html").getAttribute("data-theme") === "high-contrast", "high-contrast theme was not restored on boot");
-    assert(await bootPage.evaluate(() => localStorage.getItem("hasm_theme_preference")) === "High-Contrast", "boot restore changed the saved preference");
+    assert(await bootPage.evaluate(() => localStorage.getItem("hasm_theme_preference")) === "high-contrast", "boot restore changed the saved preference");
   });
 
   await record("TC-MD-06-REACT-004", "Zero Diagnostic State", async () => {

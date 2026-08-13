@@ -22,10 +22,10 @@
 
 ### 1.3 App-Wide 3-Color Theme Selector
 
-* **`REQ-MD-06-020` (Three Color Palette Support):** The system shall support three standardized UI color themes: **`Light`**, **`Dark`**, and **`High-Contrast`**.
+* **`REQ-MD-06-020` (Color Pattern Support):** The system shall expose every UI color pattern exported by `src/hasm_color_pattern`, including the standardized compatibility patterns **`Light`**, **`Dark`**, and **`High-Contrast`**.
 * **`REQ-MD-06-021` (App-Wide Theme Application):** Selecting a theme shall dynamically update the CSS variables (`data-theme`) across the entire root application DOM without requiring a page reload or window restart.
 * **`REQ-MD-06-022` (High-Contrast Red Warning Accessibility):** In `High-Contrast` mode, all error decorators, missing asset warning spans, and badge indicators shall enforce pure high-visibility red (`#ff0000` text / `#ffffff` contrast background) for accessibility compliance.
-* **`REQ-MD-06-023` (Theme Preference Persistence):** The system shall persist the selected theme preference in `localStorage` and pass it to the Rust backend to store in `AppConfig`. Upon application boot (`SEQ-MD-01`), the saved theme shall be applied automatically.
+* **`REQ-MD-06-023` (Theme Preference Persistence):** The system shall persist the selected pattern ID in `localStorage`; standard compatibility modes shall also be passed to the Rust backend for `AppConfig` storage. Upon application boot (`SEQ-MD-01`), the saved pattern shall be applied automatically.
 
 ---
 
