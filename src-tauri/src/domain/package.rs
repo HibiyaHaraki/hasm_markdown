@@ -191,4 +191,22 @@ mod tests {
         session.close().unwrap();
         let _ = std::fs::remove_dir_all(base);
     }
+
+    #[test]
+    fn folder_mount_keeps_assets_external_and_resolves_absolute_paths() {
+        let base = std::env::temp_dir().join(format!("hasm-seq-md-01-folder-{}", std::process::id()));
+        let folder = base.join("workspace");
+        std::fs::create_dir_all(folder.join("assets")).unwrap();
+        std::fs::write(folder.join("main.md"), "# Folder\n\n![note](asset:note)\n").unwrap();
+        std::fs::write(folder.join("assets.json"), br#"{"version":"1","assets":{"note":{"uuid":"note.txt","relativePath":"assets/note.txt"}}}"#).unwrap();
+        std::fs::write(folder.join("assets/note.txt"), "external asset\n").unwrap();
+
+        let session = super::open_folder(&base, &folder).unwrap();
+        let resolved = &session.payload.manifest.assets["note"].resolved_path;
+        assert!(resolved.ends_with("assets/note.txt"));
+        assert!(std::path::Path::new(resolved).is_absolute());
+        assert!(!std::path::Path::new(&session.payload.temp_dir_path).join("assets/note.txt").exists());
+        session.close().unwrap();
+        let _ = std::fs::remove_dir_all(base);
+    }
 }

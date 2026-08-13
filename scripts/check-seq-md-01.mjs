@@ -119,8 +119,17 @@ writeFileSync(join(folder, "assets", "diagram.png"), "fixture");
 
 const validArchive = join(fixtureRoot, "valid.hasmmd");
 writeFileSync(validArchive, zip([
-  ["main.md", "# Archive\n"],
-  ["assets.json", JSON.stringify({ version: "1", assets: {} })],
+  ["main.md", "# Archive\n\n![readme](asset:readme)\n"],
+  ["assets.json", JSON.stringify({
+    version: "1",
+    assets: {
+      readme: {
+        uuid: "README.txt",
+        relativePath: "assets/README.txt",
+      },
+    },
+  })],
+  ["assets/README.txt", "This asset is included in the valid HASM Markdown package.\n"],
 ]));
 const corruptArchive = join(fixtureRoot, "corrupt.hasmmd");
 writeFileSync(corruptArchive, zip([["assets.json", JSON.stringify({ version: "1", assets: {} })]]));
@@ -149,6 +158,11 @@ record("TC-MD-01-CLI-003", "Folder Absolute Path Preview Stream", () => {
   assert(result.stdout.replaceAll("\\", "/").includes(expectedPath), `absolute asset path missing; stdout=${JSON.stringify(result.stdout)}`);
   assert(!result.stdout.includes("asset:diagram"), "asset alias was not resolved");
 });
+record("TC-MD-01-CLI-008", "Valid Folder Package Verification", () => {
+  const result = run(["verify", folder]);
+  assert(result.status === 0, `expected exit 0, got ${result.status}\n${result.stdout}\n${result.stderr}`);
+  assert(result.stdout.includes("Package verification successful"), "folder verification success message missing");
+});
 record("TC-MD-01-CLI-004", "Preview Rejection on ZIP Archive", () => {
   const result = run(["preview", validArchive]);
   assert(result.status === 1 && result.stderr.includes("Folder Type"), `unexpected result: ${result.stdout}\n${result.stderr}`);
@@ -172,6 +186,7 @@ record("TC-MD-01-RUST-003", "CLI Verification SLA", () => assert(rustTests.statu
 record("TC-MD-01-RUST-004", "Non-Existent Path Handler", () => assert(rustTests.status === 0 && rustOutput.includes("open_archive_reports_not_found_without_creating_temp_workspace"), rustOutput));
 record("TC-MD-01-E2E-001", "Selective Unpack and Streaming", () => assert(rustTests.status === 0 && rustOutput.includes("archive_import_extracts_metadata_only_and_resolves_stream_paths"), rustOutput));
 record("TC-MD-01-E2E-002", "Workspace Process Lock Conflict", () => assert(rustTests.status === 0 && rustOutput.includes("acquire_rejects_active_process_lock"), rustOutput));
+record("TC-MD-01-E2E-003", "Folder Workspace Asset Mount", () => assert(rustTests.status === 0 && rustOutput.includes("folder_mount_keeps_assets_external_and_resolves_absolute_paths"), rustOutput));
 
 const guardTest = spawnSync(process.execPath, ["scripts/check-seq-md-01-guard.mjs"], { cwd: root, encoding: "utf8" });
 trace("TC-MD-01-GUARD-001", "OUTPUT", { status: guardTest.status, stdout: guardTest.stdout, stderr: guardTest.stderr });
