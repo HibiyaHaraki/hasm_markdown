@@ -4,6 +4,75 @@
     overflow: hidden;
 }
 
+.BootScreen {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 32px;
+    color: #17324d;
+    background: radial-gradient(circle at 10% 10%, #d7f0e7 0, transparent 34%), #f3efe6;
+}
+
+.BootScreen_Panel {
+    width: min(620px, 100%);
+    padding: 48px;
+    border: 1px solid #b6c8c0;
+    background: rgba(255, 255, 255, 0.86);
+    box-shadow: 16px 16px 0 #d5dfd8;
+}
+
+.BootScreen_Kicker {
+    margin: 0 0 12px;
+    color: #b04a35;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+}
+
+.BootScreen h1 {
+    margin: 0;
+    font-family: Georgia, serif;
+    font-size: clamp(2rem, 6vw, 4rem);
+    font-weight: 400;
+}
+
+.BootScreen_Message {
+    max-width: 40em;
+    margin: 20px 0 28px;
+    color: #52666b;
+}
+
+.BootScreen_Actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.BootScreen_Actions button {
+    min-height: 42px;
+    padding: 8px 14px;
+    border: 1px solid #17324d;
+    color: #17324d;
+    background: transparent;
+    cursor: pointer;
+}
+
+.BootScreen_Actions button:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+.BootScreen_Actions_Primary {
+    color: #fff !important;
+    background: #17324d !important;
+}
+
+.BootScreen small {
+    display: block;
+    margin-top: 24px;
+    color: #7a6f62;
+}
+
 /* Menu.jsx */
 .Menu {
     background-color: var(--main-color);
