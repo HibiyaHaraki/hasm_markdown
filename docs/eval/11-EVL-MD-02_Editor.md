@@ -2,7 +2,7 @@
 
 This document defines the comprehensive test matrix, acceptance criteria, and traceability mapping for validating custom `markdown-it` asset resolution (`resolvedPath`), live red-text warning rendering for missing/soft-deleted assets (`isDeleted`), code editor warning decorators, diff tracking (`isDirty`), explicit unbinding of manual save shortcuts (`Ctrl+S`), and 10-second periodic local-only autosaves inside the `App Local` sandbox.
 
-The executable evaluation command is `npm run check:seq-md-02`. It runs pure resolver and 16 ms computation checks, a Playwright browser fixture with multiple active/missing/soft-deleted assets, deterministic fake-IPC autosave success/failure checks, and the editor interaction checks. Rust storage checks run through `npm run check:tauri-build` and include an inline valid `.hasmmd` archive fixture with two manifest-backed assets.
+The executable evaluation command is `npm run check:seq-md-02`. It runs pure resolver checks, a warmed five-reference median responsiveness check against the 16 ms interactive budget, a 100-reference stress guard capped at 100 ms, a Playwright browser fixture with multiple active/missing/soft-deleted assets, deterministic fake-IPC autosave success/failure checks, and the editor interaction checks. Rust storage checks run through `npm run check:tauri-build` and include an inline valid `.hasmmd` archive fixture with two manifest-backed assets.
 
 ---
 
