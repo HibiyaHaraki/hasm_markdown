@@ -7,3 +7,6 @@
 [submodule "src-tauri/src/hasm_logger"]
 	path = src-tauri/src/hasm_logger
 	url = https://github.com/HibiyaHaraki/hasm_logger
+[submodule "hasm_logo"]
+	path = hasm_logo
+	url = https://github.com/HibiyaHaraki/hasm_logo.git
