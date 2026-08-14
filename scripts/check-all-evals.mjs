@@ -8,6 +8,7 @@ const evaluations = [
   ["MD-03", "scripts/check-seq-md-03.mjs", "Asset management"],
   ["MD-04", "scripts/check-seq-md-04.mjs", "Save and export"],
   ["MD-05", "scripts/check-seq-md-05.mjs", "Close and cleanup"],
+  ["MD-06", "scripts/check-seq-md-06.mjs", "Other functionalities"],
   ["MD-07", "scripts/check-normal-workflow.mjs", "Normal multi-feature workflow"],
 ];
 const GREEN = "\x1b[32m";

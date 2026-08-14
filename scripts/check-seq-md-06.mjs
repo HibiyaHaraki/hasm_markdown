@@ -73,6 +73,11 @@ function stop(child) {
   });
 }
 
+async function openWorkspaceMenu(page) {
+  await page.getByRole("button", { name: /open workspace menu/i }).click();
+  await page.getByRole("heading", { name: "Workspace menu" }).waitFor();
+}
+
 const vite = spawn(process.platform === "win32" ? "cmd.exe" : npmCommand,
   process.platform === "win32"
     ? ["/d", "/s", "/c", "npm run dev -- --host 127.0.0.1 --port 4178 --strictPort"]
@@ -90,8 +95,10 @@ try {
   await record("TC-MD-06-E2E-001", "Global Menu Available During Boot", async () => {
     assert(await bootPage.locator(".Menu").count() === 1, "global menu shell was not rendered on boot page");
     assert(await bootPage.locator(".BootScreen").count() === 1, "boot screen was not rendered");
-    assert(await bootPage.getByRole("button", { name: /diagnostics/i }).count() === 1, "diagnostics trigger was not available on boot page");
+    assert(await bootPage.getByRole("button", { name: /open workspace menu/i }).count() === 1, "workspace menu trigger was not available on boot page");
+    await openWorkspaceMenu(bootPage);
     assert(await bootPage.locator(".Menu_AssetsButton").isDisabled(), "workspace asset action was not disabled during boot");
+    await bootPage.getByRole("button", { name: /close menu/i }).click();
     assert(bootErrors.length === 0, `boot page errors detected: ${bootErrors.join("; ")}`);
   });
 
@@ -113,15 +120,15 @@ try {
   await bootPage.reload({ waitUntil: "networkidle" });
 
   await record("TC-MD-06-REACT-001", "Submodule Theme Mapping", async () => {
+    await openWorkspaceMenu(bootPage);
+    const colorPatternSelect = bootPage.locator(".GlobalMenu select");
     for (const pattern of COLOR_PATTERN_OPTIONS) {
       const patternId = pattern.id;
-      await bootPage.getByText("Theme", { exact: true }).click();
-      await bootPage.locator(".dropdown-item").filter({ hasText: pattern.markdownLabel ?? pattern.label }).click();
+      await colorPatternSelect.selectOption(patternId);
       const color = await bootPage.locator(".Main").evaluate((element) => getComputedStyle(element).getPropertyValue("--main-color").trim());
       assert(color.toLowerCase() === getPatternById(patternId).colors.mainColor.toLowerCase(), `${patternId} did not use the submodule pattern`);
     }
-    await bootPage.getByText("Theme", { exact: true }).click();
-    await bootPage.locator(".dropdown-item").filter({ hasText: "High Contrast" }).click();
+    await colorPatternSelect.selectOption("high-contrast");
     assert(await bootPage.evaluate(() => localStorage.getItem("hasm_theme_preference")) === "high-contrast", "theme preference was not stored locally");
     const calls = await bootPage.evaluate(() => window.__md06Calls.filter(({ command }) => command === "update_app_theme_config"));
     themeCalls.push(...calls);
@@ -143,11 +150,11 @@ try {
   });
 
   await record("TC-MD-06-REACT-004", "Zero Diagnostic State", async () => {
-    await bootPage.getByRole("button", { name: /diagnostics/i }).click();
+    await openWorkspaceMenu(bootPage);
     assert((await bootPage.locator("#global-errors-title").textContent()).includes("0"), "boot error count was not zero");
     assert((await bootPage.locator("#global-warnings-title").textContent()).includes("0"), "boot warning count was not zero");
     assert(await bootPage.locator(".GlobalMenu_SaveState").count() === 1, "global save state readout was not rendered");
-    await bootPage.getByRole("button", { name: /close diagnostics/i }).click();
+    await bootPage.getByRole("button", { name: /close menu/i }).click();
   });
 
   const editorPage = await browser.newPage();
@@ -159,9 +166,9 @@ try {
     };
   });
   await editorPage.goto(`${url}/?eval=md02`, { waitUntil: "networkidle" });
-  await editorPage.getByRole("button", { name: /diagnostics/i }).click();
 
   await record("TC-MD-06-E2E-002", "Missing Asset Diagnostic Navigation", async () => {
+    await openWorkspaceMenu(editorPage);
     assert(await editorPage.locator("#global-errors-title").textContent().then((text) => text.includes("Errors")), "error list was not rendered");
     assert(await editorPage.getByText("unknown", { exact: true }).count() === 1, "missing asset was not listed");
     await editorPage.getByRole("button", { name: /unknown Missing file/ }).click();
