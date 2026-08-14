@@ -172,13 +172,50 @@ try {
     assert(await editorPage.getByRole("tooltip").textContent() === "C:/eval/workspace", "status tooltip did not show the active workspace target path");
   });
 
+  await record("TC-MD-06-REACT-006", "Independent Syntax Editor Appearance", async () => {
+    await openWorkspaceMenu(editorPage);
+    await editorPage.getByRole("button", { name: "Editor dark" }).click();
+    const editor = editorPage.locator(".HASM_Markdown_Editor");
+    assert(await editor.evaluate((element) => element.classList.contains("EditorColor_dark")), "dark editor appearance was not applied");
+    assert(await editor.locator(".MarkdownSyntax_Link").count() >= 1, "Markdown syntax layer did not color an asset link");
+    await editorPage.getByRole("button", { name: "Editor light" }).click();
+    assert(await editor.evaluate((element) => element.classList.contains("EditorColor_light")), "light editor appearance was not restored");
+    await editorPage.getByRole("button", { name: /close menu/i }).click();
+  });
+
+  await record("TC-MD-06-REACT-007", "Editor Line Metric Alignment", async () => {
+    const metrics = await editorPage.evaluate(() => {
+      const readMetrics = (selector) => {
+        const style = getComputedStyle(document.querySelector(selector));
+        return { lineHeight: style.lineHeight, paddingTop: style.paddingTop };
+      };
+      return {
+        input: readMetrics(".MarkdownSyntax_Input"),
+        gutter: readMetrics(".HASM_Markdown_Editor_EditorCol_Editor_LineNum"),
+      };
+    });
+    assert(metrics.input.lineHeight === metrics.gutter.lineHeight, `editor line heights diverged: ${JSON.stringify(metrics)}`);
+    assert(metrics.input.paddingTop === metrics.gutter.paddingTop, `editor top padding diverged: ${JSON.stringify(metrics)}`);
+  });
+
   await record("TC-MD-06-E2E-002", "Missing Asset Diagnostic Navigation", async () => {
     await openWorkspaceMenu(editorPage);
     assert(await editorPage.locator("#global-errors-title").textContent().then((text) => text.includes("Errors")), "error list was not rendered");
     assert(await editorPage.getByText("unknown", { exact: true }).count() === 1, "missing asset was not listed");
     await editorPage.getByRole("button", { name: /unknown Missing file/ }).click();
     assert(await editorPage.locator(".GlobalMenu").count() === 0, "diagnostics drawer did not close after selection");
-    assert(await editorPage.locator("textarea").evaluate((element) => element.selectionStart > 0), "editor did not select the missing asset line");
+    assert(await editorPage.evaluate(() => window.getSelection()?.toString().length > 0), "editor did not select the missing asset line");
+  });
+
+  await record("TC-MD-06-REACT-008", "Editor Enter Inserts One Newline", async () => {
+    const editor = editorPage.getByRole("textbox", { name: "Markdown editor" });
+    await editor.click();
+    await editor.press("Control+A");
+    await editor.type("first");
+    await editor.press("End");
+    await editor.press("Enter");
+    await editor.type("second");
+    assert(await editor.textContent() === "first\nsecond", `Enter produced unexpected editor content: ${JSON.stringify(await editor.textContent())}`);
   });
 
   await record("TC-MD-06-REACT-003", "Theme Variable API Contract", () => {
@@ -214,7 +251,7 @@ try {
   await autosavePage.goto(`${url}/?eval=md02&autosave=1`, { waitUntil: "networkidle" });
 
   await record("TC-MD-06-E2E-003", "Dirty to Autosaved State Transition", async () => {
-    const editor = autosavePage.locator("textarea");
+    const editor = autosavePage.getByRole("textbox", { name: "Markdown editor" });
     await editor.fill("changed for seq-md-06");
     assert((await autosavePage.locator(".Menu_Status").textContent()).includes("Unsaved Changes (*)"), "dirty state was not displayed");
     await autosavePage.locator(".Menu_Status").filter({ hasText: "Autosaved Locally at" }).waitFor();

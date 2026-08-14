@@ -109,7 +109,7 @@ src-tauri/src/
 
 
 * **`commands/editor.rs`**
-* `fn save_local_markdown_buffer(state: State<HasmMarkdownState>, uuid: String, content: String) -> Result<SaveLocalResult, PackageError>`: Executes 10-second fast local autosave to `<UUID>/main.md` in `App Local`[cite: 14, 19, 20].
+* `fn save_local_markdown_buffer(state: State<HasmMarkdownState>, uuid: String, content: String) -> Result<SaveLocalResult, PackageError>`: Executes 3-second fast local autosave to `<UUID>/main.md` in `App Local`[cite: 14, 19, 20].
 
 
 * **`commands/asset.rs`**
@@ -209,7 +209,7 @@ src/
 │   ├── ErrorModelPage.jsx          # Structural Integrity Error View (/error-model)
 │   └── ErrorAppPage.jsx            # Runtime System Error View (/error-app)
 ├── hooks/                          # Custom Hooks
-│   ├── useAutosaveLoop.js          # 10-Second Fast Local Autosave Hook
+│   ├── useAutosaveLoop.js          # 3-Second Fast Local Autosave Hook
 │   ├── useAssetManager.js          # Asset Upload & Soft-Delete Action Hook
 │   ├── useWorkspaceSave.js         # In-Place Save & Export Hook
 │   └── useTheme.js                 # 16ms Instant Theme Switch Hook
@@ -333,7 +333,7 @@ src/
 ### 3.5 Custom React Hooks (`hooks/`)
 
 * **`hooks/useAutosaveLoop.js`**
-* 10-second periodic timer hook[cite: 14, 21]. Checks `isDirty === true` and `isSaving === false`, then invokes `save_local_markdown_buffer` IPC command to update `<UUID>/main.md` in `App Local` without triggering heavy ZIP packaging[cite: 14, 19, 20].
+* 3-second periodic timer hook[cite: 14, 21]. Checks `isDirty === true` and `isSaving === false`, then invokes `save_local_markdown_buffer` IPC command to update `<UUID>/main.md` in `App Local` without triggering heavy ZIP packaging[cite: 14, 19, 20].
 
 
 * **`hooks/useAssetManager.js`**
@@ -370,7 +370,7 @@ src/
 | `open_folder_workspace` | `commands::workspace` | `folder_path: String` | Mounts external folder workspace, acquires PID lock, resolves absolute paths | `SEQ-MD-01`[cite: 20, 22] |
 | `create_new_package` | `commands::workspace` | *None* | Scaffolds default workspace template in `App Local` | `SEQ-MD-01`[cite: 20, 22] |
 | `close_and_cleanup_workspace` | `commands::workspace` | `uuid: String` | Releases master OS handles, updates `.lock` payload (`pid: 0` / `Unlocked`), cleans temp files | `SEQ-MD-05`[cite: 17, 20] |
-| `save_local_markdown_buffer` | `commands::editor` | `uuid: String, content: String` | Fast local-only 10-second periodic autosave to `<UUID>/main.md` in `App Local` | `SEQ-MD-02`[cite: 14, 19, 20] |
+| `save_local_markdown_buffer` | `commands::editor` | `uuid: String, content: String` | Fast local-only 3-second periodic autosave to `<UUID>/main.md` in `App Local` | `SEQ-MD-02`[cite: 14, 19, 20] |
 | `register_and_bind_single_asset_path` | `commands::asset` | `source_path: String, custom_alias: String` | Binds single external image path, generates UUID, updates `assets.json` (1-file limit) | `SEQ-MD-03`[cite: 15, 19, 20] |
 | `soft_delete_asset_mapping` | `commands::asset` | `alias: String` | Sets `isDeleted: true` in `assets.json` without removing UUID or physical binary | `SEQ-MD-03`[cite: 15, 19, 20] |
 | `execute_package_save_or_export` | `commands::save` | `uuid: String, export_target_path: Option<String>` | Executes Delta Sync algorithm, purges deleted assets, packs additions, replaces target file | `SEQ-MD-04`[cite: 16, 19, 20] |

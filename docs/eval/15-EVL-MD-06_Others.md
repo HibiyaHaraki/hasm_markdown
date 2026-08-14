@@ -37,6 +37,9 @@ The Global Menu must be opened through its actual accessible trigger before diag
 | **`TC-MD-06-REACT-003`** | `REQ-MD-06-013` | Positive (Master Sync Status) | A successful explicit-save result updates the active package state. | `src/Menu.jsx` + `src/main.jsx` | 1. Execute explicit save action (`SEQ-MD-04`). | 1. Save state indicator updates readout to "Master Target Synced". |
 | **`TC-MD-06-REACT-004`** | `REQ-MD-06-001` `REQ-MD-06-002` `REQ-MD-06-003` | Positive (Zero Diagnostic State) | The boot route has no active workspace and the workspace menu is open. | `src/Menu.jsx` | 1. Open Global Menu during boot with no workspace. | 1. Error and warning counts are zero. 2. Global save-state readout is visible. |
 | **`TC-MD-06-REACT-005`** | `REQ-MD-06-014` | Positive (Workspace Target Tooltip) | A loaded workspace has a non-empty `targetPath`. | `src/Menu.jsx` | 1. Hover or keyboard-focus the header save-state readout. | 1. The Bootstrap tooltip shows the active local folder or archive package path. |
+| **`TC-MD-06-REACT-006`** | `REQ-MD-06-024` | Positive (Independent Editor Appearance) | A loaded editor and Global Menu are available. | `src/Menu.jsx` + `src/HASM_Markdown_Editor.jsx` | 1. Select Editor dark. 2. Inspect the syntax layer. 3. Select Editor light. | 1. The editor appearance changes independently from the application color pattern. 2. Markdown links/assets use a syntax color. 3. Light appearance is restorable. |
+| **`TC-MD-06-REACT-007`** | `REQ-MD-06-024` | Positive (Editor Line Metric Alignment) | A loaded syntax-colored editor is rendered. | `src/HASM_Markdown_Editor.jsx` + `src/main.css` | 1. Read computed line height and top padding for the single editor surface and gutter. | 1. The editor and gutter use the same line height and top padding. |
+| **`TC-MD-06-REACT-008`** | `REQ-MD-02-010` | Positive (Single Newline Entry) | A focused Markdown editor contains one line of text. | `src/HASM_Markdown_Editor.jsx` | 1. Press Enter at the end of the line. 2. Type a second line. | 1. The raw Markdown buffer contains exactly one newline between the two lines. |
 
 ---
 
@@ -63,6 +66,9 @@ The Global Menu must be opened through its actual accessible trigger before diag
 | `TC-MD-06-REACT-003` | The submodule theme-variable API remains the source of the root palette values. |
 | `TC-MD-06-REACT-004` | Boot diagnostics show zero errors, zero warnings, and a save-state readout. |
 | `TC-MD-06-REACT-005` | A loaded workspace status readout exposes its target path through a tooltip. |
+| `TC-MD-06-REACT-006` | Editor Light/Dark controls change the independent syntax-colored editing surface. |
+| `TC-MD-06-REACT-007` | The single editor surface and line-number gutter share matching text metrics. |
+| `TC-MD-06-REACT-008` | Enter inserts one raw Markdown newline without creating an extra blank line. |
 | `TC-MD-06-RUST-001` | Rust accepts Light, Dark, and High-Contrast modes. |
 | `TC-MD-06-RUST-002` | Rust rejects an unsupported theme mode. |
 | `TC-MD-06-RUST-003` | Rust serializes High-Contrast with the required warning color. |

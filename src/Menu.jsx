@@ -10,6 +10,7 @@
 // Bootstrap
 import { useState } from "react";
 import { OverlayTrigger, Tooltip } from "react-bootstrap";
+import hasmMarkdownLogo from "./assets/logo/hasm_markdown_logo_transparent.png";
 // CSS
 import "./main.css";
 
@@ -59,6 +60,8 @@ function Menu({
   onTextScaleChange,
   viewMode,
   onViewModeChange,
+  editorColorMode,
+  onEditorColorModeChange,
 }) {
   const [isGlobalMenuOpen, setIsGlobalMenuOpen] = useState(false);
   const missingAssets = currentPackage?.missingAssets ?? [];
@@ -130,8 +133,8 @@ function Menu({
     <>
     <header className="Menu">
       <div className="Menu_Brand">
-        <span className="Menu_Mark" aria-hidden="true">∴</span>
-        <div><strong className="Menu_Title">HASM Markdown</strong><span className="Menu_Subtitle">Paper &amp; Ink workspace</span></div>
+        <img className="Menu_Mark" src={hasmMarkdownLogo} alt="HASM Markdown" />
+        <div><strong className="Menu_Title">HASM Markdown</strong><span className="Menu_Subtitle">Markdown Editor for HASM</span></div>
       </div>
       <OverlayTrigger placement="bottom" overlay={<Tooltip id="workspace-target-path">{currentPackage?.targetPath || "No workspace target selected"}</Tooltip>}>
         <span className="Menu_Status" role={statusText.startsWith("Local autosave failed") ? "alert" : "status"} aria-live="polite" aria-atomic="true">{statusText}</span>
@@ -170,6 +173,7 @@ function Menu({
           <label className="Menu_Field"><span>Color pattern</span><select value={colorPattern} onChange={(event) => onColorPatternChange?.(event.target.value)}>{(colorPatternOptions ?? []).map((pattern) => <option key={pattern.id} value={pattern.id}>{pattern.markdownLabel ?? pattern.label}</option>)}</select></label>
           <div className="Menu_Segmented" aria-label="Text size">{["small", "medium", "large"].map((size) => <button key={size} type="button" className={textScale === size ? "is-active" : ""} onClick={() => onTextScaleChange?.(size)}>{size}</button>)}</div>
           <div className="Menu_Segmented" aria-label="View mode">{[["split", "Split"], ["editor", "Editor"], ["preview", "Preview"]].map(([mode, label]) => <button key={mode} type="button" className={viewMode === mode ? "is-active" : ""} onClick={() => onViewModeChange?.(mode)}>{label}</button>)}</div>
+          <div className="Menu_Segmented" aria-label="Editor appearance">{[["light", "Editor light"], ["dark", "Editor dark"]].map(([mode, label]) => <button key={mode} type="button" className={editorColorMode === mode ? "is-active" : ""} onClick={() => onEditorColorModeChange?.(mode)}>{label}</button>)}</div>
           <button type="button" className="Menu_AssetsButton" onClick={() => { onAssetsOpen?.(); setIsGlobalMenuOpen(false); }} disabled={!onAssetsOpen}>Open asset library</button>
         </section>
         <section className="GlobalMenu_Section" aria-labelledby="global-errors-title">

@@ -16,7 +16,7 @@ HASM Markdown provides both a rich **GUI Desktop Interface** (powered by Tauri v
 * **Contents:** `main.md`, `assets.json` (Alias-to-UUID metadata mapping), `.lock` (JSON process lock tracking file), and the `assets/` directory (UUID-named physical media files).
 
 
-* **Behavior:** All editing actions, single-asset registrations, soft-deletions (`isDeleted: true`), and fast 10-second periodic local autosaves operate exclusively within this sandbox to ensure zero UI latency. `Ctrl+S` shortcuts are completely unbound.
+* **Behavior:** All editing actions, single-asset registrations, soft-deletions (`isDeleted: true`), and fast 3-second periodic local autosaves operate exclusively within this sandbox to ensure zero UI latency. `Ctrl+S` shortcuts are completely unbound.
 
 
 
@@ -241,7 +241,7 @@ flowchart
         TextChange --> RenderPreview(["markdown-it Render & Red-Text Evaluation"]):::action
         RenderPreview --> DisplayPreview(["Update Editor & Preview Pane & Save Readout"]):::action
         
-        SetDirty --> AutosaveTimer{"10s Timer Elapsed?"}:::cond
+        SetDirty --> AutosaveTimer{"3s Timer Elapsed?"}:::cond
         AutosaveTimer -->|No| WaitEdit(["Continue Editing"]):::action
         WaitEdit --> AutosaveTimer
         
@@ -353,7 +353,7 @@ flowchart
 3. **Text Editing, Red-Text Highlight & Fast Local Autosave Loop:**
    * Tracks live edits (`isDirty = true`). `Ctrl+S` manual shortcuts are unbound.
    * `markdown-it` resolves asset tags to `resolvedPath` URIs and wraps missing/soft-deleted assets in red warning spans and line decorators.
-   * 10-second timer periodically persists UTF-8 text to `<UUID>/main.md` in `App Local`.
+    * 3-second timer periodically persists UTF-8 text to `<UUID>/main.md` in `App Local`.
 
 4. **Single-Asset Management Sub-window:**
    * Enforces single-file drop/selection constraints and prompts Alias Naming Modal.
@@ -407,7 +407,7 @@ flowchart
 * `markdown-it` dynamic path resolution & missing/soft-deleted red-text warning rendering.
 
 
-* 10-second periodic local-only autosave loop (`App Local` sandbox write).
+* 3-second periodic local-only autosave loop (`App Local` sandbox write).
 
 
 

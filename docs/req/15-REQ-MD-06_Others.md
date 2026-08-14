@@ -27,6 +27,7 @@
 * **`REQ-MD-06-021` (App-Wide Theme Application):** Selecting a theme shall dynamically update the CSS variables (`data-theme`) across the entire root application DOM without requiring a page reload or window restart.
 * **`REQ-MD-06-022` (High-Contrast Red Warning Accessibility):** In `High-Contrast` mode, all error decorators, missing asset warning spans, and badge indicators shall enforce pure high-visibility red (`#ff0000` text / `#ffffff` contrast background) for accessibility compliance.
 * **`REQ-MD-06-023` (Theme Preference Persistence):** The system shall persist the selected pattern ID in `localStorage`; standard compatibility modes shall also be passed to the Rust backend for `AppConfig` storage. Upon application boot (`SEQ-MD-01`), the saved pattern shall be applied automatically.
+* **`REQ-MD-06-024` (Independent Editor Appearance):** The Global Menu shall provide Light and Dark editor appearance controls persisted locally and independent from the application color-pattern selection.
 
 ---
 

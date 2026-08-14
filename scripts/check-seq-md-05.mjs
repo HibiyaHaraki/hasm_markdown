@@ -48,13 +48,13 @@ try {
   });
 
   await page.goto(url, { waitUntil: "networkidle" });
-  await page.locator("textarea").fill("changed");
+  await page.getByRole("textbox", { name: "Markdown editor" }).fill("changed");
   await record("TC-MD-05-E2E-001", "Dirty Close Cancel", async () => {
     await page.getByRole("button", { name: "Open workspace menu" }).click();
     await page.getByRole("button", { name: "Close workspace", exact: true }).click();
     await page.getByRole("button", { name: "Cancel" }).click();
     await page.getByRole("button", { name: "Close menu" }).click();
-    assert(await page.locator("textarea").count() === 1, "cancel did not preserve workspace");
+    assert(await page.getByRole("textbox", { name: "Markdown editor" }).count() === 1, "cancel did not preserve workspace");
   });
   await record("TC-MD-05-E2E-003", "Dirty Close Discard", async () => {
     await page.getByRole("button", { name: "Open workspace menu" }).click();
@@ -72,7 +72,7 @@ try {
     assert(await page.locator(".BootScreen").count() === 1, "folder close did not release the mounted workspace");
   });
   await page.goto(url, { waitUntil: "networkidle" });
-  await page.locator("textarea").fill("changed");
+  await page.getByRole("textbox", { name: "Markdown editor" }).fill("changed");
   await record("TC-MD-05-E2E-002", "Dirty Close Save", async () => {
     await page.getByRole("button", { name: "Open workspace menu" }).click();
     await page.getByRole("button", { name: "Close workspace", exact: true }).click();
@@ -85,12 +85,12 @@ try {
   await record("TC-MD-05-E2E-006", "Save Then Reopen Moved Package", async () => {
     await page.getByRole("button", { name: "Open workspace menu" }).click();
     await page.getByRole("button", { name: "Open folder", exact: true }).click();
-    await page.locator("textarea").waitFor();
-    await page.locator("textarea").fill("edited after moving package");
-    assert(await page.locator("textarea").inputValue() === "edited after moving package", "moved package was not editable after reopening");
+    await page.getByRole("textbox", { name: "Markdown editor" }).waitFor();
+    await page.getByRole("textbox", { name: "Markdown editor" }).fill("edited after moving package");
+    assert(await page.getByRole("textbox", { name: "Markdown editor" }).textContent() === "edited after moving package", "moved package was not editable after reopening");
   });
   await record("TC-MD-05-REACT-001", "Store Reset After Close", async () => {
-    assert(await page.locator(".BootScreen").count() === 0 || await page.locator("textarea").count() === 1, "workspace state was not reset or remounted cleanly");
+    assert(await page.locator(".BootScreen").count() === 0 || await page.getByRole("textbox", { name: "Markdown editor" }).count() === 1, "workspace state was not reset or remounted cleanly");
   });
   await record("TC-MD-05-REACT-002", "Close Navigation Routing", async () => {
     assert((await page.url()).includes("eval=md05"), "evaluation page was unexpectedly lost during close routing");

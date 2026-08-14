@@ -2,14 +2,15 @@
 
 ## 1. Sequence Overview
 
-This sequence handles the real-time text editing operational lifecycle within the primary Markdown Editor screen (`/editor`). To protect system responsiveness and prevent unintended high I/O spikes caused by heavy archive re-compression, **all `Ctrl+S` manual save shortcuts are explicitly removed**. The 10-second periodic autosave loop focuses strictly on fast, lightweight local updates (`main.md` and `assets.json` in `App Local`). Full package packaging, asset copying, and ZIP archive writing are delegated exclusively to **`SEQ-MD-04` (User-Triggered Save Action)**.
+This sequence handles the real-time text editing operational lifecycle within the primary Markdown Editor screen (`/editor`). To protect system responsiveness and prevent unintended high I/O spikes caused by heavy archive re-compression, **all `Ctrl+S` manual save shortcuts are explicitly removed**. The 3-second periodic autosave loop focuses strictly on fast, lightweight local updates (`main.md` and `assets.json` in `App Local`). Full package packaging, asset copying, and ZIP archive writing are delegated exclusively to **`SEQ-MD-04` (User-Triggered Save Action)**.
 
 ### Key Operations Covered
 
 1. **Component Mount & Dynamic Path Resolution:** Resolving local image tokens (`![alt](asset:alias)`) to active runtime absolute paths (`resolvedPath`) or `asset-stream://` archive streaming URIs provided by `usePackageStore`.
 2. **Missing Asset Red-Text Highlighting:** Evaluating image tokens against `missingAssets`. Re-rendering missing asset markup with warning red CSS spans in preview and red line decorators in the code editor.
 3. **Real-time Text Editing & Diff Tracking:** Updating live buffers (`rawContent`) in memory and tracking modified states (`isDirty`) against the last saved buffer.
-4. **10-Second Periodic Local-Only Autosave Loop:** Periodically persisting the text buffer to `<UUID>/main.md` in `App Local` via atomic file operations without invoking heavy external archiving processes.
+4. **3-Second Periodic Local-Only Autosave Loop:** Periodically persisting the text buffer to `<UUID>/main.md` in `App Local` via atomic file operations without invoking heavy external archiving processes.
+5. **Independent Editor Appearance and Syntax Colors:** Rendering one syntax-colored `contenteditable` Markdown surface with locally persisted Light or Dark editor appearance independent from the application color pattern.
 
 ---
 
@@ -22,7 +23,7 @@ sequenceDiagram
     participant React as Frontend (React / Editor Store)
     participant CodeEditor as Code Editor Component (Monaco / CodeMirror)
     participant MarkdownIt as markdown-it Engine (Custom Asset Plugin)
-    participant Timer as Local Autosave Loop (10s Interval)
+    participant Timer as Local Autosave Loop (3s Interval)
     participant Rust as Backend (Tauri / Rust Core)
     participant AppLocal as App Local Storage (<AppLocalDataDir>/<UUID>/)
 
@@ -73,8 +74,8 @@ sequenceDiagram
     React->>User: Re-render Editor & Preview with updated Red Warning Text
     deactivate React
 
-    %% Phase 3: 10-Second Periodic Local-Only Autosave Loop (No Heavy Zip Packaging)
-    loop Every 10 Seconds Interval
+    %% Phase 3: 3-Second Periodic Local-Only Autosave Loop (No Heavy Zip Packaging)
+    loop Every 3 Seconds Interval
         Timer->>React: Trigger Local Autosave Check
         activate React
         
@@ -114,7 +115,7 @@ sequenceDiagram
 
 ## 3. Data Contracts & State Specifications
 
-The current React implementation keeps the existing lightweight textarea editor. Its line-number gutter acts as the warning decorator surface, while the preview uses a `markdown-it` asset resolver plugin. Active folder assets use `asset://<resolvedPath>`, archive assets retain `asset-stream://<UUID>/<asset_uuid>`, and missing or soft-deleted aliases render as escaped `.missing-asset-warning` spans.
+The current React implementation keeps one lightweight `contenteditable` Markdown editor. Its rendered spans color Markdown headings, markers, links/assets, inline code, strong text, and emphasis in the same surface that accepts input, so wrapping stays aligned with the line-number gutter. The preview uses a `markdown-it` asset resolver plugin. The editor Light/Dark appearance persists independently from the application color pattern. Active folder assets use `asset://<resolvedPath>`, archive assets retain `asset-stream://<UUID>/<asset_uuid>`, and missing or soft-deleted aliases render as escaped `.missing-asset-warning` spans.
 
 ### 3.1 Editor Local State (`usePackageStore` / Editor Context)
 
@@ -153,6 +154,6 @@ export type SaveLocalMarkdownBufferResult =
 1. **Total Elimination of `Ctrl+S` Keyboard Shortcut:**
 The application explicitely unbinds and intercepts `Ctrl+S` / `Cmd+S` keydown events within the editor component to prevent accidental execution of long-running file operations.
 2. **Strict Local Isolation of Autosave:**
-The 10-second periodic autosave loop is strictly bounded to writing plain UTF-8 text to `<UUID>/main.md` in `App Local`. It **never** invokes ZIP re-compression, archive updates, or heavy asset file copying.
+The 3-second periodic autosave loop is strictly bounded to writing plain UTF-8 text to `<UUID>/main.md` in `App Local`. It **never** invokes ZIP re-compression, archive updates, or heavy asset file copying.
 3. **Save Action Offloading:**
 All heavy persistence tasks (normalizing relative paths, syncing added/deleted assets, writing back to target folders, or re-building `.hasmmd` ZIP archives) are offloaded exclusively to **`SEQ-MD-04`**, triggered only by an explicit user click on the UI "Save Package" button.

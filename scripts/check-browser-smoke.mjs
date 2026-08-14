@@ -130,9 +130,9 @@ async function main() {
     });
 
     await page.goto(targetUrl, { waitUntil: "networkidle", timeout: 60000 });
-    await page.waitForSelector("textarea, .HASM_Markdown_Editor", { timeout: 20000 });
+    await page.getByRole("textbox", { name: "Markdown editor" }).waitFor({ timeout: 20000 });
 
-    const hasEditor = await page.locator("textarea").count();
+    const hasEditor = await page.getByRole("textbox", { name: "Markdown editor" }).count();
     const hasPreview = await page.locator(".HASM_Markdown_Editor_ViewerCol").count();
 
     if (errors.length > 0) {

@@ -135,7 +135,7 @@ function AssetWindow({ currentPackage, markdown, onPackageChange, onInsertAsset,
     <aside className="AssetWindow" aria-label="Asset management">
       <div className="AssetWindow_Header">
         <h2>Assets</h2>
-        <button type="button" onClick={closeWindow} aria-label="Close assets">Close</button>
+        <button type="button" className="AssetWindow_CloseButton" onClick={closeWindow} aria-label="Close assets">Close</button>
       </div>
       <div className="AssetWindow_Alerts">
         <span>Missing: {missingAssets.length}</span>
@@ -149,7 +149,7 @@ function AssetWindow({ currentPackage, markdown, onPackageChange, onInsertAsset,
             <input value={alias} onChange={(event) => { setAlias(event.target.value); setAliasError(""); }} autoFocus />
           </label>
           {aliasError && <div className="AssetWindow_Error" role="alert">{aliasError}</div>}
-          <button type="submit">Register</button>
+          <button type="submit" className="AssetWindow_RegisterButton">Register</button>
         </form>
       )}
       {progress && <progress max="100" value={progress.percentage}>{progress.percentage}%</progress>}
@@ -164,7 +164,7 @@ function AssetWindow({ currentPackage, markdown, onPackageChange, onInsertAsset,
                   <small>Preview path</small>
                 </button>
               </OverlayTrigger>
-              <button type="button" onClick={() => deleteAsset(assetAlias)}>Delete</button>
+              <button type="button" className="AssetWindow_DeleteButton" onClick={() => deleteAsset(assetAlias)}>Delete</button>
             </div>
           </li>
         ))}

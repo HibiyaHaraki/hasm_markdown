@@ -238,6 +238,10 @@
 
 .AssetWindow_AddButton { width: 100%; min-height: 40px; margin: 12px 0; border: 1px solid var(--theme-primary); color: var(--theme-on-accent); background: var(--theme-primary); font-weight: 600; }
 .AssetWindow_AddButton:hover, .AssetWindow_AddButton:focus-visible { color: var(--theme-primary); background: transparent; outline: 2px solid var(--theme-accent-readable); outline-offset: 2px; }
+.AssetWindow_CloseButton, .AssetWindow_RegisterButton, .AssetWindow_DeleteButton { min-height: 34px; padding: 6px 10px; border: 1px solid var(--theme-border); color: var(--theme-text); background: var(--theme-input-bg); }
+.AssetWindow_CloseButton:hover, .AssetWindow_RegisterButton:hover, .AssetWindow_CloseButton:focus-visible, .AssetWindow_RegisterButton:focus-visible { border-color: var(--theme-primary); color: var(--theme-on-accent); background: var(--theme-primary); outline: 0; }
+.AssetWindow_DeleteButton { border-color: var(--theme-danger-readable, var(--theme-danger)); color: var(--theme-danger-readable, var(--theme-danger)); }
+.AssetWindow_DeleteButton:hover, .AssetWindow_DeleteButton:focus-visible { color: var(--theme-on-accent); background: var(--theme-danger-readable, var(--theme-danger)); outline: 2px solid var(--theme-danger-readable, var(--theme-danger)); outline-offset: 2px; }
 
 .AssetWindow_AliasForm {
     display: grid;
@@ -351,7 +355,7 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 .Main { color: var(--theme-text); background: var(--theme-textbackground); }
 .Menu { min-height: 64px; display: flex; align-items: center; gap: 24px; padding: 10px 24px; color: var(--theme-text); background: var(--theme-surface); border-bottom: 1px solid var(--theme-border); box-shadow: 0 1px 0 var(--theme-soft); }
 .Menu_Brand { display: flex; align-items: center; gap: 12px; min-width: max-content; }
-.Menu_Mark { display: grid; place-items: center; width: 30px; height: 30px; color: var(--theme-on-accent); background: var(--theme-primary); font-size: 1.35rem; line-height: 1; }
+.Menu_Mark { display: block; width: 34px; height: 34px; object-fit: contain; }
 .Menu_Title { display: block; font-size: 1rem; font-weight: 600; letter-spacing: 0.08em; }
 .Menu_Subtitle { display: block; color: var(--theme-muted); font-size: 0.68rem; letter-spacing: 0.08em; }
 .Menu_Status { min-width: 0; overflow: hidden; color: var(--theme-muted); font-size: 0.76rem; text-overflow: ellipsis; white-space: nowrap; }
@@ -394,7 +398,20 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 .EditorAssetShelf_Details strong { overflow: hidden; font-size: 0.76rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .EditorAssetShelf_Details small { color: var(--theme-muted); font-size: 0.64rem; }
 .HASM_Markdown_Editor_EditorCol_Editor { background: var(--theme-input-bg); }
-.HASM_Markdown_Editor_EditorCol_Editor_LineNum { width: 48px; padding: 18px 12px 18px 0; color: var(--theme-muted); border-right: 1px solid var(--theme-border); font-size: 0.75rem; line-height: 1.8; }
+.MarkdownSyntax_EditorSurface { min-width: 0; overflow: hidden; background: var(--editor-surface); }
+.MarkdownSyntax_Input { width: 100%; height: 100%; padding: 18px 22px; overflow: auto; color: var(--editor-text); background: var(--editor-surface); border: 0; font-family: "Yu Mincho", "游明朝", Georgia, serif; font-size: 1em; line-height: 1.8; letter-spacing: 0.03em; white-space: pre-wrap; overflow-wrap: break-word; word-break: break-word; outline: 0; }
+.MarkdownSyntax_Input:empty::before { content: "Type your markdown here..."; color: var(--theme-muted); pointer-events: none; }
+.MarkdownSyntax_Input::selection { background: var(--editor-selection); }
+.MarkdownSyntax_Input:focus { box-shadow: inset 2px 0 var(--theme-primary); }
+.MarkdownSyntax_Heading { color: var(--editor-heading); font-weight: 700; }
+.MarkdownSyntax_Marker, .MarkdownSyntax_Quote { color: var(--editor-marker); }
+.MarkdownSyntax_Link { color: var(--editor-link); }
+.MarkdownSyntax_Code { color: var(--editor-code); background: var(--editor-code-bg); }
+.MarkdownSyntax_Strong { color: var(--editor-strong); font-weight: 700; }
+.MarkdownSyntax_Emphasis { color: var(--editor-emphasis); font-style: italic; }
+.EditorColor_light { --editor-surface: #fbfaf5; --editor-text: #2a2a28; --editor-caret: #20201e; --editor-selection: rgba(178, 138, 85, 0.35); --editor-heading: #8b3d23; --editor-marker: #806319; --editor-link: #1f5f8b; --editor-code: #8a3052; --editor-code-bg: rgba(138, 48, 82, 0.1); --editor-strong: #653468; --editor-emphasis: #28625c; }
+.EditorColor_dark { --editor-surface: #202523; --editor-text: #e5e2d8; --editor-caret: #fffdf2; --editor-selection: rgba(125, 176, 163, 0.38); --editor-heading: #f0a475; --editor-marker: #e1ca70; --editor-link: #8dc7e9; --editor-code: #efa6c0; --editor-code-bg: rgba(239, 166, 192, 0.14); --editor-strong: #d4b3df; --editor-emphasis: #98d6ca; }
+.HASM_Markdown_Editor_EditorCol_Editor_LineNum { width: 48px; padding: 18px 12px 18px 0; color: var(--theme-muted); border-right: 1px solid var(--theme-border); font-size: 1em; line-height: 1.8; }
 .HASM_Markdown_Editor_EditorCol_Editor_Form { min-width: 0; padding: 18px 22px; resize: none; outline: 0; color: var(--theme-input-text); background: transparent; border: 0; font-family: "Yu Mincho", "游明朝", Georgia, serif; font-size: 1em; line-height: 1.8; }
 .HASM_Markdown_Editor_EditorCol_Editor_Form:focus { box-shadow: inset 2px 0 var(--theme-primary); }
 .HASM_Markdown_Editor_ViewerCol_Viewer { color: var(--theme-text); background: var(--theme-textbackground) !important; }
@@ -444,6 +461,8 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
     line-height: 1.5;
     padding: 10px 2px 10px 2px;
 }
+
+/* Keep the raw input, rendered syntax, and line-number gutter on identical text metrics. */
 
 .HASM_Markdown_Editor_ViewerCol_Title {
     background-color: var(--main-color); 

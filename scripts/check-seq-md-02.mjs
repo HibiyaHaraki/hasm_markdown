@@ -125,7 +125,7 @@ async function checkBrowserContract() {
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto(targetUrl, { waitUntil: "networkidle" });
-    const editor = page.locator("textarea");
+    const editor = page.getByRole("textbox", { name: "Markdown editor" });
     await editor.waitFor();
 
     await record("TC-MD-02-E2E-001", "Initial Warning Highlighting and Local Asset Rendering", async () => {
@@ -154,7 +154,7 @@ async function checkBrowserContract() {
     await record("TC-MD-02-E2E-003", "Manual Save Shortcut Interception", async () => {
       await editor.fill("![missing](asset:unknown)");
       await editor.press("Control+S");
-      assert((await editor.inputValue()) === "![missing](asset:unknown)", "Ctrl+S changed editor content");
+      assert((await editor.textContent()) === "![missing](asset:unknown)", "Ctrl+S changed editor content");
     });
     const autosavePage = await browser.newPage();
     await autosavePage.addInitScript(() => {
@@ -182,14 +182,14 @@ async function checkBrowserContract() {
       };
     });
     await autosavePage.goto(`${targetUrl}&autosave=1`, { waitUntil: "networkidle" });
-    await autosavePage.locator("textarea").waitFor();
+    await autosavePage.getByRole("textbox", { name: "Markdown editor" }).waitFor();
     await record("TC-MD-02-REACT-005", "Clean Buffer Autosave Skip", async () => {
       await autosavePage.waitForTimeout(180);
       assert((await autosavePage.evaluate(() => window.__md02Invokes.filter(({ command }) => command === "save_local_markdown_buffer").length)) === 0, "clean buffer did not skip autosave");
     });
 
     await record("TC-MD-02-E2E-004", "Successful Local Autosave", async () => {
-      await autosavePage.locator("textarea").fill("changed");
+      await autosavePage.getByRole("textbox", { name: "Markdown editor" }).fill("changed");
       await autosavePage.waitForTimeout(400);
       const successfulSaves = await autosavePage.evaluate(() => window.__md02Invokes.filter(({ command }) => command === "save_local_markdown_buffer"));
       assert(successfulSaves.length === 1 && successfulSaves[0].args.content === "changed", "dirty buffer did not autosave exactly once");
@@ -198,7 +198,7 @@ async function checkBrowserContract() {
 
     await record("TC-MD-02-E2E-005", "Local Autosave Failure Recovery", async () => {
       await autosavePage.evaluate(() => { window.__md02Fail = true; });
-      await autosavePage.locator("textarea").fill("disk failure");
+      await autosavePage.getByRole("textbox", { name: "Markdown editor" }).fill("disk failure");
       await autosavePage.waitForTimeout(250);
       assert((await autosavePage.locator(".Menu_Status").textContent()).includes("Local autosave failed: Disk write error"), "autosave failure status was not shown");
       assert(await autosavePage.locator(".HASM_Markdown_Editor").getAttribute("data-dirty") === "true", "autosave failure cleared the dirty state");

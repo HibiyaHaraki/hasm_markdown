@@ -136,11 +136,11 @@ async function browserChecks() {
       await page.getByRole("button", { name: "Register" }).click();
       const calls = await page.evaluate(() => window.__md03Invokes.filter(({ command }) => command === "register_and_bind_single_asset_path"));
       assert(calls.length === 1 && calls[0].args.customAlias === "arch_v1.png", "asset registration IPC payload was incorrect");
-      assert((await page.locator("textarea").inputValue()).includes("asset:arch_v1.png"), "registered asset tag was not inserted");
+      assert((await page.getByRole("textbox", { name: "Markdown editor" }).textContent()).includes("asset:arch_v1.png"), "registered asset tag was not inserted");
     });
 
     await record("TC-MD-03-REACT-002", "Cursor Text Insertion", async () => {
-      assert((await page.locator("textarea").inputValue()).includes("![alt](asset:arch_v1.png)"), "formatted asset markup was not inserted");
+      assert((await page.getByRole("textbox", { name: "Markdown editor" }).textContent()).includes("![alt](asset:arch_v1.png)"), "formatted asset markup was not inserted");
     });
 
     await record("TC-MD-03-E2E-004", "In-Use Delete Warning", async () => {

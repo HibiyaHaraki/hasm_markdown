@@ -8,8 +8,8 @@
 // ###################################################
 
 // React
-import { useMemo, useRef, useEffect, useState } from "react"; // React hooks for state and lifecycle management
-import { Row, Col, Form, OverlayTrigger, Tooltip } from "react-bootstrap"; // Bootstrap layout and form components
+import { useMemo, useRef, useEffect, useLayoutEffect, useState } from "react"; // React hooks for state and lifecycle management
+import { Row, Col, OverlayTrigger, Tooltip } from "react-bootstrap"; // Bootstrap layout and form components
 import "bootstrap/dist/css/bootstrap.min.css";
 
 // CSS
@@ -23,7 +23,7 @@ const autosaveIntervalMs = typeof window !== "undefined"
   && new URLSearchParams(window.location.search).get("eval") === "md02"
   && new URLSearchParams(window.location.search).get("autosave") === "1"
   ? 100
-  : 10000;
+  : 3000;
 
 // Markdown parser and asset resolution
 import { createAssetMarkdownIt, findMissingAssetLines } from "./assetResolverPlugin.js";
@@ -31,11 +31,60 @@ import { createAssetMarkdownIt, findMissingAssetLines } from "./assetResolverPlu
 // Logger
 import { traceLog, debugLog, infoLog, warnLog, errorLog } from "./hasm_logger/src/react/logger.js";
 
+function highlightMarkdown(markdown) {
+  const escapeHtml = (value) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+  return markdown.split("\n").map((line) => {
+    const escaped = escapeHtml(line);
+    if (/^#{1,6}\s/.test(line)) return `<span class="MarkdownSyntax_Heading">${escaped}</span>`;
+    if (/^\s*[-*+]\s/.test(line)) return escaped.replace(/^(\s*[-*+]\s)/, '<span class="MarkdownSyntax_Marker">$1</span>');
+    if (/^\s*>\s?/.test(line)) return `<span class="MarkdownSyntax_Quote">${escaped}</span>`;
+    return escaped
+      .replace(/(!?\[[^\]]*\]\([^)]*\))/g, '<span class="MarkdownSyntax_Link">$1</span>')
+      .replace(/(`[^`]*`)/g, '<span class="MarkdownSyntax_Code">$1</span>')
+      .replace(/(\*\*[^*]+\*\*|__[^_]+__)/g, '<span class="MarkdownSyntax_Strong">$1</span>')
+      .replace(/(\*[^*]+\*|_[^_]+_)/g, '<span class="MarkdownSyntax_Emphasis">$1</span>');
+  }).join("\n");
+}
+
+function getSelectionOffsets(element) {
+  const selection = window.getSelection();
+  if (!selection?.rangeCount || !element.contains(selection.anchorNode)) return null;
+  const measure = (node, offset) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    range.setEnd(node, offset);
+    return range.toString().length;
+  };
+  return { start: measure(selection.anchorNode, selection.anchorOffset), end: measure(selection.focusNode, selection.focusOffset) };
+}
+
+function setSelectionOffsets(element, start, end) {
+  const locate = (offset) => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    let remaining = offset;
+    let node = walker.nextNode();
+    while (node) {
+      if (remaining <= node.textContent.length) return { node, offset: remaining };
+      remaining -= node.textContent.length;
+      node = walker.nextNode();
+    }
+    return { node: element, offset: element.childNodes.length };
+  };
+  const range = document.createRange();
+  const startPosition = locate(start);
+  const endPosition = locate(end);
+  range.setStart(startPosition.node, startPosition.offset);
+  range.setEnd(endPosition.node, endPosition.offset);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
 // ###################################################
 // Function : HASM_Markdown_Editor
 // Description : Definition of HASM Markdown Editor Component
 // ###################################################
-function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatusChange, onEditorReady, onAutosaveComplete, onInsertAsset, currentPackage, viewMode = "split" }) {
+function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatusChange, onEditorReady, onAutosaveComplete, onInsertAsset, currentPackage, viewMode = "split", editorColorMode = "light" }) {
 
   // Define Refs for component state management
   // * lineNumbersRef: Reference to the line numbers display container
@@ -43,6 +92,8 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
   // * saveTimerRef: Reference to auto-save timer interval
   // * lastSavedMarkdownRef: Track last saved markdown to prevent unnecessary saves
   const lineNumbersRef = useRef(null);
+  const editorElementRef = useRef(null);
+  const lastUserInputRef = useRef(markdown);
   const saveTimerRef = useRef(null);
   const lastSavedMarkdownRef = useRef(currentPackage?.lastSavedContent ?? markdown);
   const markdownRef = useRef(markdown);
@@ -50,6 +101,7 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
   const [isSaving, setIsSaving] = useState(false);
   const [isAssetShelfOpen, setIsAssetShelfOpen] = useState(true);
   const [assetSources, setAssetSources] = useState({});
+  const [editorHtml, setEditorHtml] = useState(() => highlightMarkdown(markdown));
 
   const manifest = currentPackage?.manifest ?? { assets: {} };
   const missingAssets = currentPackage?.missingAssets ?? [];
@@ -101,10 +153,21 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
 
   useEffect(() => {
     markdownRef.current = markdown;
+    if (markdown !== lastUserInputRef.current) {
+      setEditorHtml(highlightMarkdown(markdown));
+      lastUserInputRef.current = markdown;
+    }
     if (currentPackage?.lastSavedContent !== undefined) {
       lastSavedMarkdownRef.current = currentPackage.lastSavedContent;
     }
   }, [markdown, currentPackage?.lastSavedContent]);
+
+  useLayoutEffect(() => {
+    const editor = editorElementRef.current;
+    if (editor && editor.innerHTML !== editorHtml) {
+      editor.innerHTML = editorHtml;
+    }
+  }, [editorHtml]);
 
   useEffect(() => {
     onPackageChange?.((previous) => ({
@@ -183,13 +246,12 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
 
   // Convert markdown text to HTML for preview rendering
   const html = useMemo(() => md.render(markdown), [markdown, md]);
-
   // Render HASM Markdown Editor with editor and preview panels
   infoLog("Render HASM Markdown Editor");
   return (
     <Row 
       data-dirty={isDirty}
-      className={`HASM_Markdown_Editor HASM_Markdown_Editor_${viewMode} flex-grow-1 g-0 overflow-hidden`}
+      className={`HASM_Markdown_Editor HASM_Markdown_Editor_${viewMode} EditorColor_${editorColorMode} flex-grow-1 g-0 overflow-hidden`}
     >
       {/* Left Panel: Markdown Editor */}
       <Col 
@@ -250,25 +312,44 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
               </span>
             ))}
           </div>
-          <Form.Control
-            as="textarea"
-            ref={onEditorReady}
-            onScroll={handleScroll}
-            onKeyDown={(event) => {
-              if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
-                event.preventDefault();
-                event.stopPropagation();
-              }
-            }}
-            className="HASM_Markdown_Editor_EditorCol_Editor_Form flex-grow-1"
-            value={markdown}
-            onChange={(e) => {
-              const nextMarkdown = e.target.value;
-              setMarkdown(nextMarkdown);
-              onStatusChange?.(nextMarkdown === (currentPackage?.lastSavedContent ?? "") ? "Ready" : "Unsaved changes *");
-            }}
-            placeholder="Type your markdown here..."
-          />
+          <div className="MarkdownSyntax_EditorSurface flex-grow-1">
+            <div
+              ref={(element) => {
+                editorElementRef.current = element;
+                onEditorReady?.(element);
+              }}
+              contentEditable
+              suppressContentEditableWarning
+              role="textbox"
+              aria-multiline="true"
+              aria-label="Markdown editor"
+              onScroll={handleScroll}
+              onKeyDown={(event) => {
+                if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  document.execCommand("insertLineBreak");
+                  const nextMarkdown = event.currentTarget.innerText.replace(/\r/g, "");
+                  markdownRef.current = nextMarkdown;
+                  lastUserInputRef.current = nextMarkdown;
+                  setMarkdown(nextMarkdown);
+                  onStatusChange?.("Unsaved changes *");
+                }
+              }}
+              className="MarkdownSyntax_Input"
+              onInput={(event) => {
+                const nextMarkdown = event.currentTarget.innerText.replace(/\r/g, "");
+                markdownRef.current = nextMarkdown;
+                lastUserInputRef.current = nextMarkdown;
+                setMarkdown(nextMarkdown);
+                onStatusChange?.(nextMarkdown === (currentPackage?.lastSavedContent ?? "") ? "Ready" : "Unsaved changes *");
+              }}
+              onBlur={(event) => setEditorHtml(highlightMarkdown(event.currentTarget.innerText.replace(/\r/g, "")))}
+            />
+          </div>
         </div>
       </Col>
 

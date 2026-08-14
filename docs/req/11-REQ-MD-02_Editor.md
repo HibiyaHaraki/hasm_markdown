@@ -24,9 +24,9 @@
 
 ---
 
-### 1.3 10-Second Periodic Fast Local Autosave Loop
+### 1.3 3-Second Periodic Fast Local Autosave Loop
 
-* **`REQ-MD-02-020` (Periodic Local Timer Execution):** The React frontend shall execute a local autosave check every 10 seconds.
+* **`REQ-MD-02-020` (Periodic Local Timer Execution):** The React frontend shall execute a local autosave check every 3 seconds.
 * **`REQ-MD-02-021` (Local Autosave Skip Conditions):** The local autosave check shall immediately skip execution if `isDirty === false` or `isSaving === true`.
 * **`REQ-MD-02-022` (Local Autosave Lock Acquisition):** Before issuing a local autosave IPC request, the React frontend shall set `isSaving = true` to prevent concurrent local I/O calls.
 * **`REQ-MD-02-023` (Fast Local File Atomic Overwrite):** The Rust backend shall write the UTF-8 text buffer exclusively to `<AppLocalDataDir>/<UUID>/main.md.tmp` first and perform an atomic file rename to `<UUID>/main.md`. It shall **never** trigger ZIP re-compression, archive updates, or heavy asset copying during this loop.
@@ -40,4 +40,5 @@
 ### 2.1 UI Responsiveness and Local I/O Bounding
 
 * **`REQ-MD-02-100` (Non-blocking Preview Rendering):** Real-time `markdown-it` parsing and red-text decoration updates shall execute within 16ms to maintain 60 FPS editor responsiveness during active typing.
-* **`REQ-MD-02-101` (Strict Local I/O Bounding):** The 10-second periodic autosave loop shall complete within 5ms by restricting I/O strictly to plain UTF-8 text writes inside the `App Local` sandbox directory.
+* **`REQ-MD-02-101` (Strict Local I/O Bounding):** The 3-second periodic autosave loop shall complete within 5ms by restricting I/O strictly to plain UTF-8 text writes inside the `App Local` sandbox directory.
+* **`REQ-MD-02-102` (Independent Editor Appearance and Syntax Colors):** The editor shall provide independently selectable Light and Dark appearances without changing the application color pattern. One `contenteditable` Markdown editing surface shall color headings, markers, links/assets, inline code, strong text, and emphasis while preserving the raw editable Markdown buffer.
