@@ -6,8 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "predev": "npm run sync:logo",
+    "prebuild": "npm run sync:logo",
     "preview": "vite preview",
     "tauri": "tauri",
+    "sync:logo": "node scripts/sync-logo.mjs",
     "check:tauri-build": "node scripts/check-rust-build.mjs",
     "check:tauri-buuild": "npm run check:tauri-build",
     "check:react-render": "node scripts/check-browser-smoke.mjs",
