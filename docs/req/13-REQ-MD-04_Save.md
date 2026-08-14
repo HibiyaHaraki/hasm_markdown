@@ -40,6 +40,13 @@
 * **`REQ-MD-04-041` (Runtime Absolute Path Re-expansion):** The backend shall dynamically re-expand every relative entry in the local manifest into an active runtime `resolvedPath` (`asset-stream://<UUID>/<asset_uuid>` for Mode A ZIP, or absolute OS path for Mode B/C Folder/Local).
 * **`REQ-MD-04-042` (Store Commitment & Dirty Flag Reset):** Upon receiving `SaveExecutionPayload`, the frontend shall update `usePackageStore` with the re-bound manifest, update `lastSavedContent = rawContent`, set `isDirty = false`, close the progress modal, and render a success toast notification.
 
+### 1.6 External Asset Materialization Lifecycle
+
+* **`REQ-MD-04-043` (Custom Alias Preservation):** The user-provided unique alias shall remain the stable identifier used by Markdown references and manifest lookup while save/export changes only physical storage paths.
+* **`REQ-MD-04-044` (Folder Asset Materialization):** Saving to a folder shall copy each active externally bound image into `assets/<uuid>.<extension>` and persist that relative path without the external absolute source path.
+* **`REQ-MD-04-045` (Archive Asset Materialization):** Saving to a `.hasmmd` archive shall copy each active externally bound image into the archive under `assets/<uuid>.<extension>` and persist portable metadata without the external absolute source path.
+* **`REQ-MD-04-046` (Post-Save Runtime Rebinding):** After save/export, runtime metadata shall rebind active assets to the selected folder path or archive stream mapping so editor, preview, and asset shelf display remain available.
+
 ---
 
 ## 2. Non-Functional Requirements

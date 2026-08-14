@@ -14,6 +14,41 @@ struct AssetProgress {
     percentage: f32,
 }
 
+#[derive(serde::Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetDataPayload {
+    pub bytes: Vec<u8>,
+    pub mime_type: String,
+}
+
+#[tauri::command]
+pub fn read_asset_data(
+    state: tauri::State<'_, AppState>,
+    alias: String,
+) -> Result<AssetDataPayload, String> {
+    let active = state.workspace.lock().map_err(|_| "Failed to lock workspace state".to_string())?;
+    let session = active.as_ref().ok_or_else(|| "No active workspace".to_string())?;
+    let asset = session.payload.manifest.assets.get(&alias).ok_or_else(|| "Asset alias does not exist.".to_string())?;
+    if asset.is_deleted {
+        return Err("Asset is marked as deleted.".to_string());
+    }
+
+    let bytes = if matches!(session.payload.target_type, crate::models::payload::TargetType::Archive) {
+        let archive_path = session.payload.target_path.as_deref().ok_or_else(|| "Archive path is unavailable.".to_string())?;
+        crate::services::zip_engine::read_entry_bytes(std::path::Path::new(archive_path), &asset.relative_path)
+            .map_err(|error| error.to_string())?
+    } else {
+        let path = if asset.resolved_path.is_empty() {
+            session.payload.target_path.as_deref().map(std::path::PathBuf::from).unwrap_or_default().join(&asset.relative_path)
+        } else {
+            std::path::PathBuf::from(&asset.resolved_path)
+        };
+        fs::read(path).map_err(|error| error.to_string())?
+    };
+
+    Ok(AssetDataPayload { bytes, mime_type: asset.mime_type.clone() })
+}
+
 #[tauri::command]
 pub fn register_and_bind_single_asset_path(
     state: tauri::State<'_, AppState>,

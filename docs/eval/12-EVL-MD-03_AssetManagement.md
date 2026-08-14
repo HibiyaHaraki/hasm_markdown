@@ -15,6 +15,7 @@ The executable evaluation command is `npm run check:seq-md-03`. It reports each 
 | **`TC-MD-03-E2E-003`** | `REQ-MD-03-013` | Negative (Alias Collision) | Enter Alias Reserved by Active or Soft-Deleted Asset | 1. Attempt to register asset with an alias string currently active OR marked `isDeleted: true`. | 1. Modal rejects submission. 2. Renders inline error ("Alias or reserved name already exists in workspace history."). |
 | **`TC-MD-03-E2E-004`** | `REQ-MD-03-020` `REQ-MD-03-021` | Positive (In-Use Delete Warning) | Delete Asset Currently Referenced in `main.md` | 1. Target asset referenced on Line 12 of `main.md`. 2. Click "Delete" on asset item. | 1. System scans `rawContent`. 2. Displays Warning Modal explicitly highlighting line 12 reference before confirmation. |
 | **`TC-MD-03-E2E-005`** | `REQ-MD-03-022` `REQ-MD-03-031` | Positive (Soft Delete & Red Text Sync) | Soft-Delete Asset and Close Window | 1. Confirm delete for target asset. 2. Inspect `assets.json`. 3. Close Asset Window. | 1. Entry in `assets.json` receives `isDeleted: true` (UUID & metadata preserved). 2. Code Editor applies red line decorators to references. |
+| **`TC-MD-03-E2E-006`** | `REQ-MD-03-014` `REQ-MD-03-016` | Positive (Alias and Runtime Display) | Register External Image and Use Its Alias | 1. Register a real image using a unique custom alias. 2. Confirm the editor insertion and asset shelf show that alias. 3. Observe the editor/preview image before saving. | 1. Markdown uses `asset:<custom_alias>`. 2. Manifest stores the generated UUID, MIME type, and absolute source path in `resolvedPath`. 3. Preview and shelf display the image from the external source without copying it into the workspace. |
 
 ---
 
@@ -26,6 +27,7 @@ The executable evaluation command is `npm run check:seq-md-03`. It reports each 
 | **`TC-MD-03-REACT-002`** | `REQ-MD-03-015` | Positive (Cursor Text Insertion) | `MarkdownEditor.tsx` | 1. Place active cursor on Line 5. 2. Complete single asset addition via Modal. | 1. Text `![alt](asset:custom_alias)` is inserted at cursor position on Line 5. |
 | **`TC-MD-03-REACT-003`** | `REQ-MD-03-023` | Positive (Progress Listener) | `AssetWindow.tsx` | 1. Trigger asset registration or soft-deletion. 2. Listen to `asset_register_progress` / `asset_delete_progress`. | 1. UI renders progress bar / spinner updating from 0% to 100%. |
 | **`TC-MD-03-REACT-004`** | `REQ-MD-03-030` | Positive (Window Close Recalc) | `usePackageStore` | 1. Dismiss Asset Window after soft-deleting an asset. | 1. Triggers recalculation of `missingAssets` and `warnings`. 2. Editor decorators update instantly. |
+| **`TC-MD-03-REACT-005`** | `REQ-MD-03-014` `REQ-MD-03-016` | Positive (Alias Shelf and Image Source) | Main Editor Asset Shelf and Preview | 1. Render a package with an active asset and a deterministic image byte fixture. 2. Click the asset alias in the shelf. 3. Inspect the generated preview image source. | 1. The alias is visible and inserts `![alt](asset:<alias>)` at the cursor. 2. The shelf and preview use the resolved runtime image source, not a literal unresolved `asset://C:/...` URL. |
 
 ---
 

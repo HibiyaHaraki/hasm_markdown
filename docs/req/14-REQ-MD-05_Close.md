@@ -34,6 +34,7 @@
 * **`REQ-MD-05-032` (Route Transition or Window Termination):**
 * If invoked via UI navigation, the system shall route the user to `/select`.
 * If invoked via window close or app exit, the system shall destroy the window or terminate the application process cleanly.
+* **`REQ-MD-05-033` (Saved Asset Target Preservation):** Closing a workspace shall release its handles and clean only App Local temporary state; it shall not delete or invalidate images already materialized in the saved folder or archive target.
 
 
 

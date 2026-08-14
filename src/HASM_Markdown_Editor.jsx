@@ -35,7 +35,7 @@ import { traceLog, debugLog, infoLog, warnLog, errorLog } from "./hasm_logger/sr
 // Function : HASM_Markdown_Editor
 // Description : Definition of HASM Markdown Editor Component
 // ###################################################
-function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatusChange, onEditorReady, onAutosaveComplete, currentPackage }) {
+function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatusChange, onEditorReady, onAutosaveComplete, onInsertAsset, currentPackage, viewMode = "split" }) {
 
   // Define Refs for component state management
   // * lineNumbersRef: Reference to the line numbers display container
@@ -48,6 +48,8 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
   const markdownRef = useRef(markdown);
   const isSavingRef = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAssetShelfOpen, setIsAssetShelfOpen] = useState(true);
+  const [assetSources, setAssetSources] = useState({});
 
   const manifest = currentPackage?.manifest ?? { assets: {} };
   const missingAssets = currentPackage?.missingAssets ?? [];
@@ -56,6 +58,46 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
     () => findMissingAssetLines(markdown, manifest, missingAssets),
     [markdown, manifest, missingAssets],
   );
+  const assets = useMemo(
+    () => Object.entries(manifest.assets ?? {}).filter(([, asset]) => !asset.isDeleted),
+    [manifest.assets],
+  );
+  const assetUsage = useMemo(() => {
+    const usage = new Map();
+    for (const match of markdown.matchAll(/asset:([^\s)]+)/g)) {
+      usage.set(match[1], (usage.get(match[1]) ?? 0) + 1);
+    }
+    return usage;
+  }, [markdown]);
+
+  useEffect(() => {
+    if (!isTauriRuntime || assets.length === 0) {
+      setAssetSources((current) => Object.keys(current).length === 0 ? current : {});
+      return undefined;
+    }
+
+    let cancelled = false;
+    const objectUrls = [];
+    Promise.all(assets.map(async ([alias]) => {
+      try {
+        const payload = await invoke("read_asset_data", { alias });
+        const bytes = new Uint8Array(payload.bytes ?? []);
+        const url = URL.createObjectURL(new Blob([bytes], { type: payload.mimeType || "application/octet-stream" }));
+        objectUrls.push(url);
+        return [alias, url];
+      } catch (error) {
+        warnLog("[SEQ-MD-03][PREVIEW][ERROR] asset data load failed", { alias, error: String(error) });
+        return null;
+      }
+    })).then((entries) => {
+      if (!cancelled) setAssetSources(Object.fromEntries(entries.filter(Boolean)));
+    });
+
+    return () => {
+      cancelled = true;
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [assets]);
 
   useEffect(() => {
     markdownRef.current = markdown;
@@ -134,9 +176,10 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
   const md = useMemo(() => createAssetMarkdownIt({
     manifest,
     missingAssets,
+    assetSources,
     uuid: currentPackage?.uuid,
     targetType: currentPackage?.targetType,
-  }), [currentPackage?.targetType, currentPackage?.uuid, manifest, missingAssets]);
+  }), [assetSources, currentPackage?.targetType, currentPackage?.uuid, manifest, missingAssets]);
 
   // Convert markdown text to HTML for preview rendering
   const html = useMemo(() => md.render(markdown), [markdown, md]);
@@ -146,7 +189,7 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
   return (
     <Row 
       data-dirty={isDirty}
-      className="HASM_Markdown_Editor flex-grow-1 g-0 overflow-hidden"
+      className={`HASM_Markdown_Editor HASM_Markdown_Editor_${viewMode} flex-grow-1 g-0 overflow-hidden`}
     >
       {/* Left Panel: Markdown Editor */}
       <Col 
@@ -156,8 +199,42 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
         <div 
           className="HASM_Markdown_Editor_EditorCol_Title"
         >
-          EDITOR
+          <span>EDITOR</span>
+          <button
+            type="button"
+            className="EditorAssetShelf_Count"
+            onClick={() => setIsAssetShelfOpen((open) => !open)}
+            aria-expanded={isAssetShelfOpen}
+            aria-controls="editor-asset-shelf"
+          >
+            {assets.length} {assets.length === 1 ? "asset" : "assets"} {isAssetShelfOpen ? "- hide" : "+ show"}
+          </button>
         </div>
+        {assets.length > 0 && isAssetShelfOpen && (
+          <div id="editor-asset-shelf" className="EditorAssetShelf" aria-label="Workspace assets">
+            <div className="EditorAssetShelf_Header">
+              <span>INSERT ASSET</span>
+              <small>Select an asset to place its Markdown reference</small>
+            </div>
+            <div className="EditorAssetShelf_List">
+              {assets.map(([alias, asset]) => (
+                <button
+                  type="button"
+                  className="EditorAssetShelf_Item"
+                  key={alias}
+                  onClick={() => onInsertAsset?.(alias)}
+                  title={`Insert ${alias}`}
+                >
+                  {assetSources[alias] ? <img src={assetSources[alias]} alt="" aria-hidden="true" /> : <span className="EditorAssetShelf_Placeholder" aria-hidden="true">◇</span>}
+                  <span className="EditorAssetShelf_Details">
+                    <strong>{alias}</strong>
+                    <small>{assetUsage.get(alias) ?? 0} {assetUsage.get(alias) === 1 ? "reference" : "references"}</small>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <div 
           className="HASM_Markdown_Editor_EditorCol_Editor d-flex flex-grow-1 overflow-hidden" 
         >
@@ -182,7 +259,7 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
                 event.stopPropagation();
               }
             }}
-            className="HASM_Markdown_Editor_EditorCol_Editor_Form flex-grow-1 border-0 rounded-0 shadow-none"
+            className="HASM_Markdown_Editor_EditorCol_Editor_Form flex-grow-1"
             value={markdown}
             onChange={(e) => {
               const nextMarkdown = e.target.value;
@@ -207,7 +284,7 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
         <div
           role="status"
           aria-live="polite"
-          className="HASM_Markdown_Editor_ViewerCol_Viewer p-4 overflow-auto flex-grow-1 text-start bg-white text-dark"
+          className="HASM_Markdown_Editor_ViewerCol_Viewer p-4 overflow-auto flex-grow-1 text-start"
           dangerouslySetInnerHTML={{ __html: html }}
         />
       </Col>

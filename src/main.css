@@ -64,7 +64,7 @@
 }
 
 .BootScreen_Actions_Primary {
-    color: var(--textbackground-color) !important;
+    color: var(--theme-on-accent, var(--theme-surface, #f4f0e8)) !important;
     background: var(--text-color) !important;
 }
 
@@ -317,6 +317,112 @@
     width: 100%;
     color: var(--theme-danger, #b42318);
     background: var(--theme-warning-background, var(--theme-soft, #fee4e2));
+}
+
+:root {
+    --base-font-size: 16px;
+    --theme-primary: #b28a55;
+    --theme-secondary: #7c6548;
+    --theme-surface: #f4f0e8;
+    --theme-text: #292723;
+    --theme-muted: rgba(41, 39, 35, 0.68);
+    --theme-border: rgba(41, 39, 35, 0.22);
+    --theme-soft: rgba(41, 39, 35, 0.08);
+    --theme-textbackground: #ebe6dc;
+    --theme-input-bg: rgba(244, 240, 232, 0.82);
+    --theme-input-text: #292723;
+    --main-color: #b28a55;
+    --text-color: #292723;
+    --textbackground-color: #ebe6dc;
+    font-size: var(--base-font-size);
+}
+
+* { box-sizing: border-box; }
+html, body, #root { min-height: 100%; margin: 0; }
+body { color: var(--theme-text); background: var(--theme-textbackground); font-family: "Yu Mincho", "游明朝", Georgia, serif; letter-spacing: 0.03em; line-height: 1.75; }
+button, input, select, textarea { font: inherit; letter-spacing: inherit; }
+button, select, input { border-radius: 0; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: 0.42; }
+
+.Main { color: var(--theme-text); background: var(--theme-textbackground); }
+.Menu { min-height: 64px; display: flex; align-items: center; gap: 24px; padding: 10px 24px; color: var(--theme-text); background: var(--theme-surface); border-bottom: 1px solid var(--theme-border); box-shadow: 0 1px 0 var(--theme-soft); }
+.Menu_Brand { display: flex; align-items: center; gap: 12px; min-width: max-content; }
+.Menu_Mark { display: grid; place-items: center; width: 30px; height: 30px; color: var(--theme-on-accent); background: var(--theme-primary); font-size: 1.35rem; line-height: 1; }
+.Menu_Title { display: block; font-size: 1rem; font-weight: 600; letter-spacing: 0.08em; }
+.Menu_Subtitle { display: block; color: var(--theme-muted); font-size: 0.68rem; letter-spacing: 0.08em; }
+.Menu_Status { min-width: 0; overflow: hidden; color: var(--theme-muted); font-size: 0.76rem; text-overflow: ellipsis; white-space: nowrap; }
+.Menu_Toggle { display: inline-flex; align-items: center; gap: 9px; margin-left: auto; padding: 7px 0 7px 12px; border: 0; border-left: 1px solid var(--theme-border); color: var(--theme-text); background: transparent; font-size: 0.76rem; letter-spacing: 0.1em; text-transform: uppercase; }
+.Menu_Toggle span { display: grid; gap: 4px; }
+.Menu_Toggle i { display: block; width: 18px; height: 1px; background: currentColor; }
+.Menu_Overlay { position: fixed; z-index: 1140; inset: 0; background: rgba(20, 18, 15, 0.25); }
+.GlobalMenu { top: 0; width: min(430px, 100vw); padding: 30px; border-left: 1px solid var(--theme-border); background: var(--theme-surface); box-shadow: -20px 0 45px rgba(20, 18, 15, 0.16); }
+.GlobalMenu_Header h2 { font-size: 1.45rem; font-weight: 400; letter-spacing: 0.04em; }
+.GlobalMenu_Kicker { color: var(--theme-accent-readable); font-size: 0.64rem; font-weight: 700; letter-spacing: 0.16em; }
+.QuietButton, .GlobalMenu button { border: 1px solid var(--theme-border); color: inherit; background: transparent; }
+.QuietButton { padding: 5px 10px; }
+.GlobalMenu_SaveState { border-color: var(--theme-border); background: var(--theme-soft); }
+.GlobalMenu_Section { border-color: var(--theme-border); }
+.GlobalMenu_Section h3 { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+.Menu_ActionGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.Menu_ActionGrid button, .Menu_AssetsButton { min-height: 36px; padding: 7px 10px; text-align: left; }
+.Menu_Field { display: grid; gap: 5px; margin-bottom: 12px; color: var(--theme-muted); font-size: 0.78rem; }
+.Menu_Field select, .AssetWindow_AliasForm input { min-height: 36px; padding: 6px 9px; border: 1px solid var(--theme-border); color: var(--theme-input-text); background: var(--theme-input-bg); }
+.Menu_Segmented { display: flex; margin: 10px 0; }
+.Menu_Segmented button { flex: 1; padding: 7px 4px; border-right-width: 0; font-size: 0.72rem; text-align: center; text-transform: capitalize; }
+.Menu_Segmented button:last-child { border-right-width: 1px; }
+.Menu_Segmented .is-active { color: var(--theme-on-accent); background: var(--theme-primary); }
+.Menu_Badge { color: var(--theme-surface); background: var(--theme-primary); border-radius: 0; }
+
+.HASM_Markdown_Editor { min-height: 0; background: var(--theme-textbackground); }
+.HASM_Markdown_Editor_EditorCol, .HASM_Markdown_Editor_ViewerCol { min-height: 0; border-color: var(--theme-border) !important; }
+.HASM_Markdown_Editor_EditorCol_Title, .HASM_Markdown_Editor_ViewerCol_Title { padding: 9px 18px; color: var(--theme-muted); background: var(--theme-surface); border-bottom: 1px solid var(--theme-border); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.16em; }
+.HASM_Markdown_Editor_EditorCol_Title { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.EditorAssetShelf_Count { padding: 2px 5px; border: 1px solid transparent; color: var(--theme-accent-readable); background: transparent; font-size: 0.62rem; letter-spacing: 0.06em; }
+.EditorAssetShelf_Count:hover, .EditorAssetShelf_Count:focus-visible { border-color: var(--theme-accent-readable); outline: 0; }
+.EditorAssetShelf { flex: 0 0 auto; max-height: 196px; padding: 10px 14px 12px; overflow-y: auto; border-bottom: 1px solid var(--theme-border); background: var(--theme-surface); }
+.EditorAssetShelf_Header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; color: var(--theme-accent-readable); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em; }
+.EditorAssetShelf_Header small { color: var(--theme-muted); font-size: 0.68rem; font-weight: 400; letter-spacing: 0.02em; }
+.EditorAssetShelf_List { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 2px; }
+.EditorAssetShelf_Item { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; min-width: 150px; max-width: 220px; padding: 6px 9px; border: 1px solid var(--theme-border); color: var(--theme-text); background: var(--theme-input-bg); text-align: left; }
+.EditorAssetShelf_Item:hover, .EditorAssetShelf_Item:focus-visible { border-color: var(--theme-accent-readable); outline: 2px solid var(--theme-accent-readable); outline-offset: 1px; }
+.EditorAssetShelf_Item img, .EditorAssetShelf_Placeholder { display: grid; flex: 0 0 auto; width: 32px; height: 32px; place-items: center; object-fit: cover; color: var(--theme-accent-readable); background: var(--theme-soft); font-size: 1.1rem; }
+.EditorAssetShelf_Details { display: grid; min-width: 0; gap: 1px; }
+.EditorAssetShelf_Details strong { overflow: hidden; font-size: 0.76rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.EditorAssetShelf_Details small { color: var(--theme-muted); font-size: 0.64rem; }
+.HASM_Markdown_Editor_EditorCol_Editor { background: var(--theme-input-bg); }
+.HASM_Markdown_Editor_EditorCol_Editor_LineNum { width: 48px; padding: 18px 12px 18px 0; color: var(--theme-muted); border-right: 1px solid var(--theme-border); font-size: 0.75rem; line-height: 1.8; }
+.HASM_Markdown_Editor_EditorCol_Editor_Form { min-width: 0; padding: 18px 22px; resize: none; outline: 0; color: var(--theme-input-text); background: transparent; border: 0; font-family: "Yu Mincho", "游明朝", Georgia, serif; font-size: 1em; line-height: 1.8; }
+.HASM_Markdown_Editor_EditorCol_Editor_Form:focus { box-shadow: inset 2px 0 var(--theme-primary); }
+.HASM_Markdown_Editor_ViewerCol_Viewer { color: var(--theme-text); background: var(--theme-textbackground) !important; }
+.HASM_Markdown_Editor_ViewerCol_Viewer h1, .HASM_Markdown_Editor_ViewerCol_Viewer h2, .HASM_Markdown_Editor_ViewerCol_Viewer h3 { font-weight: 400; line-height: 1.35; }
+.HASM_Markdown_Editor_ViewerCol_Viewer a { color: var(--theme-secondary); }
+.HASM_Markdown_Editor_ViewerCol_Viewer code { padding: 2px 5px; background: var(--theme-soft); }
+.HASM_Markdown_Editor_editor .HASM_Markdown_Editor_EditorCol, .HASM_Markdown_Editor_preview .HASM_Markdown_Editor_ViewerCol { display: none !important; }
+.HASM_Markdown_Editor_editor .HASM_Markdown_Editor_ViewerCol, .HASM_Markdown_Editor_preview .HASM_Markdown_Editor_EditorCol { width: 100%; }
+
+.AssetWindow, .SaveProgress, .CloseWorkspaceModal { color: var(--theme-text); background: var(--theme-surface); border-color: var(--theme-border); box-shadow: -12px 0 30px rgba(20, 18, 15, 0.12); }
+.AssetWindow { top: 64px; width: min(390px, 100vw); padding: 24px; }
+.AssetWindow_Dropzone { border-color: var(--theme-primary); background: var(--theme-soft); }
+.AssetWindow_Error { color: var(--theme-danger-readable, var(--theme-danger)); }
+.AssetWindow_List li { border-color: var(--theme-border); }
+.SaveProgress, .CloseWorkspaceModal { box-shadow: 0 18px 50px rgba(20, 18, 15, 0.22); }
+.BootScreen { background: var(--theme-textbackground); }
+.BootScreen_Panel { border-color: var(--theme-border); background: var(--theme-surface); box-shadow: 10px 10px 0 var(--theme-soft); }
+.BootScreen_Kicker { color: var(--theme-accent-readable); }
+.BootScreen_Actions button { border-color: var(--theme-text); color: var(--theme-text); }
+.BootScreen_Actions_Primary { color: var(--theme-on-accent, var(--theme-surface, #f4f0e8)) !important; background: var(--theme-primary) !important; border-color: var(--theme-primary) !important; }
+
+@media (max-width: 720px) {
+    .Menu { min-height: 58px; padding: 9px 14px; gap: 12px; }
+    .Menu_Subtitle { display: none; }
+    .Menu_Status { position: absolute; top: 59px; left: 0; right: 0; z-index: 5; padding: 3px 14px; background: var(--theme-soft); font-size: 0.68rem; }
+    .HASM_Markdown_Editor { overflow: auto !important; }
+    .HASM_Markdown_Editor_EditorCol, .HASM_Markdown_Editor_ViewerCol { min-height: 50vh; }
+    .HASM_Markdown_Editor_split .HASM_Markdown_Editor_EditorCol, .HASM_Markdown_Editor_split .HASM_Markdown_Editor_ViewerCol { min-height: 50vh; }
+    .EditorAssetShelf_Header small { display: none; }
+    .EditorAssetShelf_Item { min-width: 132px; }
+    .GlobalMenu { padding: 22px 18px; }
 }
 
 .missing-asset-warning {

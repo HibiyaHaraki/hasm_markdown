@@ -18,6 +18,7 @@
 * **`REQ-MD-03-013` (Alias Collision Validation):** The system shall validate the submitted alias string against all manifest keys (including both active assets and soft-deleted entries). If a collision is detected, the modal shall reject submission and render an inline error ("Alias or reserved name already exists in workspace history.").
 * **`REQ-MD-03-014` (Dynamic Path Binding without Heavy Copying):** Upon alias validation, the backend shall construct a `RuntimeAssetMetadata` entry binding the source absolute path to `resolvedPath` without executing immediate ZIP re-compression or heavy archive copying.
 * **`REQ-MD-03-015` (Inline Markdown Text Insertion):** If an active cursor is present in the main code editor, the frontend shall insert the formatted image tag `![alt](asset:<custom_alias>)` at the current line upon successful asset registration.
+* **`REQ-MD-03-016` (Pre-Save Runtime Image Display):** Before save/export, the editor, preview, asset shelf, and other image surfaces shall resolve image bytes from the registered absolute local source path without requiring an immediate workspace copy.
 
 ---
 

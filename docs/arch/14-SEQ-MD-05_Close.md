@@ -14,6 +14,8 @@ This sequence handles the operational lifecycle for closing an active workspaceâ
 4. **App Local Sandbox Garbage Collection:** Selectively cleaning up temporary workspace buffers and cache files in `<AppLocalDataDir>/<UUID>/` without corrupting retained workspace state.
 5. **State Reset & Route Transition:** Resetting `usePackageStore` to its null state and routing to `/select` or terminating the application window cleanly.
 
+Closing cleans App Local temporary state and releases handles; it does not remove images already materialized in the saved folder or archive target.
+
 ---
 
 ## 2. Sequence Diagram

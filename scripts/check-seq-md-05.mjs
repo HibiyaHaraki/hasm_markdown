@@ -40,8 +40,8 @@ try {
   await page.goto(url, { waitUntil: "networkidle" });
 
   await record("TC-MD-05-REACT-002-CLEAN", "Clean Close Routes to Selection", async () => {
-    await page.getByText("File").click();
-    await page.locator(".dropdown-item").filter({ hasText: /^Close Workspace$/ }).click();
+    await page.getByRole("button", { name: "Open workspace menu" }).click();
+    await page.getByRole("button", { name: "Close workspace", exact: true }).click();
     await page.locator(".BootScreen").waitFor();
     const closeCall = await page.evaluate(() => window.__md05Calls.find(({ command }) => command === "close_and_cleanup_workspace"));
     assert(closeCall?.args.forceDiscard === false, "clean close did not invoke cleanup");
@@ -50,14 +50,15 @@ try {
   await page.goto(url, { waitUntil: "networkidle" });
   await page.locator("textarea").fill("changed");
   await record("TC-MD-05-E2E-001", "Dirty Close Cancel", async () => {
-    await page.getByText("File").click();
-    await page.locator(".dropdown-item").filter({ hasText: /^Close Workspace$/ }).click();
+    await page.getByRole("button", { name: "Open workspace menu" }).click();
+    await page.getByRole("button", { name: "Close workspace", exact: true }).click();
     await page.getByRole("button", { name: "Cancel" }).click();
+    await page.getByRole("button", { name: "Close menu" }).click();
     assert(await page.locator("textarea").count() === 1, "cancel did not preserve workspace");
   });
   await record("TC-MD-05-E2E-003", "Dirty Close Discard", async () => {
-    await page.getByText("File").click();
-    await page.locator(".dropdown-item").filter({ hasText: /^Close Workspace$/ }).click();
+    await page.getByRole("button", { name: "Open workspace menu" }).click();
+    await page.getByRole("button", { name: "Close workspace", exact: true }).click();
     await page.getByRole("button", { name: "Discard Changes" }).click();
     await page.locator(".BootScreen").waitFor();
     const closeCall = await page.evaluate(() => window.__md05Calls.filter(({ command }) => command === "close_and_cleanup_workspace").at(-1));
@@ -73,8 +74,8 @@ try {
   await page.goto(url, { waitUntil: "networkidle" });
   await page.locator("textarea").fill("changed");
   await record("TC-MD-05-E2E-002", "Dirty Close Save", async () => {
-    await page.getByText("File").click();
-    await page.locator(".dropdown-item").filter({ hasText: /^Close Workspace$/ }).click();
+    await page.getByRole("button", { name: "Open workspace menu" }).click();
+    await page.getByRole("button", { name: "Close workspace", exact: true }).click();
     await page.getByRole("button", { name: "Save" }).last().click();
     await page.locator(".BootScreen").waitFor();
     const calls = await page.evaluate(() => window.__md05Calls.map(({ command }) => command));
@@ -82,8 +83,8 @@ try {
   });
   await page.goto(url, { waitUntil: "networkidle" });
   await record("TC-MD-05-E2E-006", "Save Then Reopen Moved Package", async () => {
-    await page.getByText("File").click();
-    await page.locator(".dropdown-item").filter({ hasText: /^Open Folder$/ }).click();
+    await page.getByRole("button", { name: "Open workspace menu" }).click();
+    await page.getByRole("button", { name: "Open folder", exact: true }).click();
     await page.locator("textarea").waitFor();
     await page.locator("textarea").fill("edited after moving package");
     assert(await page.locator("textarea").inputValue() === "edited after moving package", "moved package was not editable after reopening");
