@@ -31,7 +31,6 @@ import "./main.css";
 import { Container } from "react-bootstrap";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { appLocalDataDir } from "@tauri-apps/api/path";
 import { open, save } from "@tauri-apps/plugin-dialog";
 
 // Logger
@@ -97,6 +96,32 @@ const isEditorEvaluation = evaluationMode === "md02";
 const isAssetEvaluation = evaluationMode === "md03";
 const isSaveEvaluation = evaluationMode === "md04";
 const isCloseEvaluation = evaluationMode === "md05";
+
+function getRelativeLuminance(hexColor) {
+  const hex = String(hexColor).replace("#", "");
+  if (hex.length !== 6) return 0.5;
+  const channels = [0, 2, 4].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16) / 255);
+  const linear = channels.map((channel) => channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
+  return (0.2126 * linear[0]) + (0.7152 * linear[1]) + (0.0722 * linear[2]);
+}
+
+function getContrastRatio(firstColor, secondColor) {
+  const first = getRelativeLuminance(firstColor);
+  const second = getRelativeLuminance(secondColor);
+  const lighter = Math.max(first, second);
+  const darker = Math.min(first, second);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function getReadableThemeColors(colors) {
+  const accent = getContrastRatio(colors.mainColor, colors.textBackgroundColor) >= 4.5
+    ? colors.mainColor
+    : colors.textColor;
+  const onAccent = getContrastRatio(colors.textColor, colors.mainColor) >= getContrastRatio(colors.textBackgroundColor, colors.mainColor)
+    ? colors.textColor
+    : colors.textBackgroundColor;
+  return { accent, onAccent };
+}
 
 function normalizePackagePayload(result, fallbackMarkdown = EMPTY_MARKDOWN) {
   const packageValue = Array.isArray(result) ? result[0] : result;
@@ -211,6 +236,8 @@ function App() {
     return isValidColorPattern(restoredPattern) ? restoredPattern : DEFAULT_COLOR_PATTERN;
   });
   const [editorStatus, setEditorStatus] = useState("Ready");
+  const [textScale, setTextScale] = useState(() => localStorage.getItem("hasm_text_scale") ?? "medium");
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem("hasm_view_mode") ?? "split");
   const [lastAutosavedAt, setLastAutosavedAt] = useState(null);
   const [lastMasterSyncedAt, setLastMasterSyncedAt] = useState(null);
   const [saveProgress, setSaveProgress] = useState(null);
@@ -300,12 +327,34 @@ function App() {
           : { label: editorStatus };
 
   const themePattern = getPatternById(colorPattern, DEFAULT_COLOR_PATTERN);
+  const readableThemeColors = getReadableThemeColors(themePattern.colors);
+  const readableDanger = getContrastRatio(themePattern.colors.dangerColor, themePattern.colors.textBackgroundColor) >= 4.5
+    ? themePattern.colors.dangerColor
+    : themePattern.colors.textColor;
   const themeVariables = {
     ...getThemeVariables(themePattern.id),
     ...getMarkdownThemeVariables(themePattern.id),
     "--theme-warning-background": colorPattern === "high-contrast" ? "#ffffff" : themePattern.colors.softColor,
     "--theme-danger": colorPattern === "high-contrast" ? "#ff0000" : themePattern.colors.dangerColor,
+    "--theme-accent-readable": readableThemeColors.accent,
+    "--theme-on-accent": readableThemeColors.onAccent,
+    "--theme-danger-readable": readableDanger,
+    "--base-font-size": textScale === "small" ? "14px" : textScale === "large" ? "18px" : "16px",
   };
+
+  useEffect(() => {
+    Object.entries(themeVariables).forEach(([name, value]) => document.documentElement.style.setProperty(name, value));
+  }, [themeVariables]);
+
+  const handleTextScaleChange = useCallback((scale) => {
+    setTextScale(scale);
+    localStorage.setItem("hasm_text_scale", scale);
+  }, []);
+
+  const handleViewModeChange = useCallback((mode) => {
+    setViewMode(mode);
+    localStorage.setItem("hasm_view_mode", mode);
+  }, []);
 
   const saveAsPackage = useCallback(async () => {
     if (!isTauriRuntime || isSavingPackage) return;
@@ -325,7 +374,7 @@ function App() {
   const finishClose = useCallback(async (forceDiscard = false) => {
     if (!isTauriRuntime || !currentPackage?.uuid) return;
     try {
-      await invoke("close_and_cleanup_workspace", { uuid: currentPackage.uuid, forceDiscard });
+      await invoke("close_and_cleanup_workspace", { uuid: currentPackage.uuid, force_discard: forceDiscard });
       setCurrentPackage(null);
       setMarkdown(EMPTY_MARKDOWN);
       setEditorStatus("Ready");
@@ -413,7 +462,7 @@ function App() {
 
     try {
       let path = selectedPath;
-      if (kind === "archive" || kind === "folder") {
+      if ((kind === "archive" || kind === "folder") && !path) {
         path = await open({
           directory: kind === "folder",
           multiple: false,
@@ -428,27 +477,14 @@ function App() {
 
       let result;
       if (kind === "archive") {
-        try {
-          infoLog("[SEQ-MD-01][IMPORT] invoke open_archive_workspace", { path });
-          result = await invoke("open_archive_workspace", { archive_path: path });
-        } catch (error) {
-          if (!isUnknownCommandError(error)) throw error;
-          warnLog("[SEQ-MD-01][IMPORT] using legacy archive command", error);
-          const basePath = await appLocalDataDir();
-          result = await invoke("open_hasmmd", { basePath, hasmmdPath: path });
-        }
+        infoLog("[SEQ-MD-01][IMPORT] invoke open_archive_workspace", { path });
+        result = await invoke("open_archive_workspace", { archive_path: path });
       } else if (kind === "folder") {
         infoLog("[SEQ-MD-01][IMPORT] invoke open_folder_workspace", { path });
         result = await invoke("open_folder_workspace", { folder_path: path });
       } else {
-        try {
-          infoLog("[SEQ-MD-01][IMPORT] invoke create_new_package");
-          result = await invoke("create_new_package");
-        } catch (error) {
-          if (!isUnknownCommandError(error)) throw error;
-          const basePath = await appLocalDataDir();
-          result = await invoke("create_new_hasmmd", { basePath });
-        }
+        infoLog("[SEQ-MD-01][IMPORT] invoke create_new_package");
+        result = await invoke("create_new_package");
       }
 
       commitPackage(result);
@@ -512,6 +548,10 @@ function App() {
           onCloseWorkspace={requestClose}
           saveState={saveState}
           onDiagnosticSelect={selectDiagnostic}
+          textScale={textScale}
+          onTextScaleChange={handleTextScaleChange}
+          viewMode={viewMode}
+          onViewModeChange={handleViewModeChange}
         />
         {phase !== "editor" ? <BootScreen phase={phase} error={bootError} onOpen={loadWorkspace} /> : <HASM_Markdown_Editor
           markdown={markdown}
@@ -519,8 +559,10 @@ function App() {
           onPackageChange={setCurrentPackage}
           onStatusChange={setEditorStatus}
           onAutosaveComplete={setLastAutosavedAt}
+          onInsertAsset={insertAssetAtCursor}
           onEditorReady={(element) => { editorRef.current = element; }}
           currentPackage={currentPackage}
+          viewMode={viewMode}
         />}
         {phase === "editor" && isAssetWindowOpen && (
           <AssetWindow

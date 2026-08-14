@@ -53,6 +53,7 @@ try {
       invoke: async (command, args) => {
         window.__md04Calls.push({ command, args });
         if (command === "get_launch_target") return null;
+        if (command === "read_asset_data") return { bytes: [], mimeType: "image/png" };
         if (command === "plugin:event|listen") return args.handler;
         if (command === "plugin:event|unlisten") return null;
         if (command === "plugin:dialog|save") return null;
@@ -61,7 +62,7 @@ try {
             for (const callback of Object.values(window.__md04Callbacks)) callback({ event: "save_progress", payload: { stage: "Test", percentage } });
           }
           await new Promise((resolve) => setTimeout(resolve, 100));
-          return { uuid: "eval-md-04", targetType: "Folder", targetPath: args.exportTargetPath ?? "C:/eval/workspace", rawContent: "# Save fixture", lastSavedContent: "# Save fixture", isDirty: false, manifest: { version: "1", assets: {} }, missingAssets: [], warnings: [] };
+          return { uuid: "eval-md-04", targetType: "Folder", targetPath: args.exportTargetPath ?? "C:/eval/workspace", rawContent: "# Save fixture", lastSavedContent: "# Save fixture", isDirty: false, manifest: { version: "1", assets: { active: { uuid: "active.png", relativePath: "assets/active.png", resolvedPath: "C:/eval/workspace/assets/active.png", mimeType: "image/png", isDeleted: false } } }, missingAssets: [], warnings: [] };
         }
         throw new Error(`unexpected command: ${command}`);
       },
@@ -70,8 +71,9 @@ try {
   await page.goto(url, { waitUntil: "networkidle" });
 
   await record("TC-MD-04-REACT-001", "Save Progress Modal", async () => {
-    await page.getByText("File").click();
-    await page.locator(".dropdown-item").filter({ hasText: /^Save$/ }).click();
+    await page.getByRole("button", { name: "Open workspace menu" }).click();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.getByRole("button", { name: "Close menu" }).click();
     await page.locator(".SaveProgress").waitFor();
     assert(await page.locator(".SaveProgress progress").getAttribute("value") === "100", "progress did not reach 100%");
   });
@@ -80,12 +82,16 @@ try {
     assert(call?.args.uuid === "eval-md-04" && call.args.exportTargetPath === null, "in-place save payload was incorrect");
   });
   await record("TC-MD-04-REACT-002", "Store Commit and Dirty Reset", async () => {
-    await page.getByText("Master Target Synced").waitFor();
+    await page.locator(".Menu_Status").getByText("Master Target Synced").waitFor();
     assert((await page.locator(".Menu_Status").textContent()).includes("Master Target Synced"), "master sync status was not committed to UI");
   });
+  await record("TC-MD-04-REACT-004", "Runtime Asset Rebinding After Save", async () => {
+    assert((await page.locator(".EditorAssetShelf_Count").textContent()).includes("1 asset"), "saved asset was not rebound into the editor shelf");
+    assert((await page.locator(".EditorAssetShelf_Item strong").textContent()) === "active", "saved asset alias was not preserved");
+  });
   await record("TC-MD-04-E2E-002", "Save As Cancellation", async () => {
-    await page.getByText("File").click();
-    await page.locator(".dropdown-item").filter({ hasText: /^Save As$/ }).click();
+    await page.getByRole("button", { name: "Open workspace menu" }).click();
+    await page.getByRole("button", { name: "Save as", exact: true }).click();
     assert((await page.evaluate(() => window.__md04Calls.filter(({ command }) => command === "execute_package_save_or_export").length)) === 1, "dialog cancellation started a save");
   });
   await browser.close();

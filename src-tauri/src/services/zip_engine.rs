@@ -33,6 +33,15 @@ pub fn list_asset_entries(archive_path: &Path) -> Result<Vec<String>, PackageErr
     Ok(entries)
 }
 
+pub fn read_entry_bytes(archive_path: &Path, name: &str) -> Result<Vec<u8>, PackageError> {
+    let file = File::open(archive_path)?;
+    let mut archive = ZipArchive::new(file)?;
+    let mut entry = archive.by_name(name).map_err(|_| PackageError::MissingMetadata(format!("Missing {name}")))?;
+    let mut content = Vec::new();
+    entry.read_to_end(&mut content)?;
+    Ok(content)
+}
+
 fn read_entry(archive: &mut ZipArchive<File>, name: &str) -> Result<String, PackageError> {
     let mut entry = archive.by_name(name).map_err(|_| PackageError::MissingMetadata(format!("Missing {name}")))?;
     let mut content = String::new();

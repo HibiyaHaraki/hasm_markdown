@@ -42,3 +42,19 @@
 - Logging format of the test script is fixed
   - If test fail, please provide detail error messages
   - IF test pass, please return RESULT, TEST ID, and TEST NAME
+
+  ## UI Design Policy
+
+  The canonical UI policy is [`docs/design-policy.md`](../docs/design-policy.md). Apply it to every page, state, dialog, and responsive breakpoint:
+
+  - Design for Serenity, Paper and Ink, and Mathematical Minimalism. Use generous whitespace, crisp geometric borders, restrained motion, and a calm high-end writing atmosphere.
+  - Use `Yu Mincho`, `游明朝`, `Georgia`, or `serif` for editor, Markdown preview, and body content. Keep at least `0.03em` letter spacing and `1.7` to `1.8` line height for serif content.
+  - Avoid flashy animation, bright primary colors, generic flat UI, decorative blobs, purple-on-white defaults, nested cards, and oversized marketing layouts.
+  - Use the `src/hasm_color_pattern` APIs. Define theme values as CSS Custom Properties at `:root`; all chrome, inputs, editor text, dialogs, assets, and `markdown-it` preview must use those variables immediately.
+  - Do not use pure black or pure white as base surfaces. Preserve readable contrast across every pattern.
+  - Never reuse a dark theme accent as foreground text on a dark surface. Derive contrast-safe readable accent and on-accent tokens for labels, links, active controls, warnings, and focus states; keep reading text at WCAG AA contrast where practical.
+  - Keep the default editor/preview dual pane responsive. The main navigation is a hamburger-triggered off-canvas drawer containing file actions, themes, text scale, focus mode, assets, and diagnostics.
+  - Provide Small, Medium, and Large text presets through `--base-font-size`, plus Split, Editor, and Preview focus modes. Keep controls stable and ensure text never overflows its parent on desktop or mobile.
+  - When assets exist, keep their aliases discoverable on the main editor page through a compact, theme-aware shelf. Clicking an asset should insert its existing Markdown reference at the current cursor; preserve the serialized `asset:` syntax.
+  - Bootstrap is allowed only for grid, flexbox, and structural utilities. Override its component appearance with HASM styles; do not add another UI library. Use accessible labels for unfamiliar icon-only controls.
+  - Prefer existing components, pattern APIs, shared HASM logger functions, and documented module ownership. Keep changes focused and update related architecture, requirement, evaluation, and test documentation when behavior changes.

@@ -35,30 +35,6 @@ fn get_launch_target(state: tauri::State<'_, AppState>) -> Result<Option<String>
 }
 
 #[tauri::command]
-fn open_hasmmd(
-    state: tauri::State<'_, AppState>,
-    base_path: String,
-    hasmmd_path: String,
-) -> Result<(HASMMarkdown, String), String> {
-    // Step 0. Init logger
-    init_logger();
-
-    // Step 1. Convert String to PathBuf
-    let base_path_buf = PathBuf::from(base_path);
-    let hasmmd_path_buf = PathBuf::from(hasmmd_path);
-
-    // Call the static associated function from HASMMarkdown
-    let (new_app_data, markdown) = HASMMarkdown::open_hasmmd(base_path_buf.clone(), hasmmd_path_buf.clone())?;
-    info!("Open {} at {}",hasmmd_path_buf.display(), base_path_buf.display());
-
-    // Update the managed state so other commands can access the current package
-    let mut app_state = state.app.lock().map_err(|_| "Failed to lock AppState")?;
-    *app_state = new_app_data.clone();
-
-    Ok((new_app_data, markdown))
-}
-
-#[tauri::command]
 fn save_local_package(
     state: tauri::State<'_, AppState>,
     markdown: String,
@@ -96,26 +72,6 @@ fn save_hasmmd(
     Ok(app_state.clone())
 }
 
-#[tauri::command]
-fn create_new_hasmmd(
-    state: tauri::State<'_, AppState>,
-    base_path: String,
-) -> Result<HASMMarkdown, String> {
-    // Step 0. Init logger
-    init_logger();
-
-    // Step 1. Get OS default App Path
-    let path = PathBuf::from(base_path.clone());
-    info!("OS Default Path : {}",base_path.clone());
-
-    // Step 2. Create New Folder at OS default App Path
-    let new_hasmmd = HASMMarkdown::create_new_hasmmd(path);
-    let mut app_state = state.app.lock().map_err(|_| "Failed to lock AppState")?;
-    *app_state = new_hasmmd.clone();
-    
-    Ok(new_hasmmd)
-}
-
 /*
 #[tauri::command]
 fn check_hasmmd(
@@ -146,16 +102,15 @@ pub fn run_with_launch_path(launch_path: Option<String>) {
             launch_path: Mutex::new(launch_path),
         })
         .invoke_handler(tauri::generate_handler![
-            open_hasmmd,
             save_local_package,
             save_hasmmd,
-            create_new_hasmmd,
             commands::workspace::open_archive_workspace,
             commands::workspace::open_folder_workspace,
             commands::workspace::create_new_package,
             commands::workspace::close_and_cleanup_workspace,
             commands::editor::save_local_markdown_buffer,
             commands::asset::register_and_bind_single_asset_path,
+            commands::asset::read_asset_data,
             commands::asset::soft_delete_asset_mapping,
             commands::save::execute_package_save_or_export,
             commands::update_app_theme_config,

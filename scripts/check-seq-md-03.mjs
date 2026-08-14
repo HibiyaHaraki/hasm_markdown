@@ -79,6 +79,7 @@ async function browserChecks() {
         invoke: async (command, args) => {
           window.__md03Invokes.push({ command, args });
           if (command === "get_launch_target") return null;
+          if (command === "read_asset_data") return { bytes: [], mimeType: "image/png" };
           if (command === "register_and_bind_single_asset_path") {
             window.__md03Package.manifest.assets[args.customAlias] = {
               uuid: "new-asset.png",
@@ -102,10 +103,18 @@ async function browserChecks() {
       };
     });
     await page.goto(targetUrl, { waitUntil: "networkidle" });
-    await page.getByRole("button", { name: "Assets" }).click();
+    await page.getByRole("button", { name: "Open workspace menu" }).click();
+    await page.getByRole("button", { name: "Open asset library" }).click();
 
     await record("TC-MD-03-REACT-001", "Active Asset Filtering", async () => {
       assert(await page.locator(".AssetWindow_List li").count() === 1, "deleted asset was displayed as active");
+    });
+    await record("TC-MD-03-REACT-006", "Asset Manifest Metadata Disclosure", async () => {
+      const item = page.locator(".AssetWindow_List li").filter({ hasText: "active" });
+      await item.getByRole("button", { name: "Show metadata for active" }).focus();
+      const metadata = item.locator(".AssetWindow_Metadata");
+      assert(await metadata.getByText("active.png").count() >= 1, "asset UUID metadata was not shown");
+      assert(await metadata.getByText("C:/eval/assets/active.png").count() === 1, "resolved asset path metadata was not shown");
     });
 
     const dropzone = page.locator(".AssetWindow_Dropzone");

@@ -22,7 +22,7 @@ export function findMissingAssetLines(markdown, manifest, missingAssets) {
   return lines;
 }
 
-export function assetResolverPlugin(md, { manifest = { assets: {} }, missingAssets = [], uuid = "", targetType = "Unbound" } = {}) {
+export function assetResolverPlugin(md, { manifest = { assets: {} }, missingAssets = [], assetSources = {}, uuid = "", targetType = "Unbound" } = {}) {
   const defaultImage = md.renderer.rules.image ?? ((tokens, index, options, env, self) => self.renderToken(tokens, index, options));
 
   md.renderer.rules.image = (tokens, index, options, env, self) => {
@@ -39,9 +39,9 @@ export function assetResolverPlugin(md, { manifest = { assets: {} }, missingAsse
     }
 
     const resolvedPath = metadata.resolvedPath ?? "";
-    const src = targetType === "Archive" && resolvedPath.startsWith("asset-stream://")
+    const src = assetSources[alias] ?? (targetType === "Archive" && resolvedPath.startsWith("asset-stream://")
       ? resolvedPath
-      : `asset://${resolvedPath}`;
+      : `asset://${resolvedPath}`);
     token.attrSet("src", src);
     return defaultImage(tokens, index, options, env, self);
   };

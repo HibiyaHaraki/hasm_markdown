@@ -10,6 +10,8 @@ This sequence defines the execution lifecycle for persisting the active workspac
 4. **Archive Manifest Synchronization & Path Normalization:** Stripping soft-deleted entries, committing new asset records, and converting all `resolvedPath` references to portable package-relative paths (`assets/<uuid_filename>`).
 5. **App Local Sync & Absolute Path Re-binding:** Flushing the normalized manifest back to `App Local` and re-expanding relative paths to absolute `resolvedPath` URIs in memory.
 
+External images remain bound to their absolute source paths during editing and are materialized into the selected folder or archive only during this save sequence. Their user-facing aliases and Markdown references remain unchanged.
+
 ---
 
 ## 2. Sequence Diagram
@@ -155,6 +157,31 @@ pub struct AssetDeltaContext {
 }
 
 ```
+            ### 2.1 External Asset Materialization During Save
+
+            ```mermaid
+            sequenceDiagram
+                autonumber
+                actor User
+                participant Editor as Main Editor / Preview / Asset Shelf
+                participant Rust as Backend Save Engine
+                participant Source as External Absolute Image Path
+                participant Target as Selected Folder or .hasmmd Archive
+                participant Manifest as assets.json
+
+                User->>Editor: Register image with unique alias
+                Editor->>Rust: Bind alias, UUID, MIME type, and absolute source path
+                Rust-->>Editor: Runtime metadata with resolvedPath = absolute source path
+                Editor->>Source: Read image for preview and shelf display
+                User->>Editor: Save or export workspace
+                Editor->>Rust: execute_package_save_or_export(target)
+                Rust->>Source: Read active externally bound image
+                Rust->>Target: Copy image to assets/<uuid>.<extension>
+                Rust->>Manifest: Persist portable relativePath and remove external resolvedPath
+                Rust-->>Editor: Rebind runtime path to selected folder or archive stream
+                Editor->>Target: Read saved image for subsequent display
+            ```
+
 
 ---
 
