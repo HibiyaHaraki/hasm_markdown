@@ -181,7 +181,7 @@ async function runDirectLaunchBrowserChecks() {
 
       try {
         await page.goto(`${url}/?path=${encodeURIComponent(targetPath)}`, { waitUntil: "networkidle" });
-        await page.locator("textarea").waitFor();
+        await page.getByRole("textbox", { name: "Markdown editor" }).waitFor();
         const calls = await page.evaluate(() => window.__launchCalls);
         const openCall = calls.find(({ name }) => name === command);
         assert(openCall?.args?.[argumentName] === targetPath, `${command} did not receive ${argumentName}`);

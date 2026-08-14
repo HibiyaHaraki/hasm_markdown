@@ -34,6 +34,14 @@ function stop(child) {
   });
 }
 
+async function openFileMenu(page) {
+  if (await page.locator(".GlobalMenu").count() === 0) {
+    await page.getByRole("button", { name: "Open workspace menu" }).click();
+  }
+  const fileToggle = page.getByRole("button", { name: /file/i });
+  if (await fileToggle.getAttribute("aria-expanded") !== "true") await fileToggle.click();
+}
+
 const vite = spawn(process.platform === "win32" ? "cmd.exe" : npmCommand,
   process.platform === "win32"
     ? ["/d", "/s", "/c", "npm run dev -- --host 127.0.0.1 --port 4176 --strictPort"]
@@ -71,7 +79,7 @@ try {
   await page.goto(url, { waitUntil: "networkidle" });
 
   await record("TC-MD-04-REACT-001", "Save Progress Modal", async () => {
-    await page.getByRole("button", { name: "Open workspace menu" }).click();
+    await openFileMenu(page);
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await page.getByRole("button", { name: "Close menu" }).click();
     await page.locator(".SaveProgress").waitFor();
@@ -90,7 +98,7 @@ try {
     assert((await page.locator(".EditorAssetShelf_Item strong").textContent()) === "active", "saved asset alias was not preserved");
   });
   await record("TC-MD-04-E2E-002", "Save As Cancellation", async () => {
-    await page.getByRole("button", { name: "Open workspace menu" }).click();
+    await openFileMenu(page);
     await page.getByRole("button", { name: "Save as", exact: true }).click();
     assert((await page.evaluate(() => window.__md04Calls.filter(({ command }) => command === "execute_package_save_or_export").length)) === 1, "dialog cancellation started a save");
   });

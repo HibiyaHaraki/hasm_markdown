@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { OverlayTrigger, Tooltip } from "react-bootstrap";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -8,10 +9,6 @@ const isTauriRuntime = typeof window !== "undefined" && Boolean(window.__TAURI_I
 
 function sanitizeAlias(filename) {
   return String(filename ?? "asset").split(/[\\/]/).pop().replace(/[^a-zA-Z0-9._-]/g, "_") || "asset";
-}
-
-function getDroppedPath(file) {
-  return file?.path ?? file?.name ?? "";
 }
 
 function AssetWindow({ currentPackage, markdown, onPackageChange, onInsertAsset, onClose }) {
@@ -49,13 +46,6 @@ function AssetWindow({ currentPackage, markdown, onPackageChange, onInsertAsset,
     setSelectedFile(path);
     setAlias(sanitizeAlias(path));
     setAliasError("");
-  };
-
-  const handleDrop = (event) => {
-    event.preventDefault();
-    const files = Array.from(event.dataTransfer.files ?? []);
-    if (files.length > 1) setStatus("Single file upload supported. Processing first item.");
-    selectFile(getDroppedPath(files[0]));
   };
 
   const handlePicker = async () => {
@@ -145,20 +135,13 @@ function AssetWindow({ currentPackage, markdown, onPackageChange, onInsertAsset,
     <aside className="AssetWindow" aria-label="Asset management">
       <div className="AssetWindow_Header">
         <h2>Assets</h2>
-        <button type="button" onClick={closeWindow} aria-label="Close assets">Close</button>
+        <button type="button" className="AssetWindow_CloseButton" onClick={closeWindow} aria-label="Close assets">Close</button>
       </div>
       <div className="AssetWindow_Alerts">
         <span>Missing: {missingAssets.length}</span>
         <span>Warnings: {warnings.length}</span>
       </div>
-      <div
-        className="AssetWindow_Dropzone"
-        onDragOver={(event) => event.preventDefault()}
-        onDrop={handleDrop}
-      >
-        Drop one image here
-      </div>
-      <button type="button" onClick={handlePicker}>Add Asset</button>
+      <button type="button" className="AssetWindow_AddButton" onClick={handlePicker}>Select image</button>
       {selectedFile && (
         <form className="AssetWindow_AliasForm" onSubmit={registerAsset}>
           <label>
@@ -166,7 +149,7 @@ function AssetWindow({ currentPackage, markdown, onPackageChange, onInsertAsset,
             <input value={alias} onChange={(event) => { setAlias(event.target.value); setAliasError(""); }} autoFocus />
           </label>
           {aliasError && <div className="AssetWindow_Error" role="alert">{aliasError}</div>}
-          <button type="submit">Register</button>
+          <button type="submit" className="AssetWindow_RegisterButton">Register</button>
         </form>
       )}
       {progress && <progress max="100" value={progress.percentage}>{progress.percentage}%</progress>}
@@ -175,22 +158,14 @@ function AssetWindow({ currentPackage, markdown, onPackageChange, onInsertAsset,
         {activeAssets.map(([assetAlias, asset]) => (
           <li key={assetAlias} className="AssetWindow_AssetItem">
             <div className="AssetWindow_AssetRow">
-              <button type="button" className="AssetWindow_AssetName" aria-label={`Show metadata for ${assetAlias}`}>
-                <span>{assetAlias}</span>
-                <small>Hover or focus for metadata</small>
-              </button>
-              <button type="button" onClick={() => deleteAsset(assetAlias)}>Delete</button>
+              <OverlayTrigger placement="left" overlay={<Tooltip id={`asset-preview-path-${assetAlias}`}>{asset.resolvedPath || "Preview path unavailable"}</Tooltip>}>
+                <button type="button" className="AssetWindow_AssetName" aria-label={`Preview path for ${assetAlias}`}>
+                  <span>{assetAlias}</span>
+                  <small>Preview path</small>
+                </button>
+              </OverlayTrigger>
+              <button type="button" className="AssetWindow_DeleteButton" onClick={() => deleteAsset(assetAlias)}>Delete</button>
             </div>
-            <dl className="AssetWindow_Metadata" aria-label={`${assetAlias} metadata`}>
-              <div><dt>Alias</dt><dd>{assetAlias}</dd></div>
-              <div><dt>UUID</dt><dd>{asset.uuid || "-"}</dd></div>
-              <div><dt>Relative path</dt><dd>{asset.relativePath || "-"}</dd></div>
-              <div><dt>Resolved path</dt><dd>{asset.resolvedPath || "-"}</dd></div>
-              <div><dt>MIME type</dt><dd>{asset.mimeType || "-"}</dd></div>
-              <div><dt>Size</dt><dd>{asset.size ?? 0} bytes</dd></div>
-              <div><dt>External</dt><dd>{asset.isExternal ? "yes" : "no"}</dd></div>
-              <div><dt>Deleted</dt><dd>{asset.isDeleted ? "yes" : "no"}</dd></div>
-            </dl>
           </li>
         ))}
       </ul>

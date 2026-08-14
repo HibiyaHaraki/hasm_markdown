@@ -4,7 +4,7 @@
 
 ### 1.1 Unsaved Changes Guard (`isDirty` Interception)
 
-* **`REQ-MD-05-001` (Dirty State Close Interception):** When the user triggers a workspace close action (via menu navigation, window close, or app exit) while `isDirty === true`, the React frontend shall intercept the event and display an Unsaved Changes Modal.
+* **`REQ-MD-05-001` (Dirty State Close Interception):** When the user triggers a workspace close action (via menu navigation, window close, or app exit), the React frontend shall compare the live Markdown buffer with `lastSavedContent`. If either this comparison or `isDirty` indicates unsaved content, it shall intercept the event and display an Unsaved Changes Modal.
 * **`REQ-MD-05-002` (Save Branch Execution):** Selecting "Save" in the Unsaved Changes Modal shall delegate directly to `SEQ/REQ-MD-04` (execute package save/export) before proceeding with workspace unmounting.
 * **`REQ-MD-05-003` (Cancel Branch Abort):** Selecting "Cancel" shall immediately abort the close operation, dismiss the modal, and retain the user in `/editor` with zero loss of state.
 * **`REQ-MD-05-004` (Discard Branch Execution):** Selecting "Discard Changes" shall bypass save execution and immediately initiate the workspace unmount sequence, abandoning modified buffer state in `App Local`.

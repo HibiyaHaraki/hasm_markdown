@@ -46,6 +46,8 @@ const EMPTY_MARKDOWN = "# HASM Markdown\n\nCreate or open a workspace to begin."
 const EVALUATION_FIXTURE = {
   uuid: "eval-md-02",
   targetType: "Folder",
+  tempDirPath: "C:/eval/temporal/eval-md-02",
+  targetPath: "C:/eval/workspace",
   lastSavedContent: "![present](asset:present)\n![deleted](asset:deleted)",
   manifest: {
     version: "1",
@@ -60,6 +62,7 @@ const EVALUATION_FIXTURE = {
 const ASSET_EVALUATION_FIXTURE = {
   uuid: "eval-md-03",
   targetType: "Folder",
+  tempDirPath: "C:/eval/temporal/eval-md-03",
   lastSavedContent: "# Assets\n\n![deleted](asset:deleted)",
   manifest: {
     version: "1",
@@ -74,6 +77,7 @@ const ASSET_EVALUATION_FIXTURE = {
 const SAVE_EVALUATION_FIXTURE = {
   uuid: "eval-md-04",
   targetType: "Folder",
+  tempDirPath: "C:/eval/temporal/eval-md-04",
   targetPath: "C:/eval/workspace",
   lastSavedContent: "# Save fixture",
   manifest: { version: "1", assets: {} },
@@ -83,6 +87,7 @@ const SAVE_EVALUATION_FIXTURE = {
 const CLOSE_EVALUATION_FIXTURE = {
   uuid: "eval-md-05",
   targetType: "Folder",
+  tempDirPath: "C:/eval/temporal/eval-md-05",
   targetPath: "C:/eval/workspace",
   lastSavedContent: "# Close fixture",
   manifest: { version: "1", assets: {} },
@@ -103,6 +108,40 @@ function getRelativeLuminance(hexColor) {
   const channels = [0, 2, 4].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16) / 255);
   const linear = channels.map((channel) => channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
   return (0.2126 * linear[0]) + (0.7152 * linear[1]) + (0.0722 * linear[2]);
+}
+
+function getEditorSelectionOffsets(element) {
+  const selection = window.getSelection();
+  if (!selection?.rangeCount || !element.contains(selection.anchorNode)) return { start: 0, end: 0 };
+  const measure = (node, offset) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    range.setEnd(node, offset);
+    return range.toString().length;
+  };
+  return { start: measure(selection.anchorNode, selection.anchorOffset), end: measure(selection.focusNode, selection.focusOffset) };
+}
+
+function setEditorSelectionOffsets(element, start, end) {
+  const locate = (offset) => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    let remaining = offset;
+    let node = walker.nextNode();
+    while (node) {
+      if (remaining <= node.textContent.length) return { node, offset: remaining };
+      remaining -= node.textContent.length;
+      node = walker.nextNode();
+    }
+    return { node: element, offset: element.childNodes.length };
+  };
+  const range = document.createRange();
+  const startPosition = locate(start);
+  const endPosition = locate(end);
+  range.setStart(startPosition.node, startPosition.offset);
+  range.setEnd(endPosition.node, endPosition.offset);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
 }
 
 function getContrastRatio(firstColor, secondColor) {
@@ -139,6 +178,7 @@ function normalizePackagePayload(result, fallbackMarkdown = EMPTY_MARKDOWN) {
     isLoaded: true,
     isDirty: false,
     targetType: packageValue?.targetType ?? "Unbound",
+    tempDirPath: packageValue?.tempDirPath ?? packageValue?.temp_dir_path ?? null,
     targetPath: packageValue?.targetPath ?? packageValue?.hasmmd_local_path ?? null,
     manifest: packageValue?.manifest ?? { version: "1", assets: {} },
     missingAssets: packageValue?.missingAssets ?? [],
@@ -238,6 +278,7 @@ function App() {
   const [editorStatus, setEditorStatus] = useState("Ready");
   const [textScale, setTextScale] = useState(() => localStorage.getItem("hasm_text_scale") ?? "medium");
   const [viewMode, setViewMode] = useState(() => localStorage.getItem("hasm_view_mode") ?? "split");
+  const [editorColorMode, setEditorColorMode] = useState(() => localStorage.getItem("hasm_editor_color_mode") ?? "light");
   const [lastAutosavedAt, setLastAutosavedAt] = useState(null);
   const [lastMasterSyncedAt, setLastMasterSyncedAt] = useState(null);
   const [saveProgress, setSaveProgress] = useState(null);
@@ -356,6 +397,11 @@ function App() {
     localStorage.setItem("hasm_view_mode", mode);
   }, []);
 
+  const handleEditorColorModeChange = useCallback((mode) => {
+    setEditorColorMode(mode);
+    localStorage.setItem("hasm_editor_color_mode", mode);
+  }, []);
+
   const saveAsPackage = useCallback(async () => {
     if (!isTauriRuntime || isSavingPackage) return;
     const selected = await save({
@@ -389,7 +435,7 @@ function App() {
   }, [currentPackage?.uuid]);
 
   const requestClose = useCallback(() => {
-    const dirty = currentPackage?.isDirty ?? markdown !== (currentPackage?.lastSavedContent ?? markdown);
+    const dirty = Boolean(currentPackage?.isDirty) || markdown !== (currentPackage?.lastSavedContent ?? markdown);
     if (dirty) setIsClosePromptOpen(true);
     else finishClose(false);
   }, [currentPackage, finishClose, markdown]);
@@ -418,14 +464,13 @@ function App() {
       setMarkdown((value) => `${value}${value.endsWith("\n") ? "" : "\n"}${insertion}\n`);
       return;
     }
-    const start = editor.selectionStart;
-    const end = editor.selectionEnd;
+    const { start, end } = getEditorSelectionOffsets(editor);
     const next = `${markdown.slice(0, start)}${insertion}${markdown.slice(end)}`;
     setMarkdown(next);
     requestAnimationFrame(() => {
       editor.focus();
       const position = start + insertion.length;
-      editor.setSelectionRange(position, position);
+      setEditorSelectionOffsets(editor, position, position);
     });
   }, [markdown]);
 
@@ -435,9 +480,10 @@ function App() {
     if (!editor || !line) return;
     const lines = markdown.split("\n");
     const start = lines.slice(0, line - 1).reduce((total, value) => total + value.length + 1, 0);
+    const lineHeight = Number.parseFloat(window.getComputedStyle(editor).lineHeight) || 28.8;
     editor.focus();
-    editor.setSelectionRange(start, start + lines[line - 1].length);
-    editor.scrollTop = Math.max(0, (line - 1) * 24);
+    setEditorSelectionOffsets(editor, start, start + lines[line - 1].length);
+    editor.scrollTop = Math.max(0, (line - 1) * lineHeight);
   }, [markdown]);
 
   const commitPackage = useCallback((result) => {
@@ -552,6 +598,8 @@ function App() {
           onTextScaleChange={handleTextScaleChange}
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
+          editorColorMode={editorColorMode}
+          onEditorColorModeChange={handleEditorColorModeChange}
         />
         {phase !== "editor" ? <BootScreen phase={phase} error={bootError} onOpen={loadWorkspace} /> : <HASM_Markdown_Editor
           markdown={markdown}
@@ -563,6 +611,7 @@ function App() {
           onEditorReady={(element) => { editorRef.current = element; }}
           currentPackage={currentPackage}
           viewMode={viewMode}
+          editorColorMode={editorColorMode}
         />}
         {phase === "editor" && isAssetWindowOpen && (
           <AssetWindow

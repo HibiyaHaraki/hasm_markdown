@@ -8,6 +8,7 @@
 * **`REQ-MD-06-002` (Error List Notification):** The Global Menu shall aggregate and display active error records (`missingAssets` tags referenced in `main.md` but missing physically, plus process lock conflicts) in a dedicated Error List view with badge count indicators.
 * **`REQ-MD-06-003` (Warning List Notification):** The Global Menu shall aggregate and display active warning records (unregistered orphan files in `assets/` and soft-deleted asset references) in a dedicated Warning List view.
 * **`REQ-MD-06-004` (Direct Error Navigation):** Clicking an item in the Error List shall scroll the main code editor to the relevant line decorator and highlight the missing asset tag.
+* **`REQ-MD-06-005` (Header Diagnostics Summary):** The header shall provide a Diagnostics control next to the hamburger menu that opens its error and warning list on hover or keyboard focus.
 
 ---
 
@@ -17,6 +18,8 @@
 * **`REQ-MD-06-011` (Active Save/Autosave Progress Readout):** When an autosave or explicit save IPC command is executing (`isSaving === true`), the system shall display a "Saving / Syncing..." indicator with a spinner animation.
 * **`REQ-MD-06-012` (Autosave Timestamp Readout):** Upon successful local autosave completion (`isDirty === false`), the system shall display "Autosaved Locally at HH:mm:ss" using the formatted epoch timestamp.
 * **`REQ-MD-06-013` (Master Target Sync Readout):** Upon successful completion of an explicit save/export (`SEQ-MD-04`), the system shall display "Master Target Synced".
+* **`REQ-MD-06-014` (Workspace Target Tooltip):** Hovering or keyboard-focusing the header save-state readout shall show the current workspace `targetPath`, identifying the active local folder or `.hasmmd` archive package.
+* **`REQ-MD-06-015` (Workspace Path and Sync Summary):** The top of the hamburger menu shall display the temporal local workspace path and active local-folder or archive target path. Each path shall have a state mark: Current/Synced, Pending, or Unavailable. A clean `Ready` workspace shall mark both paths Current/Synced.
 
 ---
 
@@ -26,6 +29,8 @@
 * **`REQ-MD-06-021` (App-Wide Theme Application):** Selecting a theme shall dynamically update the CSS variables (`data-theme`) across the entire root application DOM without requiring a page reload or window restart.
 * **`REQ-MD-06-022` (High-Contrast Red Warning Accessibility):** In `High-Contrast` mode, all error decorators, missing asset warning spans, and badge indicators shall enforce pure high-visibility red (`#ff0000` text / `#ffffff` contrast background) for accessibility compliance.
 * **`REQ-MD-06-023` (Theme Preference Persistence):** The system shall persist the selected pattern ID in `localStorage`; standard compatibility modes shall also be passed to the Rust backend for `AppConfig` storage. Upon application boot (`SEQ-MD-01`), the saved pattern shall be applied automatically.
+* **`REQ-MD-06-024` (Independent Editor Appearance):** The Global Menu shall provide Light and Dark editor appearance controls persisted locally and independent from the application color-pattern selection.
+* **`REQ-MD-06-025` (Collapsed Drawer Sections):** File and Appearance controls shall be collapsed when the hamburger menu opens and expandable by their section controls.
 
 ---
 

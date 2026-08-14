@@ -5,8 +5,7 @@
 This sequence defines the complete user-driven asset management lifecycle operating between the Main Editor, the dedicated Asset Window (Sidebar/Modal), and the Rust backend storage engine. It strictly enforces a **Single Asset per Upload Operation Constraint** and a **Soft Delete Strategy (`isDeleted: true` flag)** to avoid UUID/alias collisions and prevent storage corruption. It is partitioned into 5 modular sub-sequences:
 
 1. **`SEQ-MD-03-A` (Open Asset Window):** Invoked via Toolbar button to inspect registered assets, physical missing file warnings, deleted asset flags, and unregistered orphan files.
-2. **`SEQ-MD-03-B` (Add Single Asset via Drag & Drop + Custom Alias Naming):** Intercepting drops (enforcing 1 file limit), prompting the Alias Naming Modal, binding the absolute file path to `resolvedPath`, and inserting Markdown markup.
-3. **`SEQ-MD-03-C` (Add Single Asset via File Picker + Custom Alias Naming):** Invoking OS native file picker dialogs (single selection), prompting the Alias Naming Modal, registering the absolute path into the active manifest, and updating runtime mappings.
+2. **`SEQ-MD-03-C` (Add Single Asset via File Picker + Custom Alias Naming):** Invoking the themed OS native file picker control (single selection), prompting the Alias Naming Modal, registering the absolute path into the active manifest, and updating runtime mappings. Drag-and-drop is intentionally unavailable.
 4. **`SEQ-MD-03-D` (Soft Delete Asset with Real-time `main.md` Reference Inspection & Delete Flag):** Scanning active `main.md` text prior to deletion, displaying line warnings if referenced, and marking the asset entry as `isDeleted: true` in `assets.json` without removing metadata or UUIDs.
 5. **`SEQ-MD-03-E` (Close Asset Window & Sync State to Editor):** Recalculating active `missingAssets` (including `isDeleted` entries) and `warnings` arrays upon closing/mutating, committing updated state to React for live editor red-text decoration updates.
 
@@ -43,66 +42,14 @@ sequenceDiagram
 
 ---
 
-### 2.2 `SEQ-MD-03-B`: Add Single Asset via Drag & Drop with Custom Alias Naming
+### 2.2 `SEQ-MD-03-B`: Drag-and-Drop Is Unavailable
 
 ```mermaid
 sequenceDiagram
-    autonumber
     actor User
     participant AssetWin as Asset Window UI
-    participant Modal as Alias Naming Modal UI
-    participant React as React Frontend Core
-    participant CodeEditor as Main Code Editor Component
-    participant Rust as Backend (Tauri / Rust Core)
-    participant AppLocal as App Local Storage (<AppLocalDataDir>/<UUID>/)
-
-    User->>AssetWin: Drag & Drop image file onto Asset Window dropzone
-    activate AssetWin
-    AssetWin->>React: Intercept drop event & extract File object
-    deactivate AssetWin
-    activate React
-    
-    alt Multiple Files Dropped
-        React->>React: Take first file (files[0]) & Notify User ("Single file upload supported. Processing first item.")
-    end
-    
-    React->>Modal: Prompt Alias Naming Modal (Pre-filled with sanitized raw filename)
-    activate Modal
-    Modal->>User: Display input field for custom asset alias name
-    User->>Modal: Enter / Confirm desired alias name (e.g. "architecture_diagram.png")
-    Modal->>React: Submit customized alias string
-    deactivate Modal
-    
-    React->>React: Listen to "asset_register_progress" event
-    React->>Rust: invoke("register_and_bind_single_asset_path", { source_path, custom_alias })
-    activate Rust
-    
-    alt Alias exists in manifest (Active OR Soft-Deleted)
-        Rust-->>React: Return Err(PackageError::AliasCollision)
-        React->>Modal: Display Error ("Alias or reserved name already exists in workspace history. Enter a unique name.")
-    else Alias is Unique
-        Rust->>Rust: Generate new unique UUID key (<asset_uuid>)
-        Rust->>Rust: Construct RuntimeAssetMetadata { relativePath: "assets/<uuid>.<ext>", resolvedPath: source_path, isExternal: true, isDeleted: false }
-        
-        Rust-->>React: emit("asset_register_progress", { stage: "GeneratingThumbnail", percentage: 50.0 })
-        React->>Modal: Update Asset Registration Progress Bar UI
-        
-        Rust->>Rust: Update in-memory RuntimeAssetManifest
-        Rust->>AppLocal: Write assets.json.tmp -> Rename to assets.json (Atomic Local Workspace Update)
-        Rust-->>React: emit("asset_register_progress", { stage: "Complete", percentage: 100.0 })
-        
-        Rust-->>React: Return Ok(AssetRegisterPayload { alias, asset_uuid, resolvedPath })
-        deactivate Rust
-        
-        React->>React: Update usePackageStore manifest with new resolvedPath entry
-        
-        opt Active cursor present in Main Editor
-            React->>CodeEditor: Insert `![alt](asset:custom_alias)` at active cursor line
-        end
-        
-        React->>User: Close Naming Modal, Update Asset List & Display Success Toast
-    end
-    deactivate React
+    User->>AssetWin: Attempt to drag an image file
+    AssetWin-->>User: No drag-and-drop target or handler is available
 
 ```
 
@@ -120,7 +67,7 @@ sequenceDiagram
     participant Rust as Backend (Tauri / Rust Core)
     participant AppLocal as App Local Storage (<AppLocalDataDir>/<UUID>/)
 
-    User->>AssetWin: Click "Add Asset" Button
+    User->>AssetWin: Click "Select image" Button
     activate AssetWin
     AssetWin->>Rust: invoke("open_single_image_picker")
     deactivate AssetWin
@@ -313,8 +260,8 @@ export interface AssetDeleteProgressPayload {
 
 ## 4. Operational Guard & State Transition Rules
 
-1. **Single Asset Upload Guard (`SEQ-MD-03-B/C`):**
-Drag-and-drop and OS File Picker operations restrict input strictly to 1 file at a time. Multi-selection attempts automatically trigger a toast notification and process only the first selected item.
+1. **Single Asset Upload Guard (`SEQ-MD-03-C`):**
+The Asset Window provides only the OS file picker in single-selection mode. It does not render a drag-and-drop target or register drop handlers.
 2. **Metadata Retention & Soft Delete Strategy (`SEQ-MD-03-D`):**
 Executing a delete action sets `isDeleted: true` on the target asset entry within `assets.json` and memory stores. The entry, UUID, and alias key remain intact to prevent alias/UUID collisions during the session. Physical unlinking or exclusion from final ZIP packages occurs exclusively during **`SEQ-MD-04` (Save Action)**.
 3. **Editor Missing Asset Red-Text Flagging (`SEQ-MD-03-E`):**

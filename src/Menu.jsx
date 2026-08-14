@@ -9,6 +9,8 @@
 
 // Bootstrap
 import { useState } from "react";
+import { OverlayTrigger, Tooltip } from "react-bootstrap";
+import hasmMarkdownLogo from "./assets/logo/hasm_markdown_logo_transparent.png";
 // CSS
 import "./main.css";
 
@@ -58,8 +60,13 @@ function Menu({
   onTextScaleChange,
   viewMode,
   onViewModeChange,
+  editorColorMode,
+  onEditorColorModeChange,
 }) {
   const [isGlobalMenuOpen, setIsGlobalMenuOpen] = useState(false);
+  const [isFileOpen, setIsFileOpen] = useState(false);
+  const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
+  const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
   const missingAssets = currentPackage?.missingAssets ?? [];
   const warnings = currentPackage?.warnings ?? [];
   const softDeletedReferences = missingAssets.filter((asset) => currentPackage?.manifest?.assets?.[asset.alias]?.isDeleted);
@@ -67,8 +74,13 @@ function Menu({
   const statusText = saveState?.label === "Autosaved Locally" && saveState.timestamp
     ? `Autosaved Locally at ${new Date(saveState.timestamp).toLocaleTimeString()}`
     : saveState?.label ?? editorStatus;
+  const hasWorkspace = Boolean(currentPackage?.uuid);
+  const isDirty = Boolean(currentPackage?.isDirty) || statusText === "Unsaved Changes (*)";
+  const localSyncState = !hasWorkspace ? "unavailable" : isDirty ? "pending" : "current";
+  const localPath = currentPackage?.tempDirPath || "Temporal local workspace unavailable";
+  const masterPath = currentPackage?.targetPath || "No local folder or archive package selected";
 
-  // Tauri : Open Exist Package
+  const masterSyncState = !hasWorkspace ? "unavailable" : isDirty ? "pending" : statusText === "Ready" || saveState?.label === "Master Target Synced" ? "current" : "pending";
   const handleOpen = async () => {
     if (!isTauriRuntime) {
       warnLog("Tauri runtime is not available; skipping package open.");
@@ -129,10 +141,25 @@ function Menu({
     <>
     <header className="Menu">
       <div className="Menu_Brand">
-        <span className="Menu_Mark" aria-hidden="true">∴</span>
-        <div><strong className="Menu_Title">HASM Markdown</strong><span className="Menu_Subtitle">Paper &amp; Ink workspace</span></div>
+        <img className="Menu_Mark" src={hasmMarkdownLogo} alt="HASM Markdown" />
+        <div><strong className="Menu_Title">HASM Markdown</strong><span className="Menu_Subtitle">Markdown Editor for HASM</span></div>
       </div>
-      <span className="Menu_Status" role={statusText.startsWith("Local autosave failed") ? "alert" : "status"} aria-live="polite" aria-atomic="true">{statusText}</span>
+      <OverlayTrigger placement="bottom" overlay={<Tooltip id="workspace-target-path">{currentPackage?.targetPath || "No workspace target selected"}</Tooltip>}>
+        <span className="Menu_Status" role={statusText.startsWith("Local autosave failed") ? "alert" : "status"} aria-live="polite" aria-atomic="true">{statusText}</span>
+      </OverlayTrigger>
+      <div className="Menu_Diagnostics" onMouseEnter={() => setIsDiagnosticsOpen(true)} onMouseLeave={() => setIsDiagnosticsOpen(false)}>
+        <button type="button" className="Menu_DiagnosticsTrigger" onFocus={() => setIsDiagnosticsOpen(true)} onClick={() => setIsDiagnosticsOpen((open) => !open)} aria-expanded={isDiagnosticsOpen} aria-controls="header-diagnostics">Diagnostics <span className="Menu_DiagnosticsCounts"><b>{errorAssets.length}</b><em>{warnings.length + softDeletedReferences.length}</em></span></button>
+        {isDiagnosticsOpen && <div id="header-diagnostics" className="Menu_DiagnosticsPanel">
+          <section aria-labelledby="header-errors-title">
+            <h3 id="header-errors-title">Errors <span className="Menu_Badge">{errorAssets.length}</span></h3>
+            {errorAssets.length === 0 ? <p className="GlobalMenu_Empty">Zero errors</p> : <ul>{errorAssets.map((asset) => <li key={`${asset.alias}-${asset.expectedRelativePath}`}><button type="button" onClick={() => onDiagnosticSelect?.(asset)}><strong>{asset.alias}</strong><span>Missing file{asset.referencedLines?.length ? ` on line${asset.referencedLines.length === 1 ? "" : "s"} ${asset.referencedLines.join(", ")}` : ""}</span></button></li>)}</ul>}
+          </section>
+          <section aria-labelledby="header-warnings-title">
+            <h3 id="header-warnings-title">Warnings <span className="Menu_Badge">{warnings.length + softDeletedReferences.length}</span></h3>
+            {warnings.length + softDeletedReferences.length === 0 ? <p className="GlobalMenu_Empty">Zero warnings</p> : <ul>{softDeletedReferences.map((asset) => <li key={`deleted-${asset.alias}`}>Soft-deleted reference: {asset.alias}</li>)}{warnings.map((warning, index) => <li key={`${warning.alias ?? warning.path ?? "warning"}-${index}`}>{warning.alias ?? warning.path ?? String(warning)}</li>)}</ul>}
+          </section>
+        </div>}
+      </div>
       <button type="button" className="Menu_Toggle" onClick={() => setIsGlobalMenuOpen(true)} aria-label="Open workspace menu" aria-expanded={isGlobalMenuOpen}>
         <span aria-hidden="true"><i /><i /><i /></span><b>Menu</b>
       </button>
@@ -151,50 +178,34 @@ function Menu({
           <strong>{saveState?.label ?? editorStatus}</strong>
           {saveState?.timestamp && <time dateTime={saveState.timestamp}>{saveState.timestamp}</time>}
         </div>
+        <section className="GlobalMenu_WorkspaceSummary" aria-label="Workspace paths and synchronization status">
+          <div className="GlobalMenu_Path"><span>Temporal local</span><code title={localPath}>{localPath}</code></div>
+          <div className="GlobalMenu_Path"><span>Local folder / archive</span><code title={masterPath}>{masterPath}</code></div>
+          <div className="GlobalMenu_SyncList">
+            <div className={`GlobalMenu_SyncItem is-${localSyncState}`}><i aria-hidden="true" /><span>Temporal local</span><strong>{localSyncState === "current" ? "Current" : localSyncState === "pending" ? "Pending" : "Unavailable"}</strong></div>
+            <div className={`GlobalMenu_SyncItem is-${masterSyncState}`}><i aria-hidden="true" /><span>Folder / archive</span><strong>{masterSyncState === "current" ? "Synced" : masterSyncState === "pending" ? "Pending" : "Unavailable"}</strong></div>
+          </div>
+        </section>
         <section className="GlobalMenu_Section">
-          <h3>File</h3>
-          <div className="Menu_ActionGrid">
+          <button type="button" className="GlobalMenu_SectionToggle" onClick={() => setIsFileOpen((open) => !open)} aria-expanded={isFileOpen} aria-controls="global-menu-file">File <span aria-hidden="true">{isFileOpen ? "-" : "+"}</span></button>
+          {isFileOpen && <div id="global-menu-file" className="Menu_ActionGrid">
             <button type="button" onClick={handleOpen}>Open archive</button>
             <button type="button" onClick={() => onWorkspaceOpen?.("folder")}>Open folder</button>
             <button type="button" onClick={onSave} disabled={saveDisabled}>Save</button>
             <button type="button" onClick={onSaveAs} disabled={saveDisabled}>Save as</button>
             <button type="button" onClick={onExportFolder} disabled={saveDisabled}>Export folder</button>
             <button type="button" onClick={onCloseWorkspace} disabled={saveDisabled}>Close workspace</button>
-          </div>
+          </div>}
         </section>
         <section className="GlobalMenu_Section">
-          <h3>Appearance</h3>
+          <button type="button" className="GlobalMenu_SectionToggle" onClick={() => setIsAppearanceOpen((open) => !open)} aria-expanded={isAppearanceOpen} aria-controls="global-menu-appearance">Appearance <span aria-hidden="true">{isAppearanceOpen ? "-" : "+"}</span></button>
+          {isAppearanceOpen && <div id="global-menu-appearance">
           <label className="Menu_Field"><span>Color pattern</span><select value={colorPattern} onChange={(event) => onColorPatternChange?.(event.target.value)}>{(colorPatternOptions ?? []).map((pattern) => <option key={pattern.id} value={pattern.id}>{pattern.markdownLabel ?? pattern.label}</option>)}</select></label>
           <div className="Menu_Segmented" aria-label="Text size">{["small", "medium", "large"].map((size) => <button key={size} type="button" className={textScale === size ? "is-active" : ""} onClick={() => onTextScaleChange?.(size)}>{size}</button>)}</div>
           <div className="Menu_Segmented" aria-label="View mode">{[["split", "Split"], ["editor", "Editor"], ["preview", "Preview"]].map(([mode, label]) => <button key={mode} type="button" className={viewMode === mode ? "is-active" : ""} onClick={() => onViewModeChange?.(mode)}>{label}</button>)}</div>
+          <div className="Menu_Segmented" aria-label="Editor appearance">{[["light", "Editor light"], ["dark", "Editor dark"]].map(([mode, label]) => <button key={mode} type="button" className={editorColorMode === mode ? "is-active" : ""} onClick={() => onEditorColorModeChange?.(mode)}>{label}</button>)}</div>
           <button type="button" className="Menu_AssetsButton" onClick={() => { onAssetsOpen?.(); setIsGlobalMenuOpen(false); }} disabled={!onAssetsOpen}>Open asset library</button>
-        </section>
-        <section className="GlobalMenu_Section" aria-labelledby="global-errors-title">
-          <h3 id="global-errors-title">Errors <span className="Menu_Badge">{errorAssets.length}</span></h3>
-          {errorAssets.length === 0 ? <p className="GlobalMenu_Empty">Zero errors</p> : (
-            <ul>
-              {errorAssets.map((asset) => (
-                <li key={`${asset.alias}-${asset.expectedRelativePath}`}>
-                  <button type="button" onClick={() => {
-                    onDiagnosticSelect?.(asset);
-                    setIsGlobalMenuOpen(false);
-                  }}>
-                    <strong>{asset.alias}</strong>
-                    <span>Missing file{asset.referencedLines?.length ? ` on line${asset.referencedLines.length === 1 ? "" : "s"} ${asset.referencedLines.join(", ")}` : ""}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-        <section className="GlobalMenu_Section" aria-labelledby="global-warnings-title">
-          <h3 id="global-warnings-title">Warnings <span className="Menu_Badge">{warnings.length + softDeletedReferences.length}</span></h3>
-          {warnings.length + softDeletedReferences.length === 0 ? <p className="GlobalMenu_Empty">Zero warnings</p> : (
-            <ul>
-              {softDeletedReferences.map((asset) => <li key={`deleted-${asset.alias}`}>Soft-deleted reference: {asset.alias}</li>)}
-              {warnings.map((warning, index) => <li key={`${warning.alias ?? warning.path ?? "warning"}-${index}`}>{warning.alias ?? warning.path ?? String(warning)}</li>)}
-            </ul>
-          )}
+          </div>}
         </section>
       </aside></div>
     )}

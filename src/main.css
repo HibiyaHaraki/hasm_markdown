@@ -236,12 +236,12 @@
     font-size: 0.85rem;
 }
 
-.AssetWindow_Dropzone {
-    margin: 12px 0;
-    padding: 24px 12px;
-    border: 1px dashed currentColor;
-    text-align: center;
-}
+.AssetWindow_AddButton { width: 100%; min-height: 40px; margin: 12px 0; border: 1px solid var(--theme-primary); color: var(--theme-on-accent); background: var(--theme-primary); font-weight: 600; }
+.AssetWindow_AddButton:hover, .AssetWindow_AddButton:focus-visible { color: var(--theme-primary); background: transparent; outline: 2px solid var(--theme-accent-readable); outline-offset: 2px; }
+.AssetWindow_CloseButton, .AssetWindow_RegisterButton, .AssetWindow_DeleteButton { min-height: 34px; padding: 6px 10px; border: 1px solid var(--theme-border); color: var(--theme-text); background: var(--theme-input-bg); }
+.AssetWindow_CloseButton:hover, .AssetWindow_RegisterButton:hover, .AssetWindow_CloseButton:focus-visible, .AssetWindow_RegisterButton:focus-visible { border-color: var(--theme-primary); color: var(--theme-on-accent); background: var(--theme-primary); outline: 0; }
+.AssetWindow_DeleteButton { border-color: var(--theme-danger-readable, var(--theme-danger)); color: var(--theme-danger-readable, var(--theme-danger)); }
+.AssetWindow_DeleteButton:hover, .AssetWindow_DeleteButton:focus-visible { color: var(--theme-on-accent); background: var(--theme-danger-readable, var(--theme-danger)); outline: 2px solid var(--theme-danger-readable, var(--theme-danger)); outline-offset: 2px; }
 
 .AssetWindow_AliasForm {
     display: grid;
@@ -283,11 +283,6 @@
 .AssetWindow_AssetName > span { overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .AssetWindow_AssetName small { color: var(--theme-muted); font-size: 0.62rem; opacity: 0; transition: opacity 120ms ease; }
 .AssetWindow_AssetItem:hover .AssetWindow_AssetName small, .AssetWindow_AssetName:focus-visible small { opacity: 1; }
-.AssetWindow_Metadata { display: none; grid-template-columns: minmax(88px, 0.35fr) minmax(0, 1fr); gap: 3px 10px; margin: 8px 0 2px; padding: 9px; overflow: hidden; border: 1px solid var(--theme-border); background: var(--theme-soft); font-size: 0.68rem; }
-.AssetWindow_AssetItem:hover .AssetWindow_Metadata, .AssetWindow_AssetItem:focus-within .AssetWindow_Metadata { display: grid; }
-.AssetWindow_Metadata div { display: contents; }
-.AssetWindow_Metadata dt { color: var(--theme-muted); }
-.AssetWindow_Metadata dd { min-width: 0; margin: 0; overflow-wrap: anywhere; color: var(--theme-text); }
 
 .Mnnu_FileName {
     font-size: 0.8rem;
@@ -311,22 +306,29 @@
 }
 
 .HASM_Markdown_Editor_EditorCol_Editor_LineNum {
-    width: 24px;
-    padding: 10px 8px 10px 0;
-    text-align:center;
-    color: var(--text-color);
-    font-size: 16px;
-    font-family: 'Fira Code', monospace;
-    line-height: 1.5;
-    user-select: none;
+    width: 48px;
+    padding: 18px 12px 18px 0;
     overflow: hidden;
-    white-space: pre;
-    border-right: 1px solid #333;
+    color: var(--theme-on-accent);
+    background: var(--main-color);
+    border-right: 1px solid var(--theme-border);
+    font-family: "Yu Mincho", "游明朝", Georgia, serif;
+    font-size: 1em;
+    line-height: 1.8;
+    text-align: center;
+    user-select: none;
 }
 
-.editor-warning-line {
-    display: inline-block;
+.HASM_Markdown_Editor_EditorCol_Editor_LineNum > span {
+    display: block;
     width: 100%;
+    height: 1.8em;
+    color: var(--theme-on-accent);
+    background: var(--main-color);
+    line-height: 1.8;
+}
+
+.HASM_Markdown_Editor_EditorCol_Editor_LineNum > span.editor-warning-line {
     color: var(--theme-danger, #b42318);
     background: var(--theme-warning-background, var(--theme-soft, #fee4e2));
 }
@@ -360,11 +362,22 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 .Main { color: var(--theme-text); background: var(--theme-textbackground); }
 .Menu { min-height: 64px; display: flex; align-items: center; gap: 24px; padding: 10px 24px; color: var(--theme-text); background: var(--theme-surface); border-bottom: 1px solid var(--theme-border); box-shadow: 0 1px 0 var(--theme-soft); }
 .Menu_Brand { display: flex; align-items: center; gap: 12px; min-width: max-content; }
-.Menu_Mark { display: grid; place-items: center; width: 30px; height: 30px; color: var(--theme-on-accent); background: var(--theme-primary); font-size: 1.35rem; line-height: 1; }
+.Menu_Mark { display: block; width: 34px; height: 34px; object-fit: contain; }
 .Menu_Title { display: block; font-size: 1rem; font-weight: 600; letter-spacing: 0.08em; }
 .Menu_Subtitle { display: block; color: var(--theme-muted); font-size: 0.68rem; letter-spacing: 0.08em; }
 .Menu_Status { min-width: 0; overflow: hidden; color: var(--theme-muted); font-size: 0.76rem; text-overflow: ellipsis; white-space: nowrap; }
 .Menu_Toggle { display: inline-flex; align-items: center; gap: 9px; margin-left: auto; padding: 7px 0 7px 12px; border: 0; border-left: 1px solid var(--theme-border); color: var(--theme-text); background: transparent; font-size: 0.76rem; letter-spacing: 0.1em; text-transform: uppercase; }
+.Menu_Diagnostics { position: relative; margin-left: auto; }
+.Menu_DiagnosticsTrigger { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 5px 8px; border: 1px solid var(--theme-border); color: var(--theme-text); background: var(--theme-input-bg); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.Menu_DiagnosticsTrigger:hover, .Menu_DiagnosticsTrigger:focus-visible { border-color: var(--theme-accent-readable); outline: 2px solid var(--theme-accent-readable); outline-offset: 2px; }
+.Menu_DiagnosticsPanel { position: absolute; z-index: 1160; top: calc(100% + 8px); right: 0; display: grid; gap: 12px; width: min(360px, calc(100vw - 24px)); padding: 12px; border: 1px solid var(--theme-border); color: var(--theme-text); background: var(--theme-surface); box-shadow: 0 16px 36px rgba(20, 18, 15, 0.2); }
+.Menu_DiagnosticsPanel section + section { padding-top: 10px; border-top: 1px solid var(--theme-border); }
+.Menu_DiagnosticsPanel h3 { margin: 0 0 8px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.Menu_DiagnosticsPanel ul { margin: 0; padding: 0; list-style: none; }
+.Menu_DiagnosticsPanel li { padding: 6px 0; border-bottom: 1px solid var(--theme-border); font-size: 0.74rem; }
+.Menu_DiagnosticsPanel li:last-child { border-bottom: 0; }
+.Menu_DiagnosticsPanel li button { display: grid; gap: 2px; width: 100%; padding: 0; border: 0; color: inherit; background: transparent; text-align: left; }
+.HASM_Markdown_Editor_EditorCol_Editor_LineNum > span.editor-error-line { color: var(--theme-on-accent); background: var(--theme-danger-readable, var(--theme-danger)); font-weight: 700; }
 .Menu_Toggle span { display: grid; gap: 4px; }
 .Menu_Toggle i { display: block; width: 18px; height: 1px; background: currentColor; }
 .Menu_Overlay { position: fixed; z-index: 1140; inset: 0; background: rgba(20, 18, 15, 0.25); }
@@ -376,6 +389,26 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 .GlobalMenu_SaveState { border-color: var(--theme-border); background: var(--theme-soft); }
 .GlobalMenu_Section { border-color: var(--theme-border); }
 .GlobalMenu_Section h3 { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+.GlobalMenu_WorkspaceSummary { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--theme-border); background: var(--theme-soft); }
+.GlobalMenu_Path { display: grid; gap: 3px; min-width: 0; }
+.GlobalMenu_Path > span { color: var(--theme-muted); font-size: 0.64rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.GlobalMenu_Path code { overflow: hidden; color: var(--theme-text); font-family: "Fira Code", monospace; font-size: 0.66rem; text-overflow: ellipsis; white-space: nowrap; }
+.GlobalMenu_SyncList { display: grid; gap: 5px; padding-top: 8px; border-top: 1px solid var(--theme-border); }
+.GlobalMenu_SyncItem { display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 7px; color: var(--theme-muted); font-size: 0.7rem; }
+.GlobalMenu_SyncItem i { width: 8px; height: 8px; border-radius: 50%; background: var(--theme-muted); }
+.GlobalMenu_SyncItem strong { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.GlobalMenu_SyncItem.is-current i { background: #2e8b57; box-shadow: 0 0 0 2px color-mix(in srgb, #2e8b57 20%, transparent); }
+.GlobalMenu_SyncItem.is-pending i { background: #b7791f; }
+.GlobalMenu_SyncItem.is-unavailable i { background: var(--theme-muted); }
+.GlobalMenu_SectionToggle { display: flex; width: 100%; align-items: center; justify-content: space-between; padding: 4px 0; border: 0 !important; color: var(--theme-text); background: transparent !important; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.12em; text-align: left; text-transform: uppercase; }
+.GlobalMenu_SectionToggle:focus-visible { outline: 2px solid var(--theme-accent-readable); outline-offset: 3px; }
+.GlobalMenu_Diagnostics { position: relative; }
+.GlobalMenu_DiagnosticsPanel { display: grid; gap: 12px; margin-top: 10px; padding: 10px; border: 1px solid var(--theme-border); background: var(--theme-input-bg); }
+.GlobalMenu_DiagnosticsPanel section + section { padding-top: 10px; border-top: 1px solid var(--theme-border); }
+.GlobalMenu_DiagnosticsPanel h3 { margin: 0 0 8px; }
+.Menu_DiagnosticsCounts { display: inline-flex; gap: 5px; align-items: center; }
+.Menu_DiagnosticsCounts b, .Menu_DiagnosticsCounts em { display: grid; min-width: 1.5em; min-height: 1.5em; place-items: center; padding: 0 0.25em; color: var(--theme-surface); background: var(--theme-danger-readable, var(--theme-danger)); font-size: 0.7rem; font-style: normal; }
+.Menu_DiagnosticsCounts em { background: var(--theme-primary); }
 .Menu_ActionGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .Menu_ActionGrid button, .Menu_AssetsButton { min-height: 36px; padding: 7px 10px; text-align: left; }
 .Menu_Field { display: grid; gap: 5px; margin-bottom: 12px; color: var(--theme-muted); font-size: 0.78rem; }
@@ -403,7 +436,20 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 .EditorAssetShelf_Details strong { overflow: hidden; font-size: 0.76rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .EditorAssetShelf_Details small { color: var(--theme-muted); font-size: 0.64rem; }
 .HASM_Markdown_Editor_EditorCol_Editor { background: var(--theme-input-bg); }
-.HASM_Markdown_Editor_EditorCol_Editor_LineNum { width: 48px; padding: 18px 12px 18px 0; color: var(--theme-muted); border-right: 1px solid var(--theme-border); font-size: 0.75rem; line-height: 1.8; }
+.MarkdownSyntax_EditorSurface { min-width: 0; overflow: hidden; background: var(--editor-surface); }
+.MarkdownSyntax_Input { width: 100%; height: 100%; padding: 18px 22px; overflow: auto; color: var(--editor-text); background: var(--editor-surface); border: 0; font-family: "Yu Mincho", "游明朝", Georgia, serif; font-size: 1em; line-height: 1.8; letter-spacing: 0.03em; white-space: pre-wrap; overflow-wrap: break-word; word-break: break-word; outline: 0; }
+.MarkdownSyntax_Input:empty::before { content: "Type your markdown here..."; color: var(--theme-muted); pointer-events: none; }
+.MarkdownSyntax_Input::selection { background: var(--editor-selection); }
+.MarkdownSyntax_Input:focus { box-shadow: inset 2px 0 var(--theme-primary); }
+.MarkdownSyntax_Heading { color: var(--editor-heading); font-weight: 700; }
+.MarkdownSyntax_Marker, .MarkdownSyntax_Quote { color: var(--editor-marker); }
+.MarkdownSyntax_Link { color: var(--editor-link); }
+.MarkdownSyntax_Code { color: var(--editor-code); background: var(--editor-code-bg); }
+.MarkdownSyntax_Strong { color: var(--editor-strong); font-weight: 700; }
+.MarkdownSyntax_Emphasis { color: var(--editor-emphasis); font-style: italic; }
+.EditorColor_light { --editor-surface: #fbfaf5; --editor-text: #2a2a28; --editor-caret: #20201e; --editor-selection: rgba(178, 138, 85, 0.35); --editor-heading: #8b3d23; --editor-marker: #806319; --editor-link: #1f5f8b; --editor-code: #8a3052; --editor-code-bg: rgba(138, 48, 82, 0.1); --editor-strong: #653468; --editor-emphasis: #28625c; }
+.EditorColor_dark { --editor-surface: #202523; --editor-text: #e5e2d8; --editor-caret: #fffdf2; --editor-selection: rgba(125, 176, 163, 0.38); --editor-heading: #f0a475; --editor-marker: #e1ca70; --editor-link: #8dc7e9; --editor-code: #efa6c0; --editor-code-bg: rgba(239, 166, 192, 0.14); --editor-strong: #d4b3df; --editor-emphasis: #98d6ca; }
+.HASM_Markdown_Editor_EditorCol_Editor_LineNum { width: 48px; padding: 18px 12px 18px 0; color: var(--theme-muted); border-right: 1px solid var(--theme-border); font-size: 1em; line-height: 1.8; }
 .HASM_Markdown_Editor_EditorCol_Editor_Form { min-width: 0; padding: 18px 22px; resize: none; outline: 0; color: var(--theme-input-text); background: transparent; border: 0; font-family: "Yu Mincho", "游明朝", Georgia, serif; font-size: 1em; line-height: 1.8; }
 .HASM_Markdown_Editor_EditorCol_Editor_Form:focus { box-shadow: inset 2px 0 var(--theme-primary); }
 .HASM_Markdown_Editor_ViewerCol_Viewer { color: var(--theme-text); background: var(--theme-textbackground) !important; }
@@ -415,7 +461,6 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 
 .AssetWindow, .SaveProgress, .CloseWorkspaceModal { color: var(--theme-text); background: var(--theme-surface); border-color: var(--theme-border); box-shadow: -12px 0 30px rgba(20, 18, 15, 0.12); }
 .AssetWindow { top: 64px; width: min(390px, 100vw); padding: 24px; }
-.AssetWindow_Dropzone { border-color: var(--theme-primary); background: var(--theme-soft); }
 .AssetWindow_Error { color: var(--theme-danger-readable, var(--theme-danger)); }
 .AssetWindow_List li { border-color: var(--theme-border); }
 .SaveProgress, .CloseWorkspaceModal { box-shadow: 0 18px 50px rgba(20, 18, 15, 0.22); }
@@ -424,6 +469,8 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 .BootScreen_Kicker { color: var(--theme-accent-readable); }
 .BootScreen_Actions button { border-color: var(--theme-text); color: var(--theme-text); }
 .BootScreen_Actions_Primary { color: var(--theme-on-accent, var(--theme-surface, #f4f0e8)) !important; background: var(--theme-primary) !important; border-color: var(--theme-primary) !important; }
+.tooltip { --bs-tooltip-bg: var(--theme-text); --bs-tooltip-color: var(--theme-surface); --bs-tooltip-max-width: min(360px, calc(100vw - 24px)); font-family: "Yu Mincho", "游明朝", Georgia, serif; letter-spacing: 0.03em; }
+.tooltip-inner { overflow-wrap: anywhere; text-align: left; }
 
 @media (max-width: 720px) {
     .Menu { min-height: 58px; padding: 9px 14px; gap: 12px; }
@@ -452,6 +499,8 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
     line-height: 1.5;
     padding: 10px 2px 10px 2px;
 }
+
+/* Keep the raw input, rendered syntax, and line-number gutter on identical text metrics. */
 
 .HASM_Markdown_Editor_ViewerCol_Title {
     background-color: var(--main-color); 

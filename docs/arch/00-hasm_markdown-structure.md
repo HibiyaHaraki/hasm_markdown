@@ -271,7 +271,7 @@ pub struct HasmMarkdownPackage {
 }
 
 impl HasmMarkdownPackage {
-    /// Fast 10-second periodic local autosave (App Local UTF-8 text write only).
+    /// Fast 3-second periodic local autosave (App Local UTF-8 text write only).
     pub fn save_local_buffer(&mut self, markdown_content: &str) -> Result<(), PackageError> {
         let main_md_path = self.temp_dir_path.join("main.md");
         let tmp_path = self.temp_dir_path.join("main.md.tmp");
