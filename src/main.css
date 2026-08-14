@@ -306,22 +306,29 @@
 }
 
 .HASM_Markdown_Editor_EditorCol_Editor_LineNum {
-    width: 24px;
-    padding: 10px 8px 10px 0;
-    text-align:center;
-    color: var(--text-color);
-    font-size: 16px;
-    font-family: 'Fira Code', monospace;
-    line-height: 1.5;
-    user-select: none;
+    width: 48px;
+    padding: 18px 12px 18px 0;
     overflow: hidden;
-    white-space: pre;
-    border-right: 1px solid #333;
+    color: var(--theme-on-accent);
+    background: var(--main-color);
+    border-right: 1px solid var(--theme-border);
+    font-family: "Yu Mincho", "游明朝", Georgia, serif;
+    font-size: 1em;
+    line-height: 1.8;
+    text-align: center;
+    user-select: none;
 }
 
-.editor-warning-line {
-    display: inline-block;
+.HASM_Markdown_Editor_EditorCol_Editor_LineNum > span {
+    display: block;
     width: 100%;
+    height: 1.8em;
+    color: var(--theme-on-accent);
+    background: var(--main-color);
+    line-height: 1.8;
+}
+
+.HASM_Markdown_Editor_EditorCol_Editor_LineNum > span.editor-warning-line {
     color: var(--theme-danger, #b42318);
     background: var(--theme-warning-background, var(--theme-soft, #fee4e2));
 }
@@ -360,6 +367,17 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 .Menu_Subtitle { display: block; color: var(--theme-muted); font-size: 0.68rem; letter-spacing: 0.08em; }
 .Menu_Status { min-width: 0; overflow: hidden; color: var(--theme-muted); font-size: 0.76rem; text-overflow: ellipsis; white-space: nowrap; }
 .Menu_Toggle { display: inline-flex; align-items: center; gap: 9px; margin-left: auto; padding: 7px 0 7px 12px; border: 0; border-left: 1px solid var(--theme-border); color: var(--theme-text); background: transparent; font-size: 0.76rem; letter-spacing: 0.1em; text-transform: uppercase; }
+.Menu_Diagnostics { position: relative; margin-left: auto; }
+.Menu_DiagnosticsTrigger { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 5px 8px; border: 1px solid var(--theme-border); color: var(--theme-text); background: var(--theme-input-bg); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.Menu_DiagnosticsTrigger:hover, .Menu_DiagnosticsTrigger:focus-visible { border-color: var(--theme-accent-readable); outline: 2px solid var(--theme-accent-readable); outline-offset: 2px; }
+.Menu_DiagnosticsPanel { position: absolute; z-index: 1160; top: calc(100% + 8px); right: 0; display: grid; gap: 12px; width: min(360px, calc(100vw - 24px)); padding: 12px; border: 1px solid var(--theme-border); color: var(--theme-text); background: var(--theme-surface); box-shadow: 0 16px 36px rgba(20, 18, 15, 0.2); }
+.Menu_DiagnosticsPanel section + section { padding-top: 10px; border-top: 1px solid var(--theme-border); }
+.Menu_DiagnosticsPanel h3 { margin: 0 0 8px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.Menu_DiagnosticsPanel ul { margin: 0; padding: 0; list-style: none; }
+.Menu_DiagnosticsPanel li { padding: 6px 0; border-bottom: 1px solid var(--theme-border); font-size: 0.74rem; }
+.Menu_DiagnosticsPanel li:last-child { border-bottom: 0; }
+.Menu_DiagnosticsPanel li button { display: grid; gap: 2px; width: 100%; padding: 0; border: 0; color: inherit; background: transparent; text-align: left; }
+.HASM_Markdown_Editor_EditorCol_Editor_LineNum > span.editor-error-line { color: var(--theme-on-accent); background: var(--theme-danger-readable, var(--theme-danger)); font-weight: 700; }
 .Menu_Toggle span { display: grid; gap: 4px; }
 .Menu_Toggle i { display: block; width: 18px; height: 1px; background: currentColor; }
 .Menu_Overlay { position: fixed; z-index: 1140; inset: 0; background: rgba(20, 18, 15, 0.25); }
@@ -371,6 +389,26 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 .GlobalMenu_SaveState { border-color: var(--theme-border); background: var(--theme-soft); }
 .GlobalMenu_Section { border-color: var(--theme-border); }
 .GlobalMenu_Section h3 { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+.GlobalMenu_WorkspaceSummary { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--theme-border); background: var(--theme-soft); }
+.GlobalMenu_Path { display: grid; gap: 3px; min-width: 0; }
+.GlobalMenu_Path > span { color: var(--theme-muted); font-size: 0.64rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.GlobalMenu_Path code { overflow: hidden; color: var(--theme-text); font-family: "Fira Code", monospace; font-size: 0.66rem; text-overflow: ellipsis; white-space: nowrap; }
+.GlobalMenu_SyncList { display: grid; gap: 5px; padding-top: 8px; border-top: 1px solid var(--theme-border); }
+.GlobalMenu_SyncItem { display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 7px; color: var(--theme-muted); font-size: 0.7rem; }
+.GlobalMenu_SyncItem i { width: 8px; height: 8px; border-radius: 50%; background: var(--theme-muted); }
+.GlobalMenu_SyncItem strong { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.GlobalMenu_SyncItem.is-current i { background: #2e8b57; box-shadow: 0 0 0 2px color-mix(in srgb, #2e8b57 20%, transparent); }
+.GlobalMenu_SyncItem.is-pending i { background: #b7791f; }
+.GlobalMenu_SyncItem.is-unavailable i { background: var(--theme-muted); }
+.GlobalMenu_SectionToggle { display: flex; width: 100%; align-items: center; justify-content: space-between; padding: 4px 0; border: 0 !important; color: var(--theme-text); background: transparent !important; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.12em; text-align: left; text-transform: uppercase; }
+.GlobalMenu_SectionToggle:focus-visible { outline: 2px solid var(--theme-accent-readable); outline-offset: 3px; }
+.GlobalMenu_Diagnostics { position: relative; }
+.GlobalMenu_DiagnosticsPanel { display: grid; gap: 12px; margin-top: 10px; padding: 10px; border: 1px solid var(--theme-border); background: var(--theme-input-bg); }
+.GlobalMenu_DiagnosticsPanel section + section { padding-top: 10px; border-top: 1px solid var(--theme-border); }
+.GlobalMenu_DiagnosticsPanel h3 { margin: 0 0 8px; }
+.Menu_DiagnosticsCounts { display: inline-flex; gap: 5px; align-items: center; }
+.Menu_DiagnosticsCounts b, .Menu_DiagnosticsCounts em { display: grid; min-width: 1.5em; min-height: 1.5em; place-items: center; padding: 0 0.25em; color: var(--theme-surface); background: var(--theme-danger-readable, var(--theme-danger)); font-size: 0.7rem; font-style: normal; }
+.Menu_DiagnosticsCounts em { background: var(--theme-primary); }
 .Menu_ActionGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .Menu_ActionGrid button, .Menu_AssetsButton { min-height: 36px; padding: 7px 10px; text-align: left; }
 .Menu_Field { display: grid; gap: 5px; margin-bottom: 12px; color: var(--theme-muted); font-size: 0.78rem; }

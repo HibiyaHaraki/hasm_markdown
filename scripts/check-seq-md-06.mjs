@@ -78,6 +78,16 @@ async function openWorkspaceMenu(page) {
   await page.getByRole("heading", { name: "Workspace menu" }).waitFor();
 }
 
+async function openAppearanceMenu(page) {
+  await page.getByRole("button", { name: /appearance/i }).click();
+  await page.locator("#global-menu-appearance").waitFor();
+}
+
+async function openDiagnosticsMenu(page) {
+  await page.locator(".Menu_DiagnosticsTrigger").hover();
+  await page.locator("#header-diagnostics").waitFor();
+}
+
 const vite = spawn(process.platform === "win32" ? "cmd.exe" : npmCommand,
   process.platform === "win32"
     ? ["/d", "/s", "/c", "npm run dev -- --host 127.0.0.1 --port 4178 --strictPort"]
@@ -97,6 +107,8 @@ try {
     assert(await bootPage.locator(".BootScreen").count() === 1, "boot screen was not rendered");
     assert(await bootPage.getByRole("button", { name: /open workspace menu/i }).count() === 1, "workspace menu trigger was not available on boot page");
     await openWorkspaceMenu(bootPage);
+    assert(await bootPage.locator("#global-menu-file").count() === 0 && await bootPage.locator("#global-menu-appearance").count() === 0, "File and Appearance should be collapsed by default");
+    await bootPage.getByRole("button", { name: /appearance/i }).click();
     assert(await bootPage.locator(".Menu_AssetsButton").isDisabled(), "workspace asset action was not disabled during boot");
     await bootPage.getByRole("button", { name: /close menu/i }).click();
     assert(bootErrors.length === 0, `boot page errors detected: ${bootErrors.join("; ")}`);
@@ -121,6 +133,7 @@ try {
 
   await record("TC-MD-06-REACT-001", "Submodule Theme Mapping", async () => {
     await openWorkspaceMenu(bootPage);
+    await openAppearanceMenu(bootPage);
     const colorPatternSelect = bootPage.locator(".GlobalMenu select");
     for (const pattern of COLOR_PATTERN_OPTIONS) {
       const patternId = pattern.id;
@@ -150,11 +163,10 @@ try {
   });
 
   await record("TC-MD-06-REACT-004", "Zero Diagnostic State", async () => {
-    await openWorkspaceMenu(bootPage);
-    assert((await bootPage.locator("#global-errors-title").textContent()).includes("0"), "boot error count was not zero");
-    assert((await bootPage.locator("#global-warnings-title").textContent()).includes("0"), "boot warning count was not zero");
-    assert(await bootPage.locator(".GlobalMenu_SaveState").count() === 1, "global save state readout was not rendered");
-    await bootPage.getByRole("button", { name: /close menu/i }).click();
+    await openDiagnosticsMenu(bootPage);
+    assert((await bootPage.locator("#header-errors-title").textContent()).includes("0"), "boot error count was not zero");
+    assert((await bootPage.locator("#header-warnings-title").textContent()).includes("0"), "boot warning count was not zero");
+    assert(await bootPage.locator("#header-diagnostics").count() === 1, "header diagnostics panel was not rendered");
   });
 
   const editorPage = await browser.newPage();
@@ -172,8 +184,18 @@ try {
     assert(await editorPage.getByRole("tooltip").textContent() === "C:/eval/workspace", "status tooltip did not show the active workspace target path");
   });
 
+  await record("TC-MD-06-REACT-009", "Workspace Path and Sync Summary", async () => {
+    await openWorkspaceMenu(editorPage);
+    assert(await editorPage.locator(".GlobalMenu_WorkspaceSummary").getByText("C:/eval/temporal/eval-md-02", { exact: true }).count() === 1, "temporal local path was not shown");
+    assert(await editorPage.locator(".GlobalMenu_WorkspaceSummary").getByText("C:/eval/workspace", { exact: true }).count() === 1, "local folder or archive path was not shown");
+    assert(await editorPage.locator(".GlobalMenu_SyncItem").count() === 2, "both synchronization marks were not rendered");
+    assert(await editorPage.locator(".GlobalMenu_SyncItem.is-current").count() === 2, "clean Ready workspace did not mark both targets current");
+    await editorPage.getByRole("button", { name: /close menu/i }).click();
+  });
+
   await record("TC-MD-06-REACT-006", "Independent Syntax Editor Appearance", async () => {
     await openWorkspaceMenu(editorPage);
+    await openAppearanceMenu(editorPage);
     await editorPage.getByRole("button", { name: "Editor dark" }).click();
     const editor = editorPage.locator(".HASM_Markdown_Editor");
     assert(await editor.evaluate((element) => element.classList.contains("EditorColor_dark")), "dark editor appearance was not applied");
@@ -199,9 +221,23 @@ try {
   });
 
   await record("TC-MD-06-E2E-002", "Missing Asset Diagnostic Navigation", async () => {
-    await openWorkspaceMenu(editorPage);
-    assert(await editorPage.locator("#global-errors-title").textContent().then((text) => text.includes("Errors")), "error list was not rendered");
+    await openDiagnosticsMenu(editorPage);
+    assert(await editorPage.locator("#header-errors-title").textContent().then((text) => text.includes("Errors")), "error list was not rendered");
     assert(await editorPage.getByText("unknown", { exact: true }).count() === 1, "missing asset was not listed");
+    const gutterColors = await editorPage.evaluate(() => {
+      const gutter = document.querySelector(".HASM_Markdown_Editor_EditorCol_Editor_LineNum");
+      const normalLine = gutter.querySelector("span:not(.editor-error-line):not(.editor-warning-line)");
+      const errorLine = gutter.querySelector(".editor-error-line");
+      return {
+        gutterBackground: getComputedStyle(gutter).backgroundColor,
+        normalBackground: getComputedStyle(normalLine).backgroundColor,
+        errorBackground: getComputedStyle(errorLine).backgroundColor,
+        errorColor: getComputedStyle(errorLine).color,
+      };
+    });
+    assert(await editorPage.locator(".HASM_Markdown_Editor_EditorCol_Editor_LineNum .editor-error-line").textContent() === "2", "missing asset line number was not marked as an error");
+    assert(gutterColors.normalBackground === gutterColors.gutterBackground, `normal line number did not use main gutter color: ${JSON.stringify(gutterColors)}`);
+    assert(gutterColors.errorBackground !== gutterColors.gutterBackground && gutterColors.errorColor !== "", `error line number colors did not override the normal state: ${JSON.stringify(gutterColors)}`);
     await editorPage.getByRole("button", { name: /unknown Missing file/ }).click();
     assert(await editorPage.locator(".GlobalMenu").count() === 0, "diagnostics drawer did not close after selection");
     assert(await editorPage.evaluate(() => window.getSelection()?.toString().length > 0), "editor did not select the missing asset line");

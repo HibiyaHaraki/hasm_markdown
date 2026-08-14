@@ -93,6 +93,7 @@ sequenceDiagram
                 AppLocal-->>Rust: File Written
                 Rust-->>React: Return Ok(AutosaveResult)
                 React->>React: Update lastSavedContent = current_buffer
+                React->>React: Recalculate missingAssets and retain backend warnings
                 React->>React: setDirty(false)
                 React->>React: setIsSaving(false)
                 React->>User: Update Header UI Status ("Autosaved locally at HH:mm:ss")
@@ -154,6 +155,6 @@ export type SaveLocalMarkdownBufferResult =
 1. **Total Elimination of `Ctrl+S` Keyboard Shortcut:**
 The application explicitely unbinds and intercepts `Ctrl+S` / `Cmd+S` keydown events within the editor component to prevent accidental execution of long-running file operations.
 2. **Strict Local Isolation of Autosave:**
-The 3-second periodic autosave loop is strictly bounded to writing plain UTF-8 text to `<UUID>/main.md` in `App Local`. It **never** invokes ZIP re-compression, archive updates, or heavy asset file copying.
+The 3-second periodic autosave loop is strictly bounded to writing plain UTF-8 text to `<UUID>/main.md` in `App Local`. After a successful save it re-scans the saved buffer for missing/deleted asset references and retains backend warning records without replacing the mounted manifest or gutter visual state from a partial autosave response. It **never** invokes ZIP re-compression, archive updates, or heavy asset file copying.
 3. **Save Action Offloading:**
 All heavy persistence tasks (normalizing relative paths, syncing added/deleted assets, writing back to target folders, or re-building `.hasmmd` ZIP archives) are offloaded exclusively to **`SEQ-MD-04`**, triggered only by an explicit user click on the UI "Save Package" button.

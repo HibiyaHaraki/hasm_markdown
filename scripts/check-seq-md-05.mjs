@@ -14,6 +14,14 @@ async function record(id, name, check) { try { await check(); results.push({ id,
 function waitForServer() { return new Promise((resolve, reject) => { const started = Date.now(); const probe = () => { const request = http.get(url, (response) => { response.resume(); resolve(); }); request.on("error", () => Date.now() - started > 60000 ? reject(new Error("Vite server timeout")) : setTimeout(probe, 250)); }; probe(); }); }
 function stop(child) { return new Promise((resolve) => { if (!child || child.killed) return resolve(); child.once("exit", resolve); if (process.platform === "win32") spawn("taskkill", ["/pid", String(child.pid), "/t", "/f"], { stdio: "ignore" }); else child.kill("SIGTERM"); setTimeout(resolve, 5000); }); }
 
+async function openFileMenu(page) {
+  if (await page.locator(".GlobalMenu").count() === 0) {
+    await page.getByRole("button", { name: "Open workspace menu" }).click();
+  }
+  const fileToggle = page.getByRole("button", { name: /file/i });
+  if (await fileToggle.getAttribute("aria-expanded") !== "true") await fileToggle.click();
+}
+
 const vite = spawn(process.platform === "win32" ? "cmd.exe" : npmCommand, process.platform === "win32" ? ["/d", "/s", "/c", "npm run dev -- --host 127.0.0.1 --port 4177 --strictPort"] : ["run", "dev", "--", "--host", "127.0.0.1", "--port", "4177", "--strictPort"], { cwd: root, stdio: "ignore" });
 try {
   await waitForServer();
@@ -40,7 +48,7 @@ try {
   await page.goto(url, { waitUntil: "networkidle" });
 
   await record("TC-MD-05-REACT-002-CLEAN", "Clean Close Routes to Selection", async () => {
-    await page.getByRole("button", { name: "Open workspace menu" }).click();
+    await openFileMenu(page);
     await page.getByRole("button", { name: "Close workspace", exact: true }).click();
     await page.locator(".BootScreen").waitFor();
     const closeCall = await page.evaluate(() => window.__md05Calls.find(({ command }) => command === "close_and_cleanup_workspace"));
@@ -50,14 +58,14 @@ try {
   await page.goto(url, { waitUntil: "networkidle" });
   await page.getByRole("textbox", { name: "Markdown editor" }).fill("changed");
   await record("TC-MD-05-E2E-001", "Dirty Close Cancel", async () => {
-    await page.getByRole("button", { name: "Open workspace menu" }).click();
+    await openFileMenu(page);
     await page.getByRole("button", { name: "Close workspace", exact: true }).click();
     await page.getByRole("button", { name: "Cancel" }).click();
     await page.getByRole("button", { name: "Close menu" }).click();
     assert(await page.getByRole("textbox", { name: "Markdown editor" }).count() === 1, "cancel did not preserve workspace");
   });
   await record("TC-MD-05-E2E-003", "Dirty Close Discard", async () => {
-    await page.getByRole("button", { name: "Open workspace menu" }).click();
+    await openFileMenu(page);
     await page.getByRole("button", { name: "Close workspace", exact: true }).click();
     await page.getByRole("button", { name: "Discard Changes" }).click();
     await page.locator(".BootScreen").waitFor();
@@ -74,7 +82,7 @@ try {
   await page.goto(url, { waitUntil: "networkidle" });
   await page.getByRole("textbox", { name: "Markdown editor" }).fill("changed");
   await record("TC-MD-05-E2E-002", "Dirty Close Save", async () => {
-    await page.getByRole("button", { name: "Open workspace menu" }).click();
+    await openFileMenu(page);
     await page.getByRole("button", { name: "Close workspace", exact: true }).click();
     await page.getByRole("button", { name: "Save" }).last().click();
     await page.locator(".BootScreen").waitFor();
@@ -83,7 +91,7 @@ try {
   });
   await page.goto(url, { waitUntil: "networkidle" });
   await record("TC-MD-05-E2E-006", "Save Then Reopen Moved Package", async () => {
-    await page.getByRole("button", { name: "Open workspace menu" }).click();
+    await openFileMenu(page);
     await page.getByRole("button", { name: "Open folder", exact: true }).click();
     await page.getByRole("textbox", { name: "Markdown editor" }).waitFor();
     await page.getByRole("textbox", { name: "Markdown editor" }).fill("edited after moving package");

@@ -80,6 +80,22 @@ function setSelectionOffsets(element, start, end) {
   selection.addRange(range);
 }
 
+function recalculateMissingAssets(markdown, manifest) {
+  const missingByAlias = new Map();
+  markdown.split("\n").forEach((line, index) => {
+    for (const match of line.matchAll(/asset:([^\s)]+)/g)) {
+      const alias = match[1];
+      const asset = manifest?.assets?.[alias];
+      if (!asset || asset.isDeleted) {
+        const existing = missingByAlias.get(alias) ?? { alias, expectedRelativePath: asset?.relativePath ?? "", referencedLines: [] };
+        existing.referencedLines.push(index + 1);
+        missingByAlias.set(alias, existing);
+      }
+    }
+  });
+  return [...missingByAlias.values()];
+}
+
 // ###################################################
 // Function : HASM_Markdown_Editor
 // Description : Definition of HASM Markdown Editor Component
@@ -110,6 +126,13 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
     () => findMissingAssetLines(markdown, manifest, missingAssets),
     [markdown, manifest, missingAssets],
   );
+  const errorLines = useMemo(() => {
+    const lines = new Set();
+    for (const asset of missingAssets) {
+      if (!manifest.assets?.[asset.alias]?.isDeleted) asset.referencedLines?.forEach((line) => lines.add(line));
+    }
+    return lines;
+  }, [manifest.assets, missingAssets]);
   const assets = useMemo(
     () => Object.entries(manifest.assets ?? {}).filter(([, asset]) => !asset.isDeleted),
     [manifest.assets],
@@ -206,7 +229,15 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
           uuid: currentPackage.uuid,
           content,
         });
-        onPackageChange?.(pkg);
+        onPackageChange?.((previous) => ({
+          ...previous,
+          rawContent: content,
+          lastSavedContent: content,
+          isDirty: false,
+          // Autosave responses can be partial; retain the mounted manifest and visual state.
+          missingAssets: recalculateMissingAssets(content, previous?.manifest ?? currentPackage?.manifest),
+          warnings: pkg?.warnings ?? previous?.warnings ?? [],
+        }));
         lastSavedMarkdownRef.current = content;
         const savedAt = new Date();
         onAutosaveComplete?.(savedAt.toISOString());
@@ -306,9 +337,8 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
             className="HASM_Markdown_Editor_EditorCol_Editor_LineNum"
           >
             {lineNumbers.split("\n").map((lineNumber) => (
-              <span key={lineNumber} className={missingLines.has(Number(lineNumber)) ? "editor-warning-line" : ""}>
+              <span key={lineNumber} className={errorLines.has(Number(lineNumber)) ? "editor-error-line" : missingLines.has(Number(lineNumber)) ? "editor-warning-line" : ""}>
                 {lineNumber}
-                {"\n"}
               </span>
             ))}
           </div>

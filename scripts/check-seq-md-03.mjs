@@ -105,6 +105,8 @@ async function browserChecks() {
     });
     await page.goto(targetUrl, { waitUntil: "networkidle" });
     await page.getByRole("button", { name: "Open workspace menu" }).click();
+    const appearanceToggle = page.getByRole("button", { name: /appearance/i });
+    if (await appearanceToggle.getAttribute("aria-expanded") !== "true") await appearanceToggle.click();
     await page.getByRole("button", { name: "Open asset library" }).click();
 
     await record("TC-MD-03-REACT-001", "Active Asset Filtering", async () => {

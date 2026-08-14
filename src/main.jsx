@@ -46,6 +46,7 @@ const EMPTY_MARKDOWN = "# HASM Markdown\n\nCreate or open a workspace to begin."
 const EVALUATION_FIXTURE = {
   uuid: "eval-md-02",
   targetType: "Folder",
+  tempDirPath: "C:/eval/temporal/eval-md-02",
   targetPath: "C:/eval/workspace",
   lastSavedContent: "![present](asset:present)\n![deleted](asset:deleted)",
   manifest: {
@@ -61,6 +62,7 @@ const EVALUATION_FIXTURE = {
 const ASSET_EVALUATION_FIXTURE = {
   uuid: "eval-md-03",
   targetType: "Folder",
+  tempDirPath: "C:/eval/temporal/eval-md-03",
   lastSavedContent: "# Assets\n\n![deleted](asset:deleted)",
   manifest: {
     version: "1",
@@ -75,6 +77,7 @@ const ASSET_EVALUATION_FIXTURE = {
 const SAVE_EVALUATION_FIXTURE = {
   uuid: "eval-md-04",
   targetType: "Folder",
+  tempDirPath: "C:/eval/temporal/eval-md-04",
   targetPath: "C:/eval/workspace",
   lastSavedContent: "# Save fixture",
   manifest: { version: "1", assets: {} },
@@ -84,6 +87,7 @@ const SAVE_EVALUATION_FIXTURE = {
 const CLOSE_EVALUATION_FIXTURE = {
   uuid: "eval-md-05",
   targetType: "Folder",
+  tempDirPath: "C:/eval/temporal/eval-md-05",
   targetPath: "C:/eval/workspace",
   lastSavedContent: "# Close fixture",
   manifest: { version: "1", assets: {} },
@@ -174,6 +178,7 @@ function normalizePackagePayload(result, fallbackMarkdown = EMPTY_MARKDOWN) {
     isLoaded: true,
     isDirty: false,
     targetType: packageValue?.targetType ?? "Unbound",
+    tempDirPath: packageValue?.tempDirPath ?? packageValue?.temp_dir_path ?? null,
     targetPath: packageValue?.targetPath ?? packageValue?.hasmmd_local_path ?? null,
     manifest: packageValue?.manifest ?? { version: "1", assets: {} },
     missingAssets: packageValue?.missingAssets ?? [],

@@ -12,6 +12,7 @@
 
 * **`REQ-MD-02-003` (Missing / Soft-Deleted Asset Red-Text Rendering):** When an image tag references an alias missing from `assets.json`, listed in `missingAssets`, or marked as `isDeleted: true`, `markdown-it` shall render the element wrapped in a warning CSS class (`<span class="missing-asset-warning">`) displaying the missing tag text in red/warning styling.
 * **`REQ-MD-02-004` (Code Editor Line Warning Decorators):** The code editor component (Monaco/CodeMirror) shall scan line contents and apply visual red warning background/text decorators to lines containing missing or soft-deleted asset tags.
+* **`REQ-MD-02-006` (Missing Asset Line Number):** The editor gutter shall apply the strong error marker to the line number of each physically missing or unregistered asset reference. Soft-deleted asset references remain warning-level only.
 * **`REQ-MD-02-005` (Real-time Text Change Monitoring):** As the user modifies the raw text buffer, the system shall re-evaluate image tags in real-time and update both the preview HTML red-text spans and the editor line decorators on the fly within 16ms.
 
 ---
@@ -30,7 +31,7 @@
 * **`REQ-MD-02-021` (Local Autosave Skip Conditions):** The local autosave check shall immediately skip execution if `isDirty === false` or `isSaving === true`.
 * **`REQ-MD-02-022` (Local Autosave Lock Acquisition):** Before issuing a local autosave IPC request, the React frontend shall set `isSaving = true` to prevent concurrent local I/O calls.
 * **`REQ-MD-02-023` (Fast Local File Atomic Overwrite):** The Rust backend shall write the UTF-8 text buffer exclusively to `<AppLocalDataDir>/<UUID>/main.md.tmp` first and perform an atomic file rename to `<UUID>/main.md`. It shall **never** trigger ZIP re-compression, archive updates, or heavy asset copying during this loop.
-* **`REQ-MD-02-024` (Local Autosave Success Commitment):** Upon successful local file write, the system shall update `lastSavedContent`, set `isDirty = false`, set `isSaving = false`, and update the header UI status with the last local saved timestamp ("Autosaved locally at HH:mm:ss").
+* **`REQ-MD-02-024` (Local Autosave Success Commitment):** Upon successful local file write, the system shall update `lastSavedContent`, set `isDirty = false`, set `isSaving = false`, recalculate `missingAssets` from the saved buffer, preserve backend-provided warnings, and update the header UI status with the last local saved timestamp ("Autosaved locally at HH:mm:ss").
 * **`REQ-MD-02-025` (Local Autosave Failure Recovery):** If file write fails during local autosave, the system shall set `isSaving = false`, retain `isDirty = true`, and display a warning toast notification ("Local autosave failed: Disk write error").
 
 ---
@@ -39,6 +40,6 @@
 
 ### 2.1 UI Responsiveness and Local I/O Bounding
 
-* **`REQ-MD-02-100` (Non-blocking Preview Rendering):** Real-time `markdown-it` parsing and red-text decoration updates shall execute within 16ms to maintain 60 FPS editor responsiveness during active typing.
+* **`REQ-MD-02-100` (Non-blocking Preview Rendering):** Real-time `markdown-it` parsing and red-text decoration updates shall complete within 100ms during active typing.
 * **`REQ-MD-02-101` (Strict Local I/O Bounding):** The 3-second periodic autosave loop shall complete within 5ms by restricting I/O strictly to plain UTF-8 text writes inside the `App Local` sandbox directory.
 * **`REQ-MD-02-102` (Independent Editor Appearance and Syntax Colors):** The editor shall provide independently selectable Light and Dark appearances without changing the application color pattern. One `contenteditable` Markdown editing surface shall color headings, markers, links/assets, inline code, strong text, and emphasis while preserving the raw editable Markdown buffer.
