@@ -17,6 +17,7 @@
 * **`REQ-MD-06-011` (Active Save/Autosave Progress Readout):** When an autosave or explicit save IPC command is executing (`isSaving === true`), the system shall display a "Saving / Syncing..." indicator with a spinner animation.
 * **`REQ-MD-06-012` (Autosave Timestamp Readout):** Upon successful local autosave completion (`isDirty === false`), the system shall display "Autosaved Locally at HH:mm:ss" using the formatted epoch timestamp.
 * **`REQ-MD-06-013` (Master Target Sync Readout):** Upon successful completion of an explicit save/export (`SEQ-MD-04`), the system shall display "Master Target Synced".
+* **`REQ-MD-06-014` (Workspace Target Tooltip):** Hovering or keyboard-focusing the header save-state readout shall show the current workspace `targetPath`, identifying the active local folder or `.hasmmd` archive package.
 
 ---
 

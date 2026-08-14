@@ -236,12 +236,8 @@
     font-size: 0.85rem;
 }
 
-.AssetWindow_Dropzone {
-    margin: 12px 0;
-    padding: 24px 12px;
-    border: 1px dashed currentColor;
-    text-align: center;
-}
+.AssetWindow_AddButton { width: 100%; min-height: 40px; margin: 12px 0; border: 1px solid var(--theme-primary); color: var(--theme-on-accent); background: var(--theme-primary); font-weight: 600; }
+.AssetWindow_AddButton:hover, .AssetWindow_AddButton:focus-visible { color: var(--theme-primary); background: transparent; outline: 2px solid var(--theme-accent-readable); outline-offset: 2px; }
 
 .AssetWindow_AliasForm {
     display: grid;
@@ -283,11 +279,6 @@
 .AssetWindow_AssetName > span { overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .AssetWindow_AssetName small { color: var(--theme-muted); font-size: 0.62rem; opacity: 0; transition: opacity 120ms ease; }
 .AssetWindow_AssetItem:hover .AssetWindow_AssetName small, .AssetWindow_AssetName:focus-visible small { opacity: 1; }
-.AssetWindow_Metadata { display: none; grid-template-columns: minmax(88px, 0.35fr) minmax(0, 1fr); gap: 3px 10px; margin: 8px 0 2px; padding: 9px; overflow: hidden; border: 1px solid var(--theme-border); background: var(--theme-soft); font-size: 0.68rem; }
-.AssetWindow_AssetItem:hover .AssetWindow_Metadata, .AssetWindow_AssetItem:focus-within .AssetWindow_Metadata { display: grid; }
-.AssetWindow_Metadata div { display: contents; }
-.AssetWindow_Metadata dt { color: var(--theme-muted); }
-.AssetWindow_Metadata dd { min-width: 0; margin: 0; overflow-wrap: anywhere; color: var(--theme-text); }
 
 .Mnnu_FileName {
     font-size: 0.8rem;
@@ -415,7 +406,6 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 
 .AssetWindow, .SaveProgress, .CloseWorkspaceModal { color: var(--theme-text); background: var(--theme-surface); border-color: var(--theme-border); box-shadow: -12px 0 30px rgba(20, 18, 15, 0.12); }
 .AssetWindow { top: 64px; width: min(390px, 100vw); padding: 24px; }
-.AssetWindow_Dropzone { border-color: var(--theme-primary); background: var(--theme-soft); }
 .AssetWindow_Error { color: var(--theme-danger-readable, var(--theme-danger)); }
 .AssetWindow_List li { border-color: var(--theme-border); }
 .SaveProgress, .CloseWorkspaceModal { box-shadow: 0 18px 50px rgba(20, 18, 15, 0.22); }
@@ -424,6 +414,8 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 .BootScreen_Kicker { color: var(--theme-accent-readable); }
 .BootScreen_Actions button { border-color: var(--theme-text); color: var(--theme-text); }
 .BootScreen_Actions_Primary { color: var(--theme-on-accent, var(--theme-surface, #f4f0e8)) !important; background: var(--theme-primary) !important; border-color: var(--theme-primary) !important; }
+.tooltip { --bs-tooltip-bg: var(--theme-text); --bs-tooltip-color: var(--theme-surface); --bs-tooltip-max-width: min(360px, calc(100vw - 24px)); font-family: "Yu Mincho", "游明朝", Georgia, serif; letter-spacing: 0.03em; }
+.tooltip-inner { overflow-wrap: anywhere; text-align: left; }
 
 @media (max-width: 720px) {
     .Menu { min-height: 58px; padding: 9px 14px; gap: 12px; }

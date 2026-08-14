@@ -10,15 +10,16 @@
 
 ---
 
-### 1.2 Single-Asset Upload & Custom Alias Assignment
+### 1.2 Single-Asset File-Picker Upload & Custom Alias Assignment
 
-* **`REQ-MD-03-010` (Single File Drop Constraint):** When user drops multiple files onto the Asset Window dropzone, the frontend shall accept only the first item (`files[0]`) and display an informational toast notification ("Single file upload supported. Processing first item.").
-* **`REQ-MD-03-011` (Single File Picker Constraint):** The OS file dialog invoked via the "Add Asset" button shall strictly enforce single-file selection mode.
-* **`REQ-MD-03-012` (Alias Naming Modal Prompt):** Upon selecting or dropping a valid image file, the system shall display an Alias Naming Modal pre-filled with the sanitized base filename.
+* **`REQ-MD-03-010` (Drag-and-Drop Unavailable):** The Asset Window shall not render a drag-and-drop target or register drag-and-drop handlers.
+* **`REQ-MD-03-011` (Single File Picker Constraint):** The OS file dialog invoked via the themed "Select image" button shall strictly enforce single-file selection mode.
+* **`REQ-MD-03-012` (Alias Naming Modal Prompt):** Upon selecting a valid image file, the system shall display an Alias Naming Modal pre-filled with the sanitized base filename.
 * **`REQ-MD-03-013` (Alias Collision Validation):** The system shall validate the submitted alias string against all manifest keys (including both active assets and soft-deleted entries). If a collision is detected, the modal shall reject submission and render an inline error ("Alias or reserved name already exists in workspace history.").
 * **`REQ-MD-03-014` (Dynamic Path Binding without Heavy Copying):** Upon alias validation, the backend shall construct a `RuntimeAssetMetadata` entry binding the source absolute path to `resolvedPath` without executing immediate ZIP re-compression or heavy archive copying.
 * **`REQ-MD-03-015` (Inline Markdown Text Insertion):** If an active cursor is present in the main code editor, the frontend shall insert the formatted image tag `![alt](asset:<custom_alias>)` at the current line upon successful asset registration.
 * **`REQ-MD-03-016` (Pre-Save Runtime Image Display):** Before save/export, the editor, preview, asset shelf, and other image surfaces shall resolve image bytes from the registered absolute local source path without requiring an immediate workspace copy.
+* **`REQ-MD-03-017` (Preview Path Tooltip):** Hovering or keyboard-focusing an active asset in the Asset Window or editor asset shelf shall show a Bootstrap tooltip containing only its runtime `resolvedPath`, used for preview visualization. The tooltip shall not disclose other `assets.json` fields.
 
 ---
 

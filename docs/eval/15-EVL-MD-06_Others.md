@@ -36,6 +36,7 @@ The Global Menu must be opened through its actual accessible trigger before diag
 | **`TC-MD-06-REACT-002`** | `REQ-MD-06-022` | Positive (High-Contrast Red Contrast) | The high-contrast pattern is selected and the root application shell is mounted. | `src/main.css` + `src/HASM_Markdown_Editor.jsx` | 1. Switch to "High-Contrast" theme. 2. Render missing asset error spans and editor decorators. | 1. Error spans enforce high-visibility pure red (`#ff0000` text / `#ffffff` contrast background) adhering to accessibility standards. |
 | **`TC-MD-06-REACT-003`** | `REQ-MD-06-013` | Positive (Master Sync Status) | A successful explicit-save result updates the active package state. | `src/Menu.jsx` + `src/main.jsx` | 1. Execute explicit save action (`SEQ-MD-04`). | 1. Save state indicator updates readout to "Master Target Synced". |
 | **`TC-MD-06-REACT-004`** | `REQ-MD-06-001` `REQ-MD-06-002` `REQ-MD-06-003` | Positive (Zero Diagnostic State) | The boot route has no active workspace and the workspace menu is open. | `src/Menu.jsx` | 1. Open Global Menu during boot with no workspace. | 1. Error and warning counts are zero. 2. Global save-state readout is visible. |
+| **`TC-MD-06-REACT-005`** | `REQ-MD-06-014` | Positive (Workspace Target Tooltip) | A loaded workspace has a non-empty `targetPath`. | `src/Menu.jsx` | 1. Hover or keyboard-focus the header save-state readout. | 1. The Bootstrap tooltip shows the active local folder or archive package path. |
 
 ---
 
@@ -61,6 +62,7 @@ The Global Menu must be opened through its actual accessible trigger before diag
 | `TC-MD-06-E2E-004` | High-Contrast remains selected after boot reload through the persisted preference. |
 | `TC-MD-06-REACT-003` | The submodule theme-variable API remains the source of the root palette values. |
 | `TC-MD-06-REACT-004` | Boot diagnostics show zero errors, zero warnings, and a save-state readout. |
+| `TC-MD-06-REACT-005` | A loaded workspace status readout exposes its target path through a tooltip. |
 | `TC-MD-06-RUST-001` | Rust accepts Light, Dark, and High-Contrast modes. |
 | `TC-MD-06-RUST-002` | Rust rejects an unsupported theme mode. |
 | `TC-MD-06-RUST-003` | Rust serializes High-Contrast with the required warning color. |

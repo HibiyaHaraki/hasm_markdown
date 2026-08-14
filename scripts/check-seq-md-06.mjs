@@ -167,6 +167,11 @@ try {
   });
   await editorPage.goto(`${url}/?eval=md02`, { waitUntil: "networkidle" });
 
+  await record("TC-MD-06-REACT-005", "Workspace Target Path Tooltip", async () => {
+    await editorPage.locator(".Menu_Status").hover();
+    assert(await editorPage.getByRole("tooltip").textContent() === "C:/eval/workspace", "status tooltip did not show the active workspace target path");
+  });
+
   await record("TC-MD-06-E2E-002", "Missing Asset Diagnostic Navigation", async () => {
     await openWorkspaceMenu(editorPage);
     assert(await editorPage.locator("#global-errors-title").textContent().then((text) => text.includes("Errors")), "error list was not rendered");

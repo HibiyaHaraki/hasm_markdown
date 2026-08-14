@@ -9,7 +9,7 @@
 
 // React
 import { useMemo, useRef, useEffect, useState } from "react"; // React hooks for state and lifecycle management
-import { Row, Col, Form } from "react-bootstrap"; // Bootstrap layout and form components
+import { Row, Col, Form, OverlayTrigger, Tooltip } from "react-bootstrap"; // Bootstrap layout and form components
 import "bootstrap/dist/css/bootstrap.min.css";
 
 // CSS
@@ -218,19 +218,20 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
             </div>
             <div className="EditorAssetShelf_List">
               {assets.map(([alias, asset]) => (
-                <button
-                  type="button"
-                  className="EditorAssetShelf_Item"
-                  key={alias}
-                  onClick={() => onInsertAsset?.(alias)}
-                  title={`Insert ${alias}`}
-                >
-                  {assetSources[alias] ? <img src={assetSources[alias]} alt="" aria-hidden="true" /> : <span className="EditorAssetShelf_Placeholder" aria-hidden="true">◇</span>}
-                  <span className="EditorAssetShelf_Details">
-                    <strong>{alias}</strong>
-                    <small>{assetUsage.get(alias) ?? 0} {assetUsage.get(alias) === 1 ? "reference" : "references"}</small>
-                  </span>
-                </button>
+                <OverlayTrigger key={alias} placement="top" overlay={<Tooltip id={`editor-asset-preview-path-${alias}`}>{asset.resolvedPath || "Preview path unavailable"}</Tooltip>}>
+                  <button
+                    type="button"
+                    className="EditorAssetShelf_Item"
+                    onClick={() => onInsertAsset?.(alias)}
+                    aria-label={`Insert ${alias}; preview path available on hover`}
+                  >
+                    {assetSources[alias] ? <img src={assetSources[alias]} alt="" aria-hidden="true" /> : <span className="EditorAssetShelf_Placeholder" aria-hidden="true">◇</span>}
+                    <span className="EditorAssetShelf_Details">
+                      <strong>{alias}</strong>
+                      <small>{assetUsage.get(alias) ?? 0} {assetUsage.get(alias) === 1 ? "reference" : "references"}</small>
+                    </span>
+                  </button>
+                </OverlayTrigger>
               ))}
             </div>
           </div>

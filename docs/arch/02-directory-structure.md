@@ -200,7 +200,6 @@ src/
 │   │       └── assetResolverPlugin.js # Custom markdown-it Plugin for asset: Rewriting
 │   └── asset/                      # Asset Sub-window Components
 │       ├── AssetWindow.jsx         # Asset Management Main Panel
-│       ├── AssetDropzone.jsx       # Single-Asset Dropzone Component
 │       ├── AliasNamingModal.jsx    # Custom Alias Input Modal
 │       └── AssetCard.jsx           # Registered Asset Grid Item Renderer
 ├── pages/                          # Screen Page Views
@@ -297,10 +296,6 @@ src/
 
 * **`components/asset/AssetWindow.jsx`**
 * Asset management panel (modal/sidebar)[cite: 15, 21]. Displays registered assets (filtering out `isDeleted: true`), missing file warnings, and orphan file lists[cite: 15, 21].
-
-
-* **`components/asset/AssetDropzone.jsx`**
-* Drag-and-drop upload zone[cite: 15, 21]. Enforces **1-file upload limit**; if multiple files are dropped, takes the first item and triggers a toast notification[cite: 15, 20].
 
 
 * **`components/asset/AliasNamingModal.jsx`**

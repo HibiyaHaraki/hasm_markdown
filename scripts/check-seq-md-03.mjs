@@ -79,6 +79,7 @@ async function browserChecks() {
         invoke: async (command, args) => {
           window.__md03Invokes.push({ command, args });
           if (command === "get_launch_target") return null;
+          if (command === "plugin:dialog|open") return "C:/images/arch_v1.png";
           if (command === "read_asset_data") return { bytes: [], mimeType: "image/png" };
           if (command === "register_and_bind_single_asset_path") {
             window.__md03Package.manifest.assets[args.customAlias] = {
@@ -111,26 +112,16 @@ async function browserChecks() {
     });
     await record("TC-MD-03-REACT-006", "Asset Manifest Metadata Disclosure", async () => {
       const item = page.locator(".AssetWindow_List li").filter({ hasText: "active" });
-      await item.getByRole("button", { name: "Show metadata for active" }).focus();
-      const metadata = item.locator(".AssetWindow_Metadata");
-      assert(await metadata.getByText("active.png").count() >= 1, "asset UUID metadata was not shown");
-      assert(await metadata.getByText("C:/eval/assets/active.png").count() === 1, "resolved asset path metadata was not shown");
+      await item.getByRole("button", { name: "Preview path for active" }).hover();
+      const tooltip = page.getByRole("tooltip");
+      assert(await tooltip.textContent() === "C:/eval/assets/active.png", "asset preview path tooltip did not show the resolved path only");
     });
 
-    const dropzone = page.locator(".AssetWindow_Dropzone");
     const alias = page.locator(".AssetWindow_AliasForm input");
-    await record("TC-MD-03-E2E-002", "Multiple Drop Uses First File", async () => {
-      await page.evaluate(() => {
-        const transfer = new DataTransfer();
-        for (const path of ["C:/images/first.png", "C:/images/second.png", "C:/images/third.png"]) {
-          const file = new File(["x"], path.split("/").pop(), { type: "image/png" });
-          Object.defineProperty(file, "path", { value: path });
-          transfer.items.add(file);
-        }
-        document.querySelector(".AssetWindow_Dropzone").dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer: transfer }));
-      });
-      assert((await page.locator(".AssetWindow_Status").textContent()).includes("Single file upload supported"), "multi-drop notice was not displayed");
-      assert(await page.locator(".AssetWindow_AliasForm input").inputValue() === "first.png", "first dropped file was not selected");
+    await record("TC-MD-03-E2E-002", "Single File Picker Selection", async () => {
+      assert(await page.locator(".AssetWindow_Dropzone").count() === 0, "drag-and-drop surface is still rendered");
+      await page.getByRole("button", { name: "Select image" }).click();
+      assert(await alias.inputValue() === "arch_v1.png", "single file picker did not select the mocked image path");
     });
 
     await record("TC-MD-03-E2E-003", "Alias Collision Rejected", async () => {
@@ -139,7 +130,7 @@ async function browserChecks() {
       assert((await page.locator(".AssetWindow_Error").textContent()).includes("Alias or reserved name already exists"), "alias collision was accepted");
     });
 
-    await record("TC-MD-03-E2E-001", "Single Drop Registration and Cursor Insertion", async () => {
+    await record("TC-MD-03-E2E-001", "Single File Picker Registration and Cursor Insertion", async () => {
       await alias.fill("arch_v1.png");
       await alias.press("End");
       await page.getByRole("button", { name: "Register" }).click();
@@ -169,6 +160,9 @@ async function browserChecks() {
 
     await record("TC-MD-03-REACT-004", "Window Close State Synchronization", async () => {
       assert(await page.locator(".missing-asset-warning").count() >= 1, "closing the Asset Window did not retain synchronized missing state");
+      const shelfItem = page.getByRole("button", { name: /insert arch_v1\.png/i });
+      await shelfItem.hover();
+      assert(await page.getByRole("tooltip").textContent() === "C:/images/arch_v1.png", "editor asset preview path tooltip did not show the resolved path only");
     });
 
     await browser.close();

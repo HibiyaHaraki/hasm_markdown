@@ -9,7 +9,7 @@ This sequence defines the global cross-cutting UI services available across all 
 * **Error List:** Displays `missingAssets` tags (referenced in `main.md` but missing physically) and process lock warnings.
 
 
-2. **Real-time Save State Readout:** A synchronized UI indicator displaying the live status (`Dirty / Unsaved (*)` vs `Autosaved Locally at HH:mm:ss` vs `Master Target Synced`).
+2. **Real-time Save State Readout:** A synchronized UI indicator displaying the live status (`Dirty / Unsaved (*)` vs `Autosaved Locally at HH:mm:ss` vs `Master Target Synced`). Hovering or keyboard-focusing this indicator exposes the active local-folder or archive `targetPath`.
 3. **App-wide Color Pattern Selector:** Real-time theme switching across every pattern exported by the shared `src/hasm_color_pattern` submodule. The standard compatibility patterns are **`Light`** (`sand`), **`Dark`** (`classic`), and **`High-Contrast`** (`high-contrast`); all other exported patterns are available through local preference persistence.
 
 ---

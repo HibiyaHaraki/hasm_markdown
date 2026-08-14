@@ -46,6 +46,7 @@ const EMPTY_MARKDOWN = "# HASM Markdown\n\nCreate or open a workspace to begin."
 const EVALUATION_FIXTURE = {
   uuid: "eval-md-02",
   targetType: "Folder",
+  targetPath: "C:/eval/workspace",
   lastSavedContent: "![present](asset:present)\n![deleted](asset:deleted)",
   manifest: {
     version: "1",

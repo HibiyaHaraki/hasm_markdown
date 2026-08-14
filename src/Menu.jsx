@@ -9,6 +9,7 @@
 
 // Bootstrap
 import { useState } from "react";
+import { OverlayTrigger, Tooltip } from "react-bootstrap";
 // CSS
 import "./main.css";
 
@@ -132,7 +133,9 @@ function Menu({
         <span className="Menu_Mark" aria-hidden="true">∴</span>
         <div><strong className="Menu_Title">HASM Markdown</strong><span className="Menu_Subtitle">Paper &amp; Ink workspace</span></div>
       </div>
-      <span className="Menu_Status" role={statusText.startsWith("Local autosave failed") ? "alert" : "status"} aria-live="polite" aria-atomic="true">{statusText}</span>
+      <OverlayTrigger placement="bottom" overlay={<Tooltip id="workspace-target-path">{currentPackage?.targetPath || "No workspace target selected"}</Tooltip>}>
+        <span className="Menu_Status" role={statusText.startsWith("Local autosave failed") ? "alert" : "status"} aria-live="polite" aria-atomic="true">{statusText}</span>
+      </OverlayTrigger>
       <button type="button" className="Menu_Toggle" onClick={() => setIsGlobalMenuOpen(true)} aria-label="Open workspace menu" aria-expanded={isGlobalMenuOpen}>
         <span aria-hidden="true"><i /><i /><i /></span><b>Menu</b>
       </button>
