@@ -109,6 +109,13 @@ async function browserChecks() {
     await record("TC-MD-03-REACT-001", "Active Asset Filtering", async () => {
       assert(await page.locator(".AssetWindow_List li").count() === 1, "deleted asset was displayed as active");
     });
+    await record("TC-MD-03-REACT-006", "Asset Manifest Metadata Disclosure", async () => {
+      const item = page.locator(".AssetWindow_List li").filter({ hasText: "active" });
+      await item.getByRole("button", { name: "Show metadata for active" }).focus();
+      const metadata = item.locator(".AssetWindow_Metadata");
+      assert(await metadata.getByText("active.png").count() >= 1, "asset UUID metadata was not shown");
+      assert(await metadata.getByText("C:/eval/assets/active.png").count() === 1, "resolved asset path metadata was not shown");
+    });
 
     const dropzone = page.locator(".AssetWindow_Dropzone");
     const alias = page.locator(".AssetWindow_AliasForm input");

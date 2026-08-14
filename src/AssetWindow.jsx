@@ -173,9 +173,24 @@ function AssetWindow({ currentPackage, markdown, onPackageChange, onInsertAsset,
       {status && <div className="AssetWindow_Status" role="status">{status}</div>}
       <ul className="AssetWindow_List">
         {activeAssets.map(([assetAlias, asset]) => (
-          <li key={assetAlias}>
-            <span>{assetAlias}</span>
-            <button type="button" onClick={() => deleteAsset(assetAlias)}>Delete</button>
+          <li key={assetAlias} className="AssetWindow_AssetItem">
+            <div className="AssetWindow_AssetRow">
+              <button type="button" className="AssetWindow_AssetName" aria-label={`Show metadata for ${assetAlias}`}>
+                <span>{assetAlias}</span>
+                <small>Hover or focus for metadata</small>
+              </button>
+              <button type="button" onClick={() => deleteAsset(assetAlias)}>Delete</button>
+            </div>
+            <dl className="AssetWindow_Metadata" aria-label={`${assetAlias} metadata`}>
+              <div><dt>Alias</dt><dd>{assetAlias}</dd></div>
+              <div><dt>UUID</dt><dd>{asset.uuid || "-"}</dd></div>
+              <div><dt>Relative path</dt><dd>{asset.relativePath || "-"}</dd></div>
+              <div><dt>Resolved path</dt><dd>{asset.resolvedPath || "-"}</dd></div>
+              <div><dt>MIME type</dt><dd>{asset.mimeType || "-"}</dd></div>
+              <div><dt>Size</dt><dd>{asset.size ?? 0} bytes</dd></div>
+              <div><dt>External</dt><dd>{asset.isExternal ? "yes" : "no"}</dd></div>
+              <div><dt>Deleted</dt><dd>{asset.isDeleted ? "yes" : "no"}</dd></div>
+            </dl>
           </li>
         ))}
       </ul>

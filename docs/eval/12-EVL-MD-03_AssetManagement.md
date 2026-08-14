@@ -28,6 +28,7 @@ The executable evaluation command is `npm run check:seq-md-03`. It reports each 
 | **`TC-MD-03-REACT-003`** | `REQ-MD-03-023` | Positive (Progress Listener) | `AssetWindow.tsx` | 1. Trigger asset registration or soft-deletion. 2. Listen to `asset_register_progress` / `asset_delete_progress`. | 1. UI renders progress bar / spinner updating from 0% to 100%. |
 | **`TC-MD-03-REACT-004`** | `REQ-MD-03-030` | Positive (Window Close Recalc) | `usePackageStore` | 1. Dismiss Asset Window after soft-deleting an asset. | 1. Triggers recalculation of `missingAssets` and `warnings`. 2. Editor decorators update instantly. |
 | **`TC-MD-03-REACT-005`** | `REQ-MD-03-014` `REQ-MD-03-016` | Positive (Alias Shelf and Image Source) | Main Editor Asset Shelf and Preview | 1. Render a package with an active asset and a deterministic image byte fixture. 2. Click the asset alias in the shelf. 3. Inspect the generated preview image source. | 1. The alias is visible and inserts `![alt](asset:<alias>)` at the cursor. 2. The shelf and preview use the resolved runtime image source, not a literal unresolved `asset://C:/...` URL. |
+| **`TC-MD-03-REACT-006`** | `REQ-MD-03-001` `REQ-MD-03-002` | Positive (Manifest Metadata Disclosure) | `AssetWindow.jsx` | 1. Open Asset Window with an active manifest entry. 2. Hover or keyboard-focus the asset alias. | 1. The UI reveals alias, UUID, relative path, resolved path, MIME type, size, external flag, and deletion flag from `assets.json`. 2. Soft-deleted entries remain excluded from the active list. |
 
 ---
 
