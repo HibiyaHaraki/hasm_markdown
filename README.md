@@ -21,13 +21,21 @@ flowchart LR
 
 ## ✅ Current status
 
+Progress verified from the repository history on **2026-08-14**:
+
 | Area | Status |
 |---|---|
-| Editor | ✅ |
-| Preview | ✅ |
-| Local save / open flow | ✅ |
-| Workspace lock and asset mapping | ✅ |
-| Advanced metadata and packaging | 🚧 |
+| Editor editing and revision behavior | ✅ |
+| Markdown preview and missing-asset warnings | ✅ |
+| Asset registration, aliases, and soft deletion | ✅ |
+| Archive and folder open/save/export flow | ✅ |
+| Workspace locking and close/reopen lifecycle | ✅ |
+| Automated sequence and normal-workflow evaluations | ✅ |
+| Advanced metadata and broader packaging | 🚧 |
+
+The current automated coverage validates the storage/state workflow and focused
+sequence checks. Native GUI acceptance still requires running the packaged Tauri
+application.
 
 ## 🧩 Project structure
 
@@ -49,8 +57,8 @@ hasm_markdown/
 
 | Phase | Focus |
 |---|---|
-| Now | editor, preview, local workspace, asset registration |
-| Next | safer save/export flow, archive/folder packaging, validation |
+| Now | editor, preview, asset diagnostics, and workspace lifecycle |
+| Next | native GUI acceptance and continued save/export hardening |
 | Later | metadata controls, richer packaging, sharing experience |
 
 ## 🛠️ Tech stack
