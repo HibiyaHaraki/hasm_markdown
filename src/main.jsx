@@ -31,7 +31,6 @@ import "./main.css";
 import { Container } from "react-bootstrap";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { appLocalDataDir } from "@tauri-apps/api/path";
 import { open, save } from "@tauri-apps/plugin-dialog";
 
 // Logger
@@ -375,7 +374,7 @@ function App() {
   const finishClose = useCallback(async (forceDiscard = false) => {
     if (!isTauriRuntime || !currentPackage?.uuid) return;
     try {
-      await invoke("close_and_cleanup_workspace", { uuid: currentPackage.uuid, forceDiscard });
+      await invoke("close_and_cleanup_workspace", { uuid: currentPackage.uuid, force_discard: forceDiscard });
       setCurrentPackage(null);
       setMarkdown(EMPTY_MARKDOWN);
       setEditorStatus("Ready");
@@ -463,7 +462,7 @@ function App() {
 
     try {
       let path = selectedPath;
-      if (kind === "archive" || kind === "folder") {
+      if ((kind === "archive" || kind === "folder") && !path) {
         path = await open({
           directory: kind === "folder",
           multiple: false,
@@ -478,27 +477,14 @@ function App() {
 
       let result;
       if (kind === "archive") {
-        try {
-          infoLog("[SEQ-MD-01][IMPORT] invoke open_archive_workspace", { path });
-          result = await invoke("open_archive_workspace", { archive_path: path });
-        } catch (error) {
-          if (!isUnknownCommandError(error)) throw error;
-          warnLog("[SEQ-MD-01][IMPORT] using legacy archive command", error);
-          const basePath = await appLocalDataDir();
-          result = await invoke("open_hasmmd", { basePath, hasmmdPath: path });
-        }
+        infoLog("[SEQ-MD-01][IMPORT] invoke open_archive_workspace", { path });
+        result = await invoke("open_archive_workspace", { archive_path: path });
       } else if (kind === "folder") {
         infoLog("[SEQ-MD-01][IMPORT] invoke open_folder_workspace", { path });
         result = await invoke("open_folder_workspace", { folder_path: path });
       } else {
-        try {
-          infoLog("[SEQ-MD-01][IMPORT] invoke create_new_package");
-          result = await invoke("create_new_package");
-        } catch (error) {
-          if (!isUnknownCommandError(error)) throw error;
-          const basePath = await appLocalDataDir();
-          result = await invoke("create_new_hasmmd", { basePath });
-        }
+        infoLog("[SEQ-MD-01][IMPORT] invoke create_new_package");
+        result = await invoke("create_new_package");
       }
 
       commitPackage(result);

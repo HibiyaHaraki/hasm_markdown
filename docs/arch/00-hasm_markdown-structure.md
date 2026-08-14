@@ -28,6 +28,35 @@
 
 ```
 
+### 1.2 Asset Management Transition (`assets.json`)
+
+```json
+{
+  "version": "1",
+  "assets": {
+    "custom_alias": {
+      "uuid": "generated-uuid.png",
+      "relativePath": "assets/generated-uuid.png",
+      "resolvedPath": "C:/external/image.png",
+      "mimeType": "image/png",
+      "size": 12345,
+      "isExternal": true,
+      "isDeleted": false,
+      "deletedAt": null
+    }
+  }
+}
+```
+
+`assets.json` includes the assets path. That should be convereted in each phase.
+
+
+
+```mermaid
+Flowchat
+
+```
+
 ---
 
 ## 2. In-Memory Rust Domain Model & Class Design

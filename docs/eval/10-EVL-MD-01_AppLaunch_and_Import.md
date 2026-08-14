@@ -16,6 +16,8 @@ This document defines the complete test matrix, acceptance criteria, and traceab
 | **`TC-MD-01-CLI-006`** | `"REQ-MD-01-001"<br/>"REQ-MD-01-002"` | Negative (Non-Existent Target Path) | `hasm_markdown verify /non/existent/path/package.hasmmd` | 1. Execute `verify` with a path that does not exist on disk.2. Inspect stderr and exit code. | 1. Outputs explicit error ("Target path does not exist or is inaccessible").2. Terminates process immediately with exit code `1`. |
 | **`TC-MD-01-CLI-007`** | `"REQ-MD-01-003"` | Negative (Non-Existent Folder Preview) | `hasm_markdown preview /invalid/dummy_folder` | 1. Execute `preview` with an invalid directory path.2. Inspect stderr and exit code. | 1. Outputs explicit error ("Target folder directory does not exist").2. Terminates process immediately with exit code `1`. |
 | **`TC-MD-01-CLI-008`** | `"REQ-MD-01-002"` | Positive (Valid Folder Package Verification) | `hasm_markdown verify /path/to/folder_workspace` | 1. Create a folder workspace containing `main.md`, `assets.json`, and `assets/readme.txt`.2. Run `verify` on the folder.3. Inspect stdout and exit code. | 1. The registered folder asset is found.2. Output prints success message.3. Exit code is `0`. |
+| **`TC-MD-01-E2E-004`** | `"REQ-MD-01-004"` | Positive (Direct Archive Path Forwarding) | React `/select` launch with `.hasmmd` path | 1. Provide `/select?path=C:/fixtures/direct.hasmmd`. 2. Mock `get_launch_target` with the same path. 3. Capture Tauri IPC calls. | 1. `open_archive_workspace` receives `{ archive_path: "C:/fixtures/direct.hasmmd" }`. 2. No second native file dialog is opened. 3. The editor mounts successfully. |
+| **`TC-MD-01-E2E-005`** | `"REQ-MD-01-004"` | Positive (Direct Folder Path Forwarding) | React `/select` launch with folder path | 1. Provide `/select?path=C:/fixtures/direct-folder`. 2. Mock `get_launch_target` with the same path. 3. Capture Tauri IPC calls. | 1. `open_folder_workspace` receives `{ folder_path: "C:/fixtures/direct-folder" }`. 2. No second native folder dialog is opened. 3. The editor mounts successfully. |
 
 ---
 
@@ -55,7 +57,7 @@ npm run check:seq-md-01
 Expected summary for the current matrix:
 
 ```text
-Result: 16/16 passed
+Result: 18/18 passed
 ```
 
 Failure output includes the test ID, test name, assertion detail, command exit status, stdout, and stderr. This keeps the acceptance result concise while retaining the input/output evidence required to compare execution with `SEQ-MD-01`.

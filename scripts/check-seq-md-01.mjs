@@ -1,7 +1,9 @@
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import http from "node:http";
+import { chromium } from "playwright";
 import { createLogger } from "../src/hasm_logger/src/react/logger.js";
 
 const GREEN = "\x1b[32m";
@@ -111,6 +113,92 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function waitForServer(url, timeoutMs = 60000) {
+  return new Promise((resolvePromise, reject) => {
+    const startedAt = Date.now();
+    const probe = () => {
+      const request = http.get(url, (response) => { response.resume(); resolvePromise(); });
+      request.on("error", () => {
+        if (Date.now() - startedAt > timeoutMs) reject(new Error(`Timed out waiting for ${url}`));
+        else setTimeout(probe, 250);
+      });
+    };
+    probe();
+  });
+}
+
+function stopProcess(child) {
+  return new Promise((resolvePromise) => {
+    if (!child || child.killed) return resolvePromise();
+    child.once("exit", resolvePromise);
+    if (process.platform === "win32") spawn("taskkill", ["/pid", String(child.pid), "/t", "/f"], { stdio: "ignore" });
+    else child.kill("SIGTERM");
+    setTimeout(resolvePromise, 5000);
+  });
+}
+
+async function runDirectLaunchBrowserChecks() {
+  const port = 4178;
+  const url = `http://127.0.0.1:${port}`;
+  const vite = spawn(process.platform === "win32" ? "cmd.exe" : "npm.cmd",
+    process.platform === "win32"
+      ? ["/d", "/s", "/c", `npm run dev -- --host 127.0.0.1 --port ${port} --strictPort`]
+      : ["run", "dev", "--", "--host", "127.0.0.1", "--port", String(port), "--strictPort"],
+    { cwd: root, stdio: "ignore" });
+
+  try {
+    await waitForServer(url);
+    const browser = await chromium.launch({ headless: true });
+    for (const [testId, targetPath, command, argumentName, targetType] of [
+      ["TC-MD-01-E2E-004", "C:/fixtures/direct.hasmmd", "open_archive_workspace", "archive_path", "Archive"],
+      ["TC-MD-01-E2E-005", "C:/fixtures/direct-folder", "open_folder_workspace", "folder_path", "Folder"],
+    ]) {
+      const page = await browser.newPage();
+      await page.addInitScript(() => {
+        window.__launchCalls = [];
+        window.__TAURI_INTERNALS__ = {
+          invoke: async (name, args) => {
+            window.__launchCalls.push({ name, args });
+            const requestedPath = new URLSearchParams(window.location.search).get("path");
+            if (name === "get_launch_target") return requestedPath;
+            if (name === "plugin:dialog|open") return null;
+            if (name === "open_archive_workspace" || name === "open_folder_workspace") {
+              return {
+                uuid: "eval-md-01-direct-launch",
+                targetType: name === "open_archive_workspace" ? "Archive" : "Folder",
+                targetPath: args.archive_path ?? args.folder_path,
+                rawContent: "# Direct launch",
+                lastSavedContent: "# Direct launch",
+                manifest: { version: "1", assets: {} },
+                missingAssets: [],
+                warnings: [],
+              };
+            }
+            throw new Error(`unexpected command: ${name}`);
+          },
+        };
+      });
+
+      try {
+        await page.goto(`${url}/?path=${encodeURIComponent(targetPath)}`, { waitUntil: "networkidle" });
+        await page.locator("textarea").waitFor();
+        const calls = await page.evaluate(() => window.__launchCalls);
+        const openCall = calls.find(({ name }) => name === command);
+        assert(openCall?.args?.[argumentName] === targetPath, `${command} did not receive ${argumentName}`);
+        assert(!calls.some(({ name }) => name === "plugin:dialog|open"), "direct launch opened a second file dialog");
+        results.push({ id: testId, name: `${targetType} direct launch path forwarding`, pass: true, detail: "" });
+      } catch (error) {
+        results.push({ id: testId, name: `${targetType} direct launch path forwarding`, pass: false, detail: error.stack || String(error) });
+      } finally {
+        await page.close();
+      }
+    }
+    await browser.close();
+  } finally {
+    await stopProcess(vite);
+  }
+}
+
 const folder = join(fixtureRoot, "workspace");
 mkdirSync(join(folder, "assets"), { recursive: true });
 writeFileSync(join(folder, "main.md"), "# Preview\n\n![diagram](asset:diagram)\n");
@@ -187,6 +275,7 @@ record("TC-MD-01-RUST-004", "Non-Existent Path Handler", () => assert(rustTests.
 record("TC-MD-01-E2E-001", "Selective Unpack and Streaming", () => assert(rustTests.status === 0 && rustOutput.includes("archive_import_extracts_metadata_only_and_resolves_stream_paths"), rustOutput));
 record("TC-MD-01-E2E-002", "Workspace Process Lock Conflict", () => assert(rustTests.status === 0 && rustOutput.includes("acquire_rejects_active_process_lock"), rustOutput));
 record("TC-MD-01-E2E-003", "Folder Workspace Asset Mount", () => assert(rustTests.status === 0 && rustOutput.includes("folder_mount_keeps_assets_external_and_resolves_absolute_paths"), rustOutput));
+await runDirectLaunchBrowserChecks();
 
 const guardTest = spawnSync(process.execPath, ["scripts/check-seq-md-01-guard.mjs"], { cwd: root, encoding: "utf8" });
 trace("TC-MD-01-GUARD-001", "OUTPUT", { status: guardTest.status, stdout: guardTest.stdout, stderr: guardTest.stderr });

@@ -7,7 +7,7 @@ use tauri::Manager;
 use crate::logger::init_logger;
 use log::{error, info};
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn open_archive_workspace(state: tauri::State<'_, AppState>, app: tauri::AppHandle, archive_path: String) -> Result<PackageStatePayload, String> {
     // SEQ-MD-01 / Phase 4: commit only after lock, handles, metadata, and path resolution succeed.
     init_logger();
@@ -17,7 +17,7 @@ pub fn open_archive_workspace(state: tauri::State<'_, AppState>, app: tauri::App
     replace_session(state, session)
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn open_folder_workspace(state: tauri::State<'_, AppState>, app: tauri::AppHandle, folder_path: String) -> Result<PackageStatePayload, String> {
     init_logger();
     info!("[SEQ-MD-01][IPC] open_folder_workspace target={folder_path}");
@@ -35,7 +35,7 @@ pub fn create_new_package(state: tauri::State<'_, AppState>, app: tauri::AppHand
     replace_session(state, session)
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn close_and_cleanup_workspace(state: tauri::State<'_, AppState>, uuid: String, force_discard: Option<bool>) -> Result<WorkspaceClosePayload, String> {
     let mut active = state.workspace.lock().map_err(|_| "Failed to lock workspace state")?;
     if active.as_ref().map(|session| session.payload.uuid.as_str()) != Some(uuid.as_str()) {

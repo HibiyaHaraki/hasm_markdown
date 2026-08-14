@@ -44,7 +44,7 @@ try {
     await page.getByRole("button", { name: "Close workspace", exact: true }).click();
     await page.locator(".BootScreen").waitFor();
     const closeCall = await page.evaluate(() => window.__md05Calls.find(({ command }) => command === "close_and_cleanup_workspace"));
-    assert(closeCall?.args.forceDiscard === false, "clean close did not invoke cleanup");
+    assert(closeCall?.args.force_discard === false, "clean close did not invoke cleanup");
   });
 
   await page.goto(url, { waitUntil: "networkidle" });
@@ -62,7 +62,7 @@ try {
     await page.getByRole("button", { name: "Discard Changes" }).click();
     await page.locator(".BootScreen").waitFor();
     const closeCall = await page.evaluate(() => window.__md05Calls.filter(({ command }) => command === "close_and_cleanup_workspace").at(-1));
-    assert(closeCall?.args.forceDiscard === true, "discard did not force cleanup");
+    assert(closeCall?.args.force_discard === true, "discard did not force cleanup");
   });
   await record("TC-MD-05-E2E-004", "Archive Close Releases Lock", async () => {
     const closeCall = await page.evaluate(() => window.__md05Calls.find(({ command }) => command === "close_and_cleanup_workspace"));
