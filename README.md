@@ -2,6 +2,14 @@
 
 A desktop markdown editor built around a simple idea: keep the document, its media, and its save flow in one portable package.
 
+## 📝 Project Notice
+
+Thank you for your interest in the HASM project. This repository represents early-stage research and development. The project is still in its infancy, with significant architectural work and refinement ongoing. 
+
+We are developing this project thoughtfully at our own pace, prioritizing stability and careful design decisions over rapid expansion. **At this time, we are not accepting external contributions.** We appreciate your understanding as we establish a solid foundation for future growth.
+
+For detailed architectural information and design decisions, please refer to the [documentation](docs/arch/).
+
 ## 🧭 Architecture at a glance
 
 ```mermaid
