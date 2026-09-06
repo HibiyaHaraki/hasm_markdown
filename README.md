@@ -102,3 +102,7 @@ npm run tauri build
 ## 📜 License
 
 This project is licensed under the GNU General Public License v3.0 or later. See [LICENSE](LICENSE).
+
+The GPL warranty disclaimer and limitation of liability are summarized in the
+[Legal Notice](docs/legal-notice.md). The [LICENSE](LICENSE) remains the
+controlling legal text.
