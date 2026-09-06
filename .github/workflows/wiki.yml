@@ -1,0 +1,76 @@
+name: Update Wiki
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - '.github/workflows/wiki.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: wiki-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  update-wiki:
+    name: Sync Documentation to Wiki
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Sync docs to GitHub Wiki
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Configure Git user
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Clone Wiki repository
+          WIKI_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git"
+          WIKI_DIR="wiki_repo"
+
+          echo "Cloning wiki repository..."
+          if ! git clone "$WIKI_URL" "$WIKI_DIR"; then
+            echo "Wiki repository not found or not initialized. Creating local wiki repo..."
+            mkdir -p "$WIKI_DIR"
+            cd "$WIKI_DIR"
+            git init
+            git remote add origin "$WIKI_URL"
+            cd ..
+          fi
+
+          # Clean existing wiki files (preserve .git)
+          find "$WIKI_DIR" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+
+          # Copy docs to wiki directory
+          if [ -d "docs" ]; then
+            cp -r docs/* "$WIKI_DIR/"
+          fi
+
+          # Ensure Home.md exists (fallback to README.md if Home.md is not provided)
+          if [ ! -f "$WIKI_DIR/Home.md" ] && [ -f "README.md" ]; then
+            cp README.md "$WIKI_DIR/Home.md"
+          fi
+
+          # Commit and push changes
+          cd "$WIKI_DIR"
+          git add -A
+
+          if git diff --staged --quiet; then
+            echo "No changes detected. Wiki is already up to date."
+          else
+            git commit -m "docs: auto-update wiki from commit ${GITHUB_SHA::7}"
+            # Push to wiki repository
+            git push origin HEAD:master || git push origin HEAD:main
+            echo "Successfully updated GitHub Wiki."
+          fi
