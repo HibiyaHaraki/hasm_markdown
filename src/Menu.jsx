@@ -166,7 +166,7 @@ function Menu({
     </Navbar>
     {isGlobalMenuOpen && (
       <Offcanvas show placement="end" onHide={() => setIsGlobalMenuOpen(false)} className="GlobalMenu" aria-label="Workspace menu">
-        <Offcanvas.Header closeButton>
+        <Offcanvas.Header closeButton closeLabel="Close menu">
         <div className="GlobalMenu_Header">
           <div>
             <span className="GlobalMenu_Kicker">HASM MARKDOWN / CONTROL</span>
