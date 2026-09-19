@@ -28,7 +28,8 @@ import {
 import "./main.css";
 
 // Bootstrap
-import { Container } from "react-bootstrap";
+import "bootstrap/dist/css/bootstrap.min.css";
+import { Alert, Button, Container, Modal, ProgressBar, Stack } from "react-bootstrap";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
@@ -213,13 +214,13 @@ function BootScreen({ phase, error, onOpen }) {
         <h1>{title}</h1>
         <p className="BootScreen_Message">{message}</p>
         {!isLoading && (
-          <div className="BootScreen_Actions">
-            <button type="button" onClick={() => onOpen("archive")} disabled={!isTauriRuntime}>Open .hasmmd archive</button>
-            <button type="button" onClick={() => onOpen("folder")} disabled={!isTauriRuntime}>Open workspace folder</button>
-            <button type="button" className="BootScreen_Actions_Primary" onClick={() => onOpen("new")} disabled={!isTauriRuntime}>Create new workspace</button>
-          </div>
+          <Stack direction="horizontal" gap={2} className="BootScreen_Actions">
+            <Button variant="outline-secondary" onClick={() => onOpen("archive")} disabled={!isTauriRuntime}>Open .hasmmd archive</Button>
+            <Button variant="outline-secondary" onClick={() => onOpen("folder")} disabled={!isTauriRuntime}>Open workspace folder</Button>
+            <Button className="BootScreen_Actions_Primary" onClick={() => onOpen("new")} disabled={!isTauriRuntime}>Create new workspace</Button>
+          </Stack>
         )}
-        {!isTauriRuntime && <small>Run this application in its Tauri desktop shell to open a workspace.</small>}
+        {!isTauriRuntime && <Alert variant="warning" className="mt-4 mb-0">Run this application in its Tauri desktop shell to open a workspace.</Alert>}
       </section>
     </main>
   );
@@ -228,26 +229,34 @@ function BootScreen({ phase, error, onOpen }) {
 function SaveProgress({ progress }) {
   if (!progress) return null;
   return (
-    <div className="SaveProgress" role="dialog" aria-modal="true" aria-label="Saving workspace">
-      <strong>Saving workspace</strong>
-      <span>{progress.stage}</span>
-      <progress max="100" value={progress.percentage}>{progress.percentage}%</progress>
-      <span>{Math.round(progress.percentage)}%</span>
-    </div>
+    <Modal show centered backdrop="static" keyboard={false} contentClassName="SaveProgress" aria-label="Saving workspace">
+      <Modal.Header><Modal.Title>Saving workspace</Modal.Title></Modal.Header>
+      <Modal.Body>
+        <Stack gap={2}>
+          <span>{progress.stage}</span>
+          <ProgressBar now={progress.percentage} label={`${Math.round(progress.percentage)}%`} />
+        </Stack>
+      </Modal.Body>
+    </Modal>
   );
 }
 
 function CloseWorkspaceModal({ onSave, onDiscard, onCancel, busy }) {
   return (
-    <div className="CloseWorkspaceModal" role="dialog" aria-modal="true" aria-label="Unsaved changes">
-      <strong>You have unsaved changes.</strong>
-      <span>Save before closing?</span>
-      <div className="CloseWorkspaceModal_Actions">
-        <button type="button" onClick={onSave} disabled={busy}>Save</button>
-        <button type="button" onClick={onDiscard} disabled={busy}>Discard Changes</button>
-        <button type="button" onClick={onCancel} disabled={busy}>Cancel</button>
-      </div>
-    </div>
+    <Modal show centered backdrop="static" onHide={onCancel} contentClassName="CloseWorkspaceModal" aria-label="Unsaved changes">
+      <Modal.Header closeButton={!busy}><Modal.Title>Unsaved changes</Modal.Title></Modal.Header>
+      <Modal.Body>
+        <Stack gap={2}>
+          <strong>You have unsaved changes.</strong>
+          <span>Save before closing?</span>
+        </Stack>
+      </Modal.Body>
+      <Modal.Footer className="CloseWorkspaceModal_Actions">
+        <Button variant="primary" onClick={onSave} disabled={busy}>Save</Button>
+        <Button variant="outline-danger" onClick={onDiscard} disabled={busy}>Discard Changes</Button>
+        <Button variant="secondary" onClick={onCancel} disabled={busy}>Cancel</Button>
+      </Modal.Footer>
+    </Modal>
   );
 }
 

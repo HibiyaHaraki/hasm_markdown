@@ -81,9 +81,9 @@ try {
   await record("TC-MD-04-REACT-001", "Save Progress Modal", async () => {
     await openFileMenu(page);
     await page.getByRole("button", { name: "Save", exact: true }).click();
-    await page.getByRole("button", { name: "Close menu" }).click();
     await page.locator(".SaveProgress").waitFor();
-    assert(await page.locator(".SaveProgress progress").getAttribute("value") === "100", "progress did not reach 100%");
+    assert((await page.locator(".SaveProgress .progress-bar").getAttribute("aria-valuenow")) === "100", "progress did not reach 100%");
+    await page.getByRole("button", { name: "Close menu" }).click();
   });
   await record("TC-MD-04-E2E-001", "In-Place Save Invocation", async () => {
     const call = await page.evaluate(() => window.__md04Calls.find(({ command }) => command === "execute_package_save_or_export"));
