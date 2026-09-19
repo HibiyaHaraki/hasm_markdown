@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Button, Form, ListGroup, Offcanvas, OverlayTrigger, ProgressBar, Stack, Tooltip } from "react-bootstrap";
+import { Alert, Button, Form, ListGroup, Offcanvas, OverlayTrigger, Stack, Tooltip } from "react-bootstrap";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -133,7 +133,7 @@ function AssetWindow({ currentPackage, markdown, onPackageChange, onInsertAsset,
 
   return (
     <Offcanvas show placement="end" onHide={closeWindow} className="AssetWindow" aria-label="Asset management">
-      <Offcanvas.Header closeButton className="AssetWindow_Header">
+      <Offcanvas.Header closeButton closeLabel="Close assets" className="AssetWindow_Header">
         <Offcanvas.Title>Assets</Offcanvas.Title>
       </Offcanvas.Header>
       <Offcanvas.Body>
@@ -153,7 +153,12 @@ function AssetWindow({ currentPackage, markdown, onPackageChange, onInsertAsset,
           <Button type="submit" variant="outline-primary" className="AssetWindow_RegisterButton">Register</Button>
         </Form>
       )}
-      {progress && <ProgressBar now={progress.percentage} label={`${Math.round(progress.percentage)}%`} />}
+      {progress && (
+        <div className="AssetWindow_Progress">
+          <progress value={progress.percentage} max={100} aria-label={`${progress.stage} progress`} />
+          <span>{progress.stage}</span>
+        </div>
+      )}
       {status && <Alert variant="info" className="AssetWindow_Status mb-0" role="status">{status}</Alert>}
       <ListGroup as="ul" className="AssetWindow_List">
         {activeAssets.map(([assetAlias, asset]) => (
