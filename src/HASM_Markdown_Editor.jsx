@@ -9,8 +9,7 @@
 
 // React
 import { useMemo, useRef, useEffect, useLayoutEffect, useState } from "react"; // React hooks for state and lifecycle management
-import { Row, Col, OverlayTrigger, Tooltip } from "react-bootstrap"; // Bootstrap layout and form components
-import "bootstrap/dist/css/bootstrap.min.css";
+import { Button, Col, OverlayTrigger, Row, Stack, Tooltip } from "react-bootstrap"; // Bootstrap layout and form components
 
 // CSS
 import "./main.css";
@@ -289,20 +288,18 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
         md={6} 
         className="HASM_Markdown_Editor_EditorCol d-flex flex-column border-end" 
       >
-        <div 
-          className="HASM_Markdown_Editor_EditorCol_Title"
-        >
+        <Stack direction="horizontal" className="HASM_Markdown_Editor_EditorCol_Title" gap={2}>
           <span>EDITOR</span>
-          <button
-            type="button"
-            className="EditorAssetShelf_Count"
+          <Button
+            variant="link"
+            className="EditorAssetShelf_Count ms-auto"
             onClick={() => setIsAssetShelfOpen((open) => !open)}
             aria-expanded={isAssetShelfOpen}
             aria-controls="editor-asset-shelf"
           >
             {assets.length} {assets.length === 1 ? "asset" : "assets"} {isAssetShelfOpen ? "- hide" : "+ show"}
-          </button>
-        </div>
+          </Button>
+        </Stack>
         {assets.length > 0 && isAssetShelfOpen && (
           <div id="editor-asset-shelf" className="EditorAssetShelf" aria-label="Workspace assets">
             <div className="EditorAssetShelf_Header">
@@ -312,8 +309,8 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
             <div className="EditorAssetShelf_List">
               {assets.map(([alias, asset]) => (
                 <OverlayTrigger key={alias} placement="top" overlay={<Tooltip id={`editor-asset-preview-path-${alias}`}>{asset.resolvedPath || "Preview path unavailable"}</Tooltip>}>
-                  <button
-                    type="button"
+                  <Button
+                    variant="light"
                     className="EditorAssetShelf_Item"
                     onClick={() => onInsertAsset?.(alias)}
                     aria-label={`Insert ${alias}; preview path available on hover`}
@@ -323,7 +320,7 @@ function HASM_Markdown_Editor({ markdown, setMarkdown, onPackageChange, onStatus
                       <strong>{alias}</strong>
                       <small>{assetUsage.get(alias) ?? 0} {assetUsage.get(alias) === 1 ? "reference" : "references"}</small>
                     </span>
-                  </button>
+                  </Button>
                 </OverlayTrigger>
               ))}
             </div>

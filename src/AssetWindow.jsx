@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { OverlayTrigger, Tooltip } from "react-bootstrap";
+import { Alert, Button, Form, ListGroup, Offcanvas, OverlayTrigger, ProgressBar, Stack, Tooltip } from "react-bootstrap";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -132,44 +132,47 @@ function AssetWindow({ currentPackage, markdown, onPackageChange, onInsertAsset,
   };
 
   return (
-    <aside className="AssetWindow" aria-label="Asset management">
-      <div className="AssetWindow_Header">
-        <h2>Assets</h2>
-        <button type="button" className="AssetWindow_CloseButton" onClick={closeWindow} aria-label="Close assets">Close</button>
-      </div>
-      <div className="AssetWindow_Alerts">
-        <span>Missing: {missingAssets.length}</span>
-        <span>Warnings: {warnings.length}</span>
-      </div>
-      <button type="button" className="AssetWindow_AddButton" onClick={handlePicker}>Select image</button>
+    <Offcanvas show placement="end" onHide={closeWindow} className="AssetWindow" aria-label="Asset management">
+      <Offcanvas.Header closeButton className="AssetWindow_Header">
+        <Offcanvas.Title>Assets</Offcanvas.Title>
+      </Offcanvas.Header>
+      <Offcanvas.Body>
+        <Stack gap={3}>
+          <Alert variant={missingAssets.length > 0 ? "danger" : "success"} className="AssetWindow_Alerts mb-0">
+            <span>Missing: {missingAssets.length}</span>
+            <span>Warnings: {warnings.length}</span>
+          </Alert>
+          <Button variant="primary" className="AssetWindow_AddButton" onClick={handlePicker}>Select image</Button>
       {selectedFile && (
-        <form className="AssetWindow_AliasForm" onSubmit={registerAsset}>
-          <label>
-            Alias
-            <input value={alias} onChange={(event) => { setAlias(event.target.value); setAliasError(""); }} autoFocus />
-          </label>
-          {aliasError && <div className="AssetWindow_Error" role="alert">{aliasError}</div>}
-          <button type="submit" className="AssetWindow_RegisterButton">Register</button>
-        </form>
+        <Form className="AssetWindow_AliasForm" onSubmit={registerAsset}>
+          <Form.Group controlId="asset-alias">
+            <Form.Label>Alias</Form.Label>
+            <Form.Control value={alias} onChange={(event) => { setAlias(event.target.value); setAliasError(""); }} autoFocus />
+          </Form.Group>
+          {aliasError && <Alert variant="danger" className="AssetWindow_Error mb-0" role="alert">{aliasError}</Alert>}
+          <Button type="submit" variant="outline-primary" className="AssetWindow_RegisterButton">Register</Button>
+        </Form>
       )}
-      {progress && <progress max="100" value={progress.percentage}>{progress.percentage}%</progress>}
-      {status && <div className="AssetWindow_Status" role="status">{status}</div>}
-      <ul className="AssetWindow_List">
+      {progress && <ProgressBar now={progress.percentage} label={`${Math.round(progress.percentage)}%`} />}
+      {status && <Alert variant="info" className="AssetWindow_Status mb-0" role="status">{status}</Alert>}
+      <ListGroup as="ul" className="AssetWindow_List">
         {activeAssets.map(([assetAlias, asset]) => (
-          <li key={assetAlias} className="AssetWindow_AssetItem">
+          <ListGroup.Item as="li" key={assetAlias} className="AssetWindow_AssetItem">
             <div className="AssetWindow_AssetRow">
               <OverlayTrigger placement="left" overlay={<Tooltip id={`asset-preview-path-${assetAlias}`}>{asset.resolvedPath || "Preview path unavailable"}</Tooltip>}>
-                <button type="button" className="AssetWindow_AssetName" aria-label={`Preview path for ${assetAlias}`}>
+                <Button variant="link" className="AssetWindow_AssetName" aria-label={`Preview path for ${assetAlias}`}>
                   <span>{assetAlias}</span>
                   <small>Preview path</small>
-                </button>
+                </Button>
               </OverlayTrigger>
-              <button type="button" className="AssetWindow_DeleteButton" onClick={() => deleteAsset(assetAlias)}>Delete</button>
+              <Button variant="outline-danger" className="AssetWindow_DeleteButton" onClick={() => deleteAsset(assetAlias)}>Delete</Button>
             </div>
-          </li>
+          </ListGroup.Item>
         ))}
-      </ul>
-    </aside>
+      </ListGroup>
+        </Stack>
+      </Offcanvas.Body>
+    </Offcanvas>
   );
 }
 
