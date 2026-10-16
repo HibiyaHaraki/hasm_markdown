@@ -140,7 +140,10 @@ fn archive_entries(path: &Path) -> Result<HashSet<String>, std::io::Error> {
     let mut entries = HashSet::new();
     for index in 0..archive.len() {
         let entry = archive.by_index(index).map_err(std::io::Error::other)?;
-        if entry.name().starts_with("assets/") && !entry.name().ends_with('/') { entries.insert(entry.name().to_string()); }
+        let name = entry.name().map_err(std::io::Error::other)?.into_owned();
+        if name.starts_with("assets/") && !name.ends_with('/') {
+            entries.insert(name);
+        }
     }
     Ok(entries)
 }
