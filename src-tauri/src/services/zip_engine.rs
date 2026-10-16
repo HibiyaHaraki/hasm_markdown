@@ -25,7 +25,7 @@ pub fn list_asset_entries(archive_path: &Path) -> Result<Vec<String>, PackageErr
     let mut entries = Vec::new();
     for index in 0..archive.len() {
         let entry = archive.by_index(index)?;
-        let name = entry.name().to_string();
+        let name = entry.name()?.into_owned();
         if name.starts_with("assets/") && !name.ends_with('/') {
             entries.push(name);
         }
