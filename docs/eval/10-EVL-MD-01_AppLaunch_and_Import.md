@@ -31,6 +31,9 @@ Preconditions are observable setup contracts; they are not fixed delays. The eva
 | **`TC-MD-01-CLI-008`** | `"REQ-MD-01-002"` | Positive (Valid Folder Package Verification) | A folder contains `main.md`, `assets.json`, and a manifest-registered `assets/readme.txt`. | `hasm_markdown verify /path/to/folder_workspace` | 1. Create a folder workspace containing `main.md`, `assets.json`, and `assets/readme.txt`.2. Run `verify` on the folder.3. Inspect stdout and exit code. | 1. The registered folder asset is found.2. Output prints success message.3. Exit code is `0`. |
 | **`TC-MD-01-E2E-004`** | `"REQ-MD-01-004"` | Positive (Direct Archive Path Forwarding) | Vite is reachable and archive-open IPC is mocked before navigation. | React `/select` launch with `.hasmmd` path | 1. Provide `/select?path=C:/fixtures/direct.hasmmd`. 2. Mock `get_launch_target` with the same path. 3. Capture Tauri IPC calls. | 1. `open_archive_workspace` receives `{ archive_path: "C:/fixtures/direct.hasmmd" }`. 2. No second native file dialog is opened. 3. The editor mounts successfully. |
 | **`TC-MD-01-E2E-005`** | `"REQ-MD-01-004"` | Positive (Direct Folder Path Forwarding) | Vite is reachable and folder-open IPC is mocked before navigation. | React `/select` launch with folder path | 1. Provide `/select?path=C:/fixtures/direct-folder`. 2. Mock `get_launch_target` with the same path. 3. Capture Tauri IPC calls. | 1. `open_folder_workspace` receives `{ folder_path: "C:/fixtures/direct-folder" }`. 2. No second native folder dialog is opened. 3. The editor mounts successfully. |
+| **`TC-MD-01-SPLASH-001`** | `"REQ-MD-01-005"` | Positive (Splash Window Configuration and Assets) | `npm run sync:logo` has copied the `hasm_logo` splash bundle into `public/splash/`. | `src-tauri/tauri.conf.json`, `public/splash/` | 1. Parse `app.windows`. 2. Inspect the `main` and `splashscreen` windows. 3. Read every splash bundle file. | 1. `main` has `visible: false`. 2. `splashscreen` loads `splash/sprash_animation.html` and has `create: false` (created at runtime only without a launch target). 3. HTML, CSS, JS, and the transparent logo exist. |
+| **`TC-MD-01-E2E-006`** | `"REQ-MD-01-005"` | Positive (Desktop Splash Minimum Display) | A built desktop application can create native windows. | `hasm_markdown` GUI launch without arguments | 1. Launch the app without a target path. 2. Observe windows and `[SEQ-MD-01][SPLASH]` logs. | 1. The splash appears first while `main` is hidden. 2. `closing splash after` reports at least 5 seconds. 3. `main` is shown and focused, then the splash closes once. |
+| **`TC-MD-01-E2E-007`** | `"REQ-MD-01-005"` | Positive (Splash Skipped for Launch Target) | A built desktop application and a valid folder or `.hasmmd` target exist. | `hasm_markdown <PATH>` GUI launch (e.g. from the hasm app) | 1. Launch the app with a target path. 2. Observe windows and `[SEQ-MD-01][SPLASH]` logs. | 1. `launch target provided; skipping splash` is logged. 2. No splash window appears. 3. `main` is shown immediately and the workspace opens. |
 
 ---
 
@@ -53,6 +56,7 @@ Preconditions are observable setup contracts; they are not fixed delays. The eva
 | **`TC-MD-01-RUST-002`** | `"REQ-MD-01-030"` | Positive (Path Expansion Unit Test) | A Mode B root path and relative `assets/test.png` entry are supplied. | `repository::path_resolver` | 1. Pass relative manifest entry `assets/test.png` to path resolver in Mode B. | 1. Joins target workspace root directory and returns exact OS absolute path string. |
 | **`TC-MD-01-RUST-003`** | `"REQ-MD-01-100"` | Positive (CLI Verification SLA) | A valid package fixture has exactly 1,000 asset mappings. | `cli::verify::exec` | 1. Execute `verify` on a package with 1,000 asset mappings.2. Measure execution duration. | 1. Verification completes and exits process within 50ms. |
 | **`TC-MD-01-RUST-004`** | `"REQ-MD-01-001"` | Negative (Non-Existent Path Handler) | The supplied archive `PathBuf` does not exist. | `domain::package::open_archive` | 1. Pass non-existent `PathBuf` to `open_archive`. | 1. Returns `Err(PackageError::IoError { message: "NotFound" })` without panicking or creating orphaned temporary folders. |
+| **`TC-MD-01-RUST-005`** | `"REQ-MD-01-005"` | Positive (Splash Minimum Display and Single Handoff) | No native window is required. | `commands::splash::SplashState`, `should_show_splash` | 1. Compute the remaining display time for a new state and for a state older than 5 seconds. 2. Claim the handoff twice. 3. Evaluate `should_show_splash` with no target, a blank target, an archive, and a folder. | 1. Remaining time never exceeds 5 seconds and is zero after the minimum. 2. Only the first claim succeeds, so duplicate readiness calls or the timeout cannot repeat the handoff. 3. The splash is shown only when no non-empty target is supplied. |
 
 ---
 
@@ -70,7 +74,7 @@ npm run check:seq-md-01
 Expected summary for the current matrix:
 
 ```text
-Result: 18/18 passed
+Result: 20/20 passed
 ```
 
 Failure output includes the test ID, test name, assertion detail, command exit status, stdout, and stderr. This keeps the acceptance result concise while retaining the input/output evidence required to compare execution with `SEQ-MD-01`.

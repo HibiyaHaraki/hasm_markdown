@@ -21,6 +21,7 @@ use hasm_markdown::HASMMarkdown;
 use log::{debug, error, info, trace, warn};
 use std::path::PathBuf;
 use std::sync::Mutex;
+use tauri::Manager;
 
 pub(crate) struct AppState {
     pub(crate) app: Mutex<HASMMarkdown>,
@@ -92,6 +93,7 @@ pub fn run() {
 }
 
 pub fn run_with_launch_path(launch_path: Option<String>) {
+    let show_splash = commands::splash::should_show_splash(launch_path.as_deref());
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
@@ -100,6 +102,12 @@ pub fn run_with_launch_path(launch_path: Option<String>) {
             app: Mutex::new(HASMMarkdown::new()),
             workspace: Mutex::new(None),
             launch_path: Mutex::new(launch_path),
+        })
+        .setup(move |app| {
+            init_logger();
+            app.manage(commands::splash::SplashState::new());
+            commands::splash::start(app.handle(), show_splash)?;
+            Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             save_local_package,
@@ -115,6 +123,7 @@ pub fn run_with_launch_path(launch_path: Option<String>) {
             commands::save::execute_package_save_or_export,
             commands::update_app_theme_config,
             commands::get_app_theme_config,
+            commands::splash::close_splashscreen,
             get_launch_target
         ])
         .run(tauri::generate_context!())

@@ -1,6 +1,7 @@
 pub mod editor;
 pub mod asset;
 pub mod save;
+pub mod splash;
 pub mod workspace;
 
 #[derive(serde::Serialize, serde::Deserialize)]

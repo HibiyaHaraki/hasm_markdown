@@ -50,6 +50,7 @@ src-tauri/src/
 │   ├── editor.rs                   # Fast Local Autosave Buffer Commands
 │   ├── asset.rs                    # Single-Asset Path Binding & Soft-Delete Commands
 │   ├── save.rs                     # In-Place Save & Export As Delta Commands
+│   ├── splash.rs                   # SEQ-MD-01 Startup Splash Handoff (close_splashscreen)
 │   └── config.rs                   # Theme & AppConfig Persistence Commands
 ├── domain/                         # Core Business Domain & Invariants
 │   ├── mod.rs                      # Module Register
@@ -106,6 +107,10 @@ src-tauri/src/
 * `fn open_folder_workspace(state: State<HasmMarkdownState>, folder_path: String) -> Result<PackageStatePayload, PackageError>`: Mounts external folder workspace directly and acquires PID lock[cite: 20, 22].
 * `fn create_new_package(state: State<HasmMarkdownState>) -> Result<PackageStatePayload, PackageError>`: Scaffolds empty workspace template in `App Local`[cite: 20, 22].
 * `fn close_and_cleanup_workspace(state: State<HasmMarkdownState>, uuid: String) -> Result<WorkspaceClosePayload, PackageError>`: Releases OS master handles, updates `.lock` payload to `pid: 0` / `status: "Unlocked"`, and cleans temp buffers[cite: 17, 20].
+
+
+* **`commands/splash.rs`**
+* `fn close_splashscreen(app: AppHandle, state: State<SplashState>) -> Result<(), String>`: Called by React after mount. If the splash was skipped, it is a no-op; otherwise it schedules the handoff once at least 5 seconds have elapsed since setup: shows and focuses `main`, then closes `splashscreen` (SEQ-MD-01 Phase 0). `fn start(...)` (called from `lib.rs` setup) creates the `create: false` splash window only when `should_show_splash(launch_path)` is true (no launch target) and schedules the 30-second readiness timeout; with a launch target it shows `main` immediately. The splash page is the `hasm_logo` bundle synced into `public/splash/` by `npm run sync:logo`.
 
 
 * **`commands/editor.rs`**
