@@ -21,6 +21,7 @@ use hasm_markdown::HASMMarkdown;
 use log::{debug, error, info, trace, warn};
 use std::path::PathBuf;
 use std::sync::Mutex;
+use tauri::Manager;
 
 pub(crate) struct AppState {
     pub(crate) app: Mutex<HASMMarkdown>,
@@ -101,6 +102,19 @@ pub fn run_with_launch_path(launch_path: Option<String>) {
             workspace: Mutex::new(None),
             launch_path: Mutex::new(launch_path),
         })
+        .setup(|app| {
+            // SEQ-MD-01 / Phase 0: the clock starts after config windows exist, so the splash is visible for the full minimum.
+            // A timeout guarantees the hidden main window appears even if the frontend never reports readiness.
+            init_logger();
+            app.manage(commands::splash::SplashState::new());
+            info!("[SEQ-MD-01][SPLASH] splash displayed; waiting for frontend readiness");
+            commands::splash::schedule_finish(
+                app.handle().clone(),
+                commands::splash::SPLASH_READY_TIMEOUT,
+                true,
+            );
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             save_local_package,
             save_hasmmd,
@@ -115,6 +129,7 @@ pub fn run_with_launch_path(launch_path: Option<String>) {
             commands::save::execute_package_save_or_export,
             commands::update_app_theme_config,
             commands::get_app_theme_config,
+            commands::splash::close_splashscreen,
             get_launch_target
         ])
         .run(tauri::generate_context!())

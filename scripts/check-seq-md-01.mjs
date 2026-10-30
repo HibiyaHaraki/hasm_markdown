@@ -275,6 +275,23 @@ record("TC-MD-01-RUST-004", "Non-Existent Path Handler", () => assert(rustTests.
 record("TC-MD-01-E2E-001", "Selective Unpack and Streaming", () => assert(rustTests.status === 0 && rustOutput.includes("archive_import_extracts_metadata_only_and_resolves_stream_paths"), rustOutput));
 record("TC-MD-01-E2E-002", "Workspace Process Lock Conflict", () => assert(rustTests.status === 0 && rustOutput.includes("acquire_rejects_active_process_lock"), rustOutput));
 record("TC-MD-01-E2E-003", "Folder Workspace Asset Mount", () => assert(rustTests.status === 0 && rustOutput.includes("folder_mount_keeps_assets_external_and_resolves_absolute_paths"), rustOutput));
+record("TC-MD-01-RUST-005", "Splash Minimum Display and Single Handoff", () => assert(
+  rustTests.status === 0
+    && ["remaining_display_never_exceeds_minimum", "remaining_display_is_zero_after_minimum", "handoff_is_claimed_once"].every((name) => rustOutput.includes(name)),
+  rustOutput,
+));
+record("TC-MD-01-SPLASH-001", "Splash Window Configuration and Assets", () => {
+  const config = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.conf.json"), "utf8"));
+  const windows = config.app?.windows ?? [];
+  const main = windows.find((window) => window.label === "main");
+  const splash = windows.find((window) => window.label === "splashscreen");
+  trace("TC-MD-01-SPLASH-001", "INPUT", { windows });
+  assert(main?.visible === false, "main window must start hidden until the splash handoff");
+  assert(splash?.url?.startsWith("splash/sprash_animation.html"), `unexpected splash url: ${splash?.url}`);
+  for (const fileName of ["sprash_animation.html", "sprash_animation.css", "sprash_animation.js", "hasm_markdown_logo_transparent.png"]) {
+    readFileSync(join(root, "public", "splash", fileName));
+  }
+});
 await runDirectLaunchBrowserChecks();
 
 const guardTest = spawnSync(process.execPath, ["scripts/check-seq-md-01-guard.mjs"], { cwd: root, encoding: "utf8" });

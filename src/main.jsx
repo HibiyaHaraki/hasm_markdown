@@ -552,6 +552,15 @@ function App() {
   }, [commitPackage]);
 
   useEffect(() => {
+    if (!isTauriRuntime) return;
+    // SEQ-MD-01 / Phase 0: report readiness; Rust keeps the splash visible for at least 5 seconds.
+    infoLog("[SEQ-MD-01][SPLASH] frontend mounted; requesting splash handoff");
+    invoke("close_splashscreen").catch((error) => {
+      warnLog("[SEQ-MD-01][SPLASH][ERROR] splash handoff failed", error);
+    });
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     const loadLaunchTarget = async () => {
       let launchTarget = getLaunchTarget();
