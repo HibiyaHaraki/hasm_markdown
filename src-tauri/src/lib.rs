@@ -93,6 +93,7 @@ pub fn run() {
 }
 
 pub fn run_with_launch_path(launch_path: Option<String>) {
+    let show_splash = commands::splash::should_show_splash(launch_path.as_deref());
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
@@ -102,17 +103,10 @@ pub fn run_with_launch_path(launch_path: Option<String>) {
             workspace: Mutex::new(None),
             launch_path: Mutex::new(launch_path),
         })
-        .setup(|app| {
-            // SEQ-MD-01 / Phase 0: the clock starts after config windows exist, so the splash is visible for the full minimum.
-            // A timeout guarantees the hidden main window appears even if the frontend never reports readiness.
+        .setup(move |app| {
             init_logger();
             app.manage(commands::splash::SplashState::new());
-            info!("[SEQ-MD-01][SPLASH] splash displayed; waiting for frontend readiness");
-            commands::splash::schedule_finish(
-                app.handle().clone(),
-                commands::splash::SPLASH_READY_TIMEOUT,
-                true,
-            );
+            commands::splash::start(app.handle(), show_splash)?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

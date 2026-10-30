@@ -26,7 +26,8 @@
         "height": 540,
         "center": true,
         "decorations": false,
-        "resizable": false
+        "resizable": false,
+        "create": false
       }
     ],
     "security": {

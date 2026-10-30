@@ -12,7 +12,7 @@ This sequence handles the application startup lifecycle from CLI/OS launch up to
 
 * **`preview <FOLDER_PATH>`:** Enforces **Folder Type Only (Mode B)** execution. Reads `main.md` and `assets.json`, resolves relative asset tags (`![alt](asset:alias)`) to OS absolute file paths, and outputs the converted Markdown stream to `stdout` for external editor compatibility.
 * **`open <PATH>`:** Launches the full interactive GUI application window, initiating selective import and state store commitment.
-* **Startup Splash (Phase 0):** The GUI starts with a `splashscreen` window showing the `hasm_logo` HASM Markdown splash (`public/splash/sprash_animation.html?background=theme`) while `main` is hidden. React invokes `close_splashscreen` after mounting; Rust waits until at least 5 seconds have elapsed since setup, shows and focuses `main`, then closes the splash. A 30-second readiness timeout shows `main` regardless. Logs use the `[SEQ-MD-01][SPLASH]` tag.
+* **Startup Splash (Phase 0):** For launches without a target path, the GUI creates the `splashscreen` window (declared with `create: false`) showing the `hasm_logo` HASM Markdown splash (`public/splash/sprash_animation.html?background=theme`) while `main` is hidden. React invokes `close_splashscreen` after mounting; Rust waits until at least 5 seconds have elapsed since setup, shows and focuses `main`, then closes the splash. A 30-second readiness timeout shows `main` regardless. Launches with a target path (e.g. opened from the hasm app) skip the splash and show `main` immediately. Logs use the `[SEQ-MD-01][SPLASH]` tag.
 
 
 
@@ -167,8 +167,13 @@ sequenceDiagram
     User->>CLI: Execute `hasm_markdown open [target_path]` (or `hasm_markdown [path]`)
     CLI->>Rust: Launch Process Instance with CLI Context
     activate Rust
-    Rust->>User: Create `splashscreen` window (hasm_logo splash) and hidden `main` window
-    Rust->>Rust: setup(): manage SplashState (start clock) & schedule 30s readiness timeout
+    Rust->>Rust: setup(): manage SplashState (start clock)
+    alt Launch target path provided (e.g. opened from hasm app)
+        Rust->>User: Skip splash; show & focus `main` immediately
+        React->>Rust: invoke("close_splashscreen") after App mount (no-op)
+    else No launch target
+    Rust->>User: Create `splashscreen` window (hasm_logo splash); `main` stays hidden
+    Rust->>Rust: Schedule 30s readiness timeout
     Rust-->>React: Load frontend in hidden `main` window
     React->>Rust: invoke("close_splashscreen") after App mount
     Rust->>Rust: Wait until at least 5s elapsed since setup (background thread)
@@ -177,6 +182,7 @@ sequenceDiagram
     else 30s timeout without readiness
         Rust->>Rust: warn [SEQ-MD-01][SPLASH] readiness timeout
         Rust->>User: Show & focus `main`, then close `splashscreen`
+    end
     end
 
     %% Phase 1: Launch & Version Check

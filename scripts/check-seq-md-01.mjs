@@ -277,7 +277,7 @@ record("TC-MD-01-E2E-002", "Workspace Process Lock Conflict", () => assert(rustT
 record("TC-MD-01-E2E-003", "Folder Workspace Asset Mount", () => assert(rustTests.status === 0 && rustOutput.includes("folder_mount_keeps_assets_external_and_resolves_absolute_paths"), rustOutput));
 record("TC-MD-01-RUST-005", "Splash Minimum Display and Single Handoff", () => assert(
   rustTests.status === 0
-    && ["remaining_display_never_exceeds_minimum", "remaining_display_is_zero_after_minimum", "handoff_is_claimed_once"].every((name) => rustOutput.includes(name)),
+    && ["remaining_display_never_exceeds_minimum", "remaining_display_is_zero_after_minimum", "handoff_is_claimed_once", "splash_shown_only_without_launch_target"].every((name) => rustOutput.includes(name)),
   rustOutput,
 ));
 record("TC-MD-01-SPLASH-001", "Splash Window Configuration and Assets", () => {
@@ -287,6 +287,7 @@ record("TC-MD-01-SPLASH-001", "Splash Window Configuration and Assets", () => {
   const splash = windows.find((window) => window.label === "splashscreen");
   trace("TC-MD-01-SPLASH-001", "INPUT", { windows });
   assert(main?.visible === false, "main window must start hidden until the splash handoff");
+  assert(splash?.create === false, "splashscreen must be created at runtime only for launches without a target");
   assert(splash?.url?.startsWith("splash/sprash_animation.html"), `unexpected splash url: ${splash?.url}`);
   for (const fileName of ["sprash_animation.html", "sprash_animation.css", "sprash_animation.js", "hasm_markdown_logo_transparent.png"]) {
     readFileSync(join(root, "public", "splash", fileName));

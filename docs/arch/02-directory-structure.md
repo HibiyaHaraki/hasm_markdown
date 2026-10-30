@@ -110,7 +110,7 @@ src-tauri/src/
 
 
 * **`commands/splash.rs`**
-* `fn close_splashscreen(app: AppHandle, state: State<SplashState>) -> Result<(), String>`: Called by React after mount. Schedules the handoff once at least 5 seconds have elapsed since setup: shows and focuses `main`, then closes `splashscreen` (SEQ-MD-01 Phase 0). `fn schedule_finish(...)` is also used by `lib.rs` setup for the 30-second readiness timeout. The splash page is the `hasm_logo` bundle synced into `public/splash/` by `npm run sync:logo`.
+* `fn close_splashscreen(app: AppHandle, state: State<SplashState>) -> Result<(), String>`: Called by React after mount. If the splash was skipped, it is a no-op; otherwise it schedules the handoff once at least 5 seconds have elapsed since setup: shows and focuses `main`, then closes `splashscreen` (SEQ-MD-01 Phase 0). `fn start(...)` (called from `lib.rs` setup) creates the `create: false` splash window only when `should_show_splash(launch_path)` is true (no launch target) and schedules the 30-second readiness timeout; with a launch target it shows `main` immediately. The splash page is the `hasm_logo` bundle synced into `public/splash/` by `npm run sync:logo`.
 
 
 * **`commands/editor.rs`**
