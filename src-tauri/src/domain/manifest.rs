@@ -1,7 +1,26 @@
 use crate::models::error::PackageError;
 use crate::models::payload::{AssetManifest, RuntimeAssetMetadata};
 use crate::services::path_resolver::{resolve_archive_asset_path, resolve_asset_path};
+use log::info;
+use std::fs;
+use std::io::ErrorKind;
 use std::path::Path;
+
+pub const EMPTY_MANIFEST_JSON: &str = r#"{"version":"1","assets":{}}"#;
+
+/// SEQ-MD-01 / Mode B: a folder without registered assets may omit `assets.json`
+/// (HASM scaffolds entity folders with only `main.md` and `assets/`), so a missing
+/// manifest is treated as empty. Any other read failure is still reported.
+pub fn read_folder_manifest(folder_path: &Path) -> Result<String, PackageError> {
+    match fs::read_to_string(folder_path.join("assets.json")) {
+        Ok(raw) => Ok(raw),
+        Err(error) if error.kind() == ErrorKind::NotFound => {
+            info!("[SEQ-MD-01][IMPORT][FOLDER] assets.json absent; using empty manifest");
+            Ok(EMPTY_MANIFEST_JSON.to_string())
+        }
+        Err(error) => Err(PackageError::MissingMetadata(format!("Failed to read assets.json: {error}"))),
+    }
+}
 
 pub fn validate_alias(manifest: &AssetManifest, alias: &str) -> Result<(), PackageError> {
     let alias = alias.trim();
@@ -44,8 +63,21 @@ fn _default_asset() -> RuntimeAssetMetadata {
 
 #[cfg(test)]
 mod tests {
-    use super::validate_alias;
+    use super::{read_folder_manifest, validate_alias, EMPTY_MANIFEST_JSON};
     use crate::models::payload::{AssetManifest, RuntimeAssetMetadata};
+
+    #[test]
+    fn read_folder_manifest_defaults_missing_file_and_reports_other_failures() {
+        let base = std::env::temp_dir().join(format!("hasm-seq-md-01-manifest-{}", std::process::id()));
+        std::fs::create_dir_all(&base).unwrap();
+        assert_eq!(read_folder_manifest(&base).unwrap(), EMPTY_MANIFEST_JSON);
+        std::fs::create_dir(base.join("assets.json")).unwrap();
+        assert!(read_folder_manifest(&base).unwrap_err().to_string().contains("Failed to read assets.json"));
+        std::fs::remove_dir(base.join("assets.json")).unwrap();
+        std::fs::write(base.join("assets.json"), r#"{"version":"1","assets":{"a":{}}}"#).unwrap();
+        assert!(read_folder_manifest(&base).unwrap().contains("\"a\""));
+        let _ = std::fs::remove_dir_all(base);
+    }
 
     #[test]
     fn validate_alias_reserves_soft_deleted_entries() {

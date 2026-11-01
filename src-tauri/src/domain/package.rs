@@ -58,9 +58,8 @@ pub fn open_folder(base_path: &Path, folder_path: &Path) -> Result<WorkspaceSess
         return Err(PackageError::InvalidTarget(format!("Workspace folder does not exist: {}", folder_path.display())));
     }
     let markdown_path = folder_path.join("main.md");
-    let manifest_path = folder_path.join("assets.json");
     let markdown = fs::read_to_string(&markdown_path).map_err(|_| PackageError::MissingMetadata("Missing main.md".to_string()))?;
-    let raw_manifest = fs::read_to_string(&manifest_path).map_err(|_| PackageError::MissingMetadata("Missing assets.json".to_string()))?;
+    let raw_manifest = manifest::read_folder_manifest(folder_path)?;
     let uuid = Uuid::new_v4().to_string();
     let temp_dir = base_path.join(&uuid);
     fs::create_dir_all(&temp_dir)?;
@@ -107,7 +106,11 @@ fn finish_mount(
     if matches!(target_type, TargetType::Folder) {
         if let Some(folder) = target_path {
             handles.push(OpenOptions::new().read(true).write(true).open(folder.join("main.md"))?);
-            handles.push(OpenOptions::new().read(true).write(true).open(folder.join("assets.json"))?);
+            // An asset-free folder may have no assets.json; never create it just to hold a lock.
+            let folder_manifest = folder.join("assets.json");
+            if folder_manifest.is_file() {
+                handles.push(OpenOptions::new().read(true).write(true).open(folder_manifest)?);
+            }
         }
     }
     if let Some(path) = archive_path { handles.push(File::open(path)?); }
@@ -331,6 +334,22 @@ mod tests {
         assert!(resolved.ends_with("assets/note.txt"));
         assert!(std::path::Path::new(resolved).is_absolute());
         assert!(!std::path::Path::new(&session.payload.temp_dir_path).join("assets/note.txt").exists());
+        session.close().unwrap();
+        let _ = std::fs::remove_dir_all(base);
+    }
+
+    #[test]
+    fn folder_mount_without_assets_json_opens_with_empty_manifest() {
+        let base = std::env::temp_dir().join(format!("hasm-seq-md-01-no-manifest-{}", std::process::id()));
+        let folder = base.join("FACT").join("entity");
+        std::fs::create_dir_all(folder.join("assets")).unwrap();
+        std::fs::write(folder.join("main.md"), "---\nentity_type: FACT\n---\n\nNotes\n").unwrap();
+
+        let session = super::open_folder(&base.join("local"), &folder).unwrap();
+        assert!(session.payload.manifest.assets.is_empty());
+        assert!(session.payload.missing_assets.is_empty());
+        assert_eq!(session.payload.raw_content, "---\nentity_type: FACT\n---\n\nNotes\n");
+        assert!(!folder.join("assets.json").exists());
         session.close().unwrap();
         let _ = std::fs::remove_dir_all(base);
     }

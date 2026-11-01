@@ -24,7 +24,7 @@ This sequence handles the application startup lifecycle from CLI/OS launch up to
 * **Mode A (ZIP Target `.hasmmd`):** Extracts **only** lightweight metadata (`main.md` and `assets.json`) into `<AppLocalDataDir>/<UUID>/`. Asset images are read via dynamic on-demand stream directly from the ZIP archive (`asset-stream://`).
 
 
-* **Mode B (Folder Workspace):** Mounts external directories directly or copies metadata without duplicating heavy media payloads.
+* **Mode B (Folder Workspace):** Mounts external directories directly or copies metadata without duplicating heavy media payloads. `assets.json` is optional when no asset is registered: a missing file is treated as an empty manifest and is not created on open (`REQ-MD-01-013`).
 
 
 * **Mode C (Create New):** Scaffolds default `main.md`, `assets.json`, and empty `assets/` in App Local.
@@ -78,7 +78,7 @@ sequenceDiagram
     alt Target Path Does Not Exist
         Rust-->>User: Output Error ("Path does not exist") & Exit Process (Code 1)
     else Target is Valid Path
-        Rust->>Rust: Check Physical Existence of main.md and assets.json
+        Rust->>Rust: Check Physical Existence of main.md (folder assets.json optional; missing = empty manifest)
         
         alt Structural File Missing
             Rust-->>User: Output Validation Result (Missing Core Metadata) & Exit Process (Code 1)
@@ -127,9 +127,9 @@ sequenceDiagram
     alt Target is ZIP Archive (.hasmmd) OR Invalid Directory
         Rust-->>User: Output Error ("Preview subcommand supports Folder Type workspace directories only") & Exit Process (Code 1)
     else Target is Valid Folder Directory (Mode B)
-        Rust->>Rust: Read main.md and assets.json from Target Directory
+        Rust->>Rust: Read main.md and assets.json from Target Directory (missing assets.json = empty manifest)
         
-        alt main.md or assets.json Read Failure
+        alt main.md Read Failure or assets.json Unreadable
             Rust-->>User: Output Error ("Failed to read workspace metadata from target folder") & Exit Process (Code 1)
         else Read Success
             loop Parse & Resolve Image Link Tokens
@@ -232,6 +232,7 @@ sequenceDiagram
         
         Rust->>AppLocal: Generate UUID & Create <AppLocalDataDir>/<UUID>/
         Rust->>ExtStorage: Read main.md & assets.json -> Mount directly
+        Note over Rust,ExtStorage: Missing assets.json (no registered asset) mounts with an empty manifest; the folder is not modified on open.
 
     else Mode C: Create New Workspace Mode
         activate React

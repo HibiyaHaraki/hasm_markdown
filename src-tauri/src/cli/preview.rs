@@ -16,7 +16,7 @@ pub fn execute(path: &Path) -> Result<(), String> {
         return Err("Preview subcommand supports Folder Type workspace directories only".to_string());
     }
     let markdown = fs::read_to_string(path.join("main.md")).map_err(|_| "Failed to read workspace metadata from target folder".to_string())?;
-    let raw = fs::read_to_string(path.join("assets.json")).map_err(|_| "Failed to read workspace metadata from target folder".to_string())?;
+    let raw = crate::domain::manifest::read_folder_manifest(path).map_err(|_| "Failed to read workspace metadata from target folder".to_string())?;
     let mut manifest: AssetManifest = serde_json::from_str(&raw).map_err(|_| "Failed to parse assets.json".to_string())?;
     let mut links = std::collections::HashMap::new();
     for (alias, asset) in manifest.assets.iter_mut() {
