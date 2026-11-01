@@ -29,6 +29,7 @@
 
 * **`REQ-MD-01-010` (Mode A ZIP Archive Selective Import):** In ZIP Archive Mode (`.hasmmd`), the backend shall extract **only** `main.md` and `assets.json` into `<AppLocalDataDir>/<UUID>/`. Asset media binaries shall remain in the ZIP archive for zero-copy on-demand streaming (`asset-stream://`).
 * **`REQ-MD-01-011` (Mode B External Folder Mount):** In External Folder Mode, the backend shall mount the directory directly or copy metadata to `<AppLocalDataDir>/<UUID>/` without duplicating heavy asset payloads.
+* **`REQ-MD-01-013` (Mode B Optional Asset Manifest):** A folder with no registered assets may omit `assets.json` (HASM scaffolds entity folders with only `main.md` and `assets/`). Folder open, `verify`, and `preview` shall treat a missing `assets.json` as an empty manifest, open without error, and shall not create `assets.json` merely by opening. Other `assets.json` read failures and invalid JSON remain errors; `main.md` remains required.
 * **`REQ-MD-01-012` (Mode C Unbound Scaffold Creation):** Creating a new workspace shall scaffold default `main.md`, `assets.json`, and an empty `assets/` folder in `App Local`.
 
 ---

@@ -39,7 +39,7 @@ hasm_markdown verify <TARGET_PATH> [--json]
 #### Process Exit Codes
 
 * **`0` (Success):** Package is fully compliant (zero missing asset errors).
-* **`1` (Validation Error):** Target path missing, `main.md`/`assets.json` missing, or `missingAssets` detected.
+* **`1` (Validation Error):** Target path missing, `main.md` missing, archive `assets.json` missing, unreadable/invalid `assets.json`, or `missingAssets` detected. A folder without `assets.json` is valid and treated as having no registered assets.
 
 #### Standard Output (Default Human-Readable)
 

@@ -42,9 +42,8 @@ pub fn verify(path: &Path) -> CliVerifyResult {
 
 fn verify_folder(path: &Path, missing: &mut Vec<MissingAssetInfo>, warnings: &mut Vec<PackageWarning>) {
     let markdown_path = path.join("main.md");
-    let manifest_path = path.join("assets.json");
     let markdown = match fs::read_to_string(&markdown_path) { Ok(value) => value, Err(_) => { missing.push(simple_missing("main.md")); return; } };
-    let raw = match fs::read_to_string(&manifest_path) { Ok(value) => value, Err(_) => { missing.push(simple_missing("assets.json")); return; } };
+    let raw = match crate::domain::manifest::read_folder_manifest(path) { Ok(value) => value, Err(_) => { missing.push(simple_missing("assets.json")); return; } };
     let manifest: crate::models::payload::AssetManifest = match serde_json::from_str(&raw) { Ok(value) => value, Err(_) => { missing.push(simple_missing("valid assets.json")); return; } };
     let registered: HashSet<String> = manifest.assets.values().map(|asset| asset.relative_path.clone()).collect();
     for (alias, asset) in manifest.assets { if !asset.is_deleted && !path.join(&asset.relative_path).is_file() { missing.push(MissingAssetInfo { alias, expected_relative_path: asset.relative_path, referenced_lines: Vec::new() }); } }
