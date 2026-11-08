@@ -11,6 +11,7 @@ This sequence handles the real-time text editing operational lifecycle within th
 3. **Real-time Text Editing & Diff Tracking:** Updating live buffers (`rawContent`) in memory and tracking modified states (`isDirty`) against the last saved buffer.
 4. **3-Second Periodic Local-Only Autosave Loop:** Periodically persisting the text buffer to `<UUID>/main.md` in `App Local` via atomic file operations without invoking heavy external archiving processes.
 5. **Independent Editor Appearance and Syntax Colors:** Rendering one syntax-colored `contenteditable` Markdown surface with locally persisted Light or Dark editor appearance independent from the application color pattern.
+6. **Readable Application Typography and Markdown Presentation:** Rendering all application text, editor content, and preview content in a Gothic sans-serif font, with distinct heading hierarchy, comfortable paragraph and list spacing, legible quotations, and responsive media/content sizing.
 
 ---
 
@@ -116,7 +117,7 @@ sequenceDiagram
 
 ## 3. Data Contracts & State Specifications
 
-The current React implementation keeps one lightweight `contenteditable` Markdown editor. Its rendered spans color Markdown headings, markers, links/assets, inline code, strong text, and emphasis in the same surface that accepts input, so wrapping stays aligned with the line-number gutter. The preview uses a `markdown-it` asset resolver plugin. The editor Light/Dark appearance persists independently from the application color pattern. Active folder assets use `asset://<resolvedPath>`, archive assets retain `asset-stream://<UUID>/<asset_uuid>`, and missing or soft-deleted aliases render as escaped `.missing-asset-warning` spans.
+The current React implementation keeps one lightweight `contenteditable` Markdown editor. Its rendered spans color Markdown headings, markers, links/assets, inline code, strong text, and emphasis in the same surface that accepts input, so wrapping stays aligned with the line-number gutter. All application text, including controls, editor and `markdown-it` preview content, uses a Gothic sans-serif stack; the preview uses heading hierarchy and spacing, readable quote/code styling, and bounded image and wide-content layout. The editor Light/Dark appearance persists independently from the application color pattern. Active folder assets use `asset://<resolvedPath>`, archive assets retain `asset-stream://<UUID>/<asset_uuid>`, and missing or soft-deleted aliases render as escaped `.missing-asset-warning` spans.
 
 ### 3.1 Editor Local State (`usePackageStore` / Editor Context)
 

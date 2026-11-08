@@ -137,6 +137,38 @@ async function checkBrowserContract() {
       assert(errors.length === 0, `browser errors detected: ${errors.join("; ")}`);
     });
 
+    await record("TC-MD-02-E2E-006", "App-Wide Gothic Typography", async () => {
+      await editor.fill("# Main heading\n\n## Section heading\n\nA readable paragraph.\n\n- First item\n- Second item\n\n> A quotation\n\n`inline code`");
+      const preview = page.locator(".HASM_Markdown_Editor_ViewerCol_Viewer");
+      const typography = await page.evaluate(() => {
+        const bodyStyle = getComputedStyle(document.body);
+        const buttonStyle = getComputedStyle(document.querySelector("button"));
+        const editorStyle = getComputedStyle(document.querySelector(".MarkdownSyntax_Input"));
+        const previewStyle = getComputedStyle(document.querySelector(".HASM_Markdown_Editor_ViewerCol_Viewer"));
+        const codeStyle = getComputedStyle(document.querySelector(".HASM_Markdown_Editor_ViewerCol_Viewer code"));
+        const h1 = getComputedStyle(document.querySelector(".HASM_Markdown_Editor_ViewerCol_Viewer h1"));
+        const h2 = getComputedStyle(document.querySelector(".HASM_Markdown_Editor_ViewerCol_Viewer h2"));
+        return {
+          bodyFont: bodyStyle.fontFamily,
+          buttonFont: buttonStyle.fontFamily,
+          editorFont: editorStyle.fontFamily,
+          editorLineHeight: Number.parseFloat(editorStyle.lineHeight) / Number.parseFloat(editorStyle.fontSize),
+          previewFont: previewStyle.fontFamily,
+          previewLineHeight: Number.parseFloat(previewStyle.lineHeight) / Number.parseFloat(previewStyle.fontSize),
+          codeFont: codeStyle.fontFamily,
+          h1Size: Number.parseFloat(h1.fontSize),
+          h2Size: Number.parseFloat(h2.fontSize),
+        };
+      });
+      assert([typography.bodyFont, typography.buttonFont, typography.editorFont, typography.previewFont, typography.codeFont]
+        .every((font) => font.toLowerCase().includes("yu gothic")), `application typography does not use Gothic consistently: ${JSON.stringify(typography)}`);
+      assert(typography.editorLineHeight >= 1.7 && typography.previewLineHeight >= 1.7, "editor or preview line height is too tight");
+      assert(typography.h1Size > typography.h2Size, "preview heading levels are not visually differentiated");
+      assert(await preview.locator("p").count() === 3 && await preview.locator("ul li").count() === 2, "Markdown paragraphs or list items were not rendered");
+      assert(await preview.locator("blockquote").count() === 1 && await preview.locator("code").count() === 1, "quotation or code styles were not rendered");
+      assert(await preview.evaluate((element) => element.scrollWidth <= element.clientWidth), "preview content overflows its pane");
+    });
+
     await record("TC-MD-02-E2E-002-LIVE", "Live Missing Asset Highlighting", async () => {
       const updateStart = performance.now();
       await editor.fill("![missing](asset:unknown)");
