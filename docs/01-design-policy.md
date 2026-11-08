@@ -6,9 +6,10 @@
   - Subtle geometric precision, refined borders, and mathematical gradient accents derived from the logo's aesthetic should be reflected in UI dividers, active states, and focal points without cluttering the workspace.
 - **Tone & Atmosphere:** Avoid flashy animations, bright primary colors, or overly modern flat-UI tropes. Embrace generous white space, delicate margins, and a quiet, high-end, contemplative reading/writing experience.
 - **Typography:**
-  - The primary typeface for the editor, Markdown preview, and body text must be an elegant Japanese Serif (Mincho) font family (e.g., `Yu Mincho`, `游明朝`, `Georgia`, or generic `serif`).
-  - For Serif elements, apply slightly wider letter spacing (`letter-spacing: 0.03em+`) and comfortable line heights (`line-height: 1.7 - 1.8`) for optimal readability and a traditional literary print aesthetic.
-  - UI control labels (buttons, toolbars) may use a clean, subtle font structure, but must maintain strict visual hierarchy and quiet elegance alongside the Serif body text.
+  - All application text, including UI controls, dialogs, loading screens, the editor, and Markdown preview, must use a clear Japanese Gothic sans-serif font family (e.g., `Yu Gothic`, `游ゴシック`, `Meiryo`, `メイリオ`, or generic `sans-serif`).
+  - Use modest letter spacing (`letter-spacing: 0.015em`) and comfortable line heights (`line-height: 1.7 - 1.8`) for readable text.
+  - Markdown preview headings, paragraphs, lists, quotations, code, and images must have clear visual hierarchy and spacing while remaining theme-aware and responsive.
+  - UI control labels (buttons, toolbars) must use the same Gothic sans-serif family while maintaining clear visual hierarchy and quiet elegance.
 - **Persistence:** Save this design policy to `docs/design-policy.md` and explicitly include these rules in `.github/copilot-instructions.md`.
 
 ## 2. Dynamic Color Pattern & Theme System
