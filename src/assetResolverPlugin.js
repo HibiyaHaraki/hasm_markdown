@@ -39,9 +39,15 @@ export function assetResolverPlugin(md, { manifest = { assets: {} }, missingAsse
     }
 
     const resolvedPath = metadata.resolvedPath ?? "";
-    const src = assetSources[alias] ?? (targetType === "Archive" && resolvedPath.startsWith("asset-stream://")
-      ? resolvedPath
-      : `asset://${resolvedPath}`);
+    const src = assetSources[alias]
+      ?? (resolvedPath.startsWith("asset-stream://")
+        || resolvedPath.startsWith("http://")
+        || resolvedPath.startsWith("https://")
+        || resolvedPath.startsWith("/")
+        ? resolvedPath
+        : targetType === "Archive" && resolvedPath.startsWith("asset-stream://")
+          ? resolvedPath
+          : `asset://${resolvedPath}`);
     token.attrSet("src", src);
     return defaultImage(tokens, index, options, env, self);
   };

@@ -68,6 +68,176 @@
     background: var(--text-color) !important;
 }
 
+.TutorialPage {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: grid;
+    place-items: center;
+    padding: 32px;
+    background: var(--theme-textbackground);
+    color: var(--theme-text);
+}
+
+.TutorialPage_Panel {
+    width: min(820px, 100%);
+    border: 1px solid var(--theme-border);
+    background: var(--theme-surface);
+    box-shadow: 10px 10px 0 var(--theme-soft);
+}
+
+.TutorialPage_Header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 36px 36px 24px;
+}
+
+.TutorialPage_Kicker {
+    margin: 0 0 10px;
+    color: var(--theme-accent-readable);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+}
+
+.TutorialPage h1 {
+    margin: 0;
+    font-family: var(--content-font-family);
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 400;
+}
+
+.TutorialPage_Header .btn {
+    border-radius: 0;
+    white-space: nowrap;
+}
+
+.TutorialPage_Intro {
+    margin: 0;
+    padding: 0 36px 28px;
+    color: var(--theme-muted);
+}
+
+.TutorialPage_Steps {
+    border-top: 1px solid var(--theme-border);
+}
+
+.TutorialPage_Steps article {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: 18px;
+    padding: 24px 36px;
+    border-bottom: 1px solid var(--theme-border);
+}
+
+.TutorialPage_Steps article:last-child {
+    border-bottom: 0;
+}
+
+.TutorialPage_Steps article > span {
+    color: var(--theme-accent-readable);
+    font-family: var(--content-font-family);
+    font-size: 1.15rem;
+}
+
+.TutorialPage_Steps h2 {
+    margin: 0 0 6px;
+    font-family: var(--content-font-family);
+    font-size: 1.25rem;
+}
+
+.TutorialPage_Steps p {
+    margin: 0;
+    line-height: 1.7;
+}
+
+.TutorialPage_Start {
+    margin: 0;
+    border-radius: 0;
+}
+
+.TutorialPage_Actions {
+    padding: 0 36px 36px;
+}
+
+.TutorialPage_Actions .btn {
+    border-radius: 0;
+}
+
+.TutorialModal {
+    border: 1px solid var(--theme-border);
+    border-radius: 0;
+    background: var(--theme-surface);
+    color: var(--theme-text);
+}
+
+.TutorialModal .modal-header,
+.TutorialModal .modal-footer {
+    border-color: var(--theme-border);
+}
+
+.TutorialModal .modal-title {
+    font-family: var(--content-font-family);
+}
+
+.TutorialModal_Progress {
+    display: grid;
+    gap: 8px;
+    color: var(--theme-muted);
+    font-size: 0.82rem;
+}
+
+.TutorialModal_Progress .progress {
+    height: 4px;
+    border-radius: 0;
+    background: var(--theme-soft);
+}
+
+.TutorialModal_Progress .progress-bar {
+    background: var(--theme-primary);
+}
+
+.TutorialModal_Description {
+    margin: 0;
+    line-height: 1.7;
+}
+
+.TutorialModal_Label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--theme-accent-readable);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.TutorialModal_Example {
+    max-height: 260px;
+    margin: 0;
+    overflow: auto;
+    padding: 18px;
+    border: 1px solid var(--theme-border);
+    border-radius: 0;
+    background: var(--theme-textbackground);
+    color: var(--theme-text);
+    font-family: var(--editor-font-family, var(--content-font-family));
+    line-height: 1.7;
+    white-space: pre-wrap;
+}
+
+.TutorialModal_Actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.TutorialModal_Actions .btn {
+    border-radius: 0;
+}
+
 .BootScreen small {
     display: block;
     margin-top: 24px;
@@ -1614,6 +1784,35 @@ button:disabled {
 }
 
 @media (max-width: 720px) {
+    .TutorialPage {
+        align-items: start;
+        padding: 16px;
+    }
+
+    .TutorialPage_Header {
+        flex-direction: column;
+        padding: 24px 20px 18px;
+    }
+
+    .TutorialPage_Intro {
+        padding: 0 20px 20px;
+    }
+
+    .TutorialPage_Steps article {
+        grid-template-columns: 42px 1fr;
+        padding: 20px;
+    }
+
+    .TutorialPage_Start {
+        margin: 0;
+    }
+
+    .TutorialPage_Actions {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 0 20px 24px;
+    }
+
     .Menu {
         min-height: 58px;
         padding: 9px 14px;

@@ -23,6 +23,8 @@
 * The splash shall remain visible for **at least 5 seconds** and until the frontend reports readiness via the `close_splashscreen` IPC command; the backend shall then show and focus `main` before closing the splash.
 * If readiness is not reported within 30 seconds, the backend shall log a warning and show `main` so the splash never blocks the application indefinitely.
 
+* **`REQ-MD-01-006` (Selection Tutorial and Demo Model Access):** The workspace selection page shall provide **Open Tutorial** and **Open Demo Workspace** buttons. The tutorial shall open at `/tutorial` and present a step-by-step React-Bootstrap popup with example Markdown for headings, supporting text, asset links, and save/checklist review. Previous, Next, and Finish controls shall move through or complete the tutorial; closing or finishing shall return the user to `/select`. The demo action shall mount an isolated in-memory demo package at `/editor` containing sample Markdown and a registered asset, without requiring an external folder or archive and without modifying persisted workspace data.
+
 ---
 
 ### 1.2 Selective Lightweight Import & Mode Mounting

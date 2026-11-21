@@ -51,6 +51,30 @@ try {
   if (!output.finalUrl.endsWith("/select") || output.bootScreenCount !== 1 || output.errors.length > 0) {
     throw new Error(`Guard failed: ${JSON.stringify(output)}`);
   }
+  await page.getByRole("button", { name: "Open Tutorial", exact: true }).click();
+  await page.getByRole("heading", { name: "Workspace tutorial", exact: true }).waitFor();
+  if (!page.url().endsWith("/tutorial")) {
+    throw new Error(`Tutorial navigation failed: ${page.url()}`);
+  }
+  const tutorialDialog = page.getByRole("dialog", { name: "HASM Markdown tutorial" });
+  await tutorialDialog.waitFor();
+  await tutorialDialog.locator(".modal-title").filter({ hasText: "Start with a heading" }).waitFor();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await tutorialDialog.locator(".modal-title").filter({ hasText: "Add supporting text" }).waitFor();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await tutorialDialog.locator(".modal-title").filter({ hasText: "Link an asset" }).waitFor();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await tutorialDialog.locator(".modal-title").filter({ hasText: "Review and save" }).waitFor();
+  await page.getByRole("button", { name: "Finish", exact: true }).click();
+  if (!page.url().endsWith("/select")) {
+    throw new Error(`Tutorial return navigation failed: ${page.url()}`);
+  }
+  await page.getByRole("button", { name: "Open Demo Workspace", exact: true }).click();
+  await page.locator(".HASM_Markdown_Editor").waitFor();
+  if (!page.url().endsWith("/editor")) {
+    throw new Error(`Demo workspace navigation failed: ${page.url()}`);
+  }
+  await page.getByText("HASM Markdown", { exact: true }).first().waitFor();
   await browser.close();
   console.log(`${GREEN}PASS${RESET} TC-MD-01-GUARD-001 Unauthorized Direct Navigation`);
 } finally {

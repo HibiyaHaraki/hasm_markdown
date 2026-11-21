@@ -102,6 +102,28 @@ const isEditorEvaluation = evaluationMode === "md02";
 const isAssetEvaluation = evaluationMode === "md03";
 const isSaveEvaluation = evaluationMode === "md04";
 const isCloseEvaluation = evaluationMode === "md05";
+const DEMO_MODEL = {
+  uuid: "demo-model",
+  targetType: "Folder",
+  tempDirPath: "Demo model",
+  targetPath: "No external folder or archive",
+  lastSavedContent: "# Field Notes\n\nA quiet place for observations.\n\n![HASM Markdown](asset:morning-light)\n\n## Checklist\n\n- [x] Record a detail\n- [ ] Note a question\n- [ ] Try an asset",
+  rawContent: "# Field Notes\n\nA quiet place for observations.\n\n![HASM Markdown](asset:morning-light)\n\n## Checklist\n\n- [x] Record a detail\n- [ ] Note a question\n- [ ] Try an asset",
+  isLoaded: true,
+  isDirty: false,
+  isDemo: true,
+  manifest: {
+    version: "1",
+    assets: {
+      "morning-light": {
+        uuid: "morning-light",
+        resolvedPath: "/favicon.png",
+      },
+    },
+  },
+  missingAssets: [],
+  warnings: [],
+};
 
 function getRelativeLuminance(hexColor) {
   const hex = String(hexColor).replace("#", "");
@@ -198,7 +220,7 @@ function isUnknownCommandError(error) {
   return message.includes("unknown command") || message.includes("command not found");
 }
 
-function BootScreen({ phase, error, onOpen }) {
+function BootScreen({ phase, error, onOpen, onTutorialOpen, onDemoOpen }) {
   const isLoading = phase === "loading";
   const title = isLoading ? "Opening workspace" : phase === "error" ? "Workspace could not be opened" : "HASM Markdown";
   const message = isLoading
@@ -215,13 +237,107 @@ function BootScreen({ phase, error, onOpen }) {
         <p className="BootScreen_Message">{message}</p>
         {!isLoading && (
           <Stack direction="horizontal" gap={2} className="BootScreen_Actions">
+            <Button variant="outline-primary" onClick={onTutorialOpen}>Open Tutorial</Button>
             <Button variant="outline-secondary" onClick={() => onOpen("archive")} disabled={!isTauriRuntime}>Open .hasmmd archive</Button>
             <Button variant="outline-secondary" onClick={() => onOpen("folder")} disabled={!isTauriRuntime}>Open workspace folder</Button>
             <Button className="BootScreen_Actions_Primary" onClick={() => onOpen("new")} disabled={!isTauriRuntime}>Create new workspace</Button>
+            <Button variant="outline-secondary" onClick={onDemoOpen}>Open Demo Workspace</Button>
           </Stack>
         )}
         {!isTauriRuntime && <Alert variant="warning" className="mt-4 mb-0">Run this application in its Tauri desktop shell to open a workspace.</Alert>}
       </section>
+    </main>
+  );
+}
+
+function TutorialPage({ onBack, onDemoOpen }) {
+  const [stepIndex, setStepIndex] = useState(0);
+  const tutorialSteps = [
+    {
+      title: "Start with a heading",
+      description: "A Markdown heading gives the document a clear title.",
+      markdown: "# Field Notes",
+    },
+    {
+      title: "Add supporting text",
+      description: "Write paragraphs and short lists beneath the heading.",
+      markdown: "# Field Notes\n\nA quiet place for observations.\n\n- Record a detail\n- Note a question\n- Add the next step",
+    },
+    {
+      title: "Link an asset",
+      description: "Use HASM Markdown's asset syntax to connect a registered image alias.",
+      markdown: "# Field Notes\n\nA quiet place for observations.\n\n![Morning light](asset:morning-light)\n\n- Record a detail\n- Note a question\n- Add the next step",
+    },
+    {
+      title: "Review and save",
+      description: "Check the preview, then use Save or Save As before closing the workspace.",
+      markdown: "# Field Notes\n\nA quiet place for observations.\n\n![Morning light](asset:morning-light)\n\n## Checklist\n\n- [x] Record a detail\n- [ ] Note a question\n- [ ] Add the next step",
+    },
+  ];
+  const step = tutorialSteps[stepIndex];
+
+  return (
+    <main className="TutorialPage">
+      <section className="TutorialPage_Panel" aria-labelledby="tutorial-title">
+        <div className="TutorialPage_Header">
+          <div>
+            <p className="TutorialPage_Kicker">HASM MARKDOWN</p>
+            <h1 id="tutorial-title">Workspace tutorial</h1>
+          </div>
+          <Button variant="outline-secondary" onClick={onBack}>Back to selection</Button>
+        </div>
+        <p className="TutorialPage_Intro">
+          HASM Markdown keeps writing and assets together in a portable workspace.
+        </p>
+        <Stack direction="horizontal" gap={2} className="TutorialPage_Actions">
+          <Button variant="primary" onClick={() => setStepIndex(0)} className="TutorialPage_Start">
+            Start step-by-step tutorial
+          </Button>
+          <Button variant="outline-secondary" onClick={onDemoOpen}>
+            Open Demo Workspace
+          </Button>
+        </Stack>
+      </section>
+      <Modal
+        show
+        centered
+        backdrop="static"
+        keyboard={false}
+        onHide={onBack}
+        contentClassName="TutorialModal"
+        aria-label="HASM Markdown tutorial"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>{step.title}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Stack gap={3}>
+            <div className="TutorialModal_Progress">
+              <span>Step {stepIndex + 1} of {tutorialSteps.length}</span>
+              <ProgressBar now={((stepIndex + 1) / tutorialSteps.length) * 100} />
+            </div>
+            <p className="TutorialModal_Description">{step.description}</p>
+            <div>
+              <label className="TutorialModal_Label" htmlFor="tutorial-example">Example markdown</label>
+              <pre id="tutorial-example" className="TutorialModal_Example"><code>{step.markdown}</code></pre>
+            </div>
+          </Stack>
+        </Modal.Body>
+        <Modal.Footer className="TutorialModal_Actions">
+          <Button variant="outline-secondary" onClick={() => setStepIndex((current) => Math.max(0, current - 1))} disabled={stepIndex === 0}>
+            Previous
+          </Button>
+          {stepIndex < tutorialSteps.length - 1 ? (
+            <Button variant="primary" onClick={() => setStepIndex((current) => current + 1)}>
+              Next
+            </Button>
+          ) : (
+            <Button variant="primary" onClick={onBack}>
+              Finish
+            </Button>
+          )}
+        </Modal.Footer>
+      </Modal>
     </main>
   );
 }
@@ -296,7 +412,10 @@ function App() {
   const [isClosePromptOpen, setIsClosePromptOpen] = useState(false);
   const editorRef = React.useRef(null);
   const [phase, setPhase] = useState(
-    initialFixture ? "editor" : isTauriRuntime || window.location.pathname === "/editor" ? "select" : "editor",
+    initialFixture ? "editor"
+      : window.location.pathname === "/tutorial" ? "tutorial"
+        : isTauriRuntime || window.location.pathname === "/editor" ? "select"
+          : "editor",
   );
   const [bootError, setBootError] = useState("");
 
@@ -427,6 +546,16 @@ function App() {
   }, [isSavingPackage, savePackage]);
 
   const finishClose = useCallback(async (forceDiscard = false) => {
+    if (currentPackage?.isDemo) {
+      setCurrentPackage(null);
+      setMarkdown(EMPTY_MARKDOWN);
+      setEditorStatus("Ready");
+      setIsAssetWindowOpen(false);
+      setIsClosePromptOpen(false);
+      setPhase("select");
+      window.history.replaceState({}, "", "/select");
+      return;
+    }
     if (!isTauriRuntime || !currentPackage?.uuid) return;
     try {
       await invoke("close_and_cleanup_workspace", { uuid: currentPackage.uuid, force_discard: forceDiscard });
@@ -589,6 +718,36 @@ function App() {
     }
   }, [phase]);
 
+  const openTutorial = useCallback(() => {
+    infoLog("[SEQ-MD-01][UI] open tutorial", { from: window.location.pathname });
+    setPhase("tutorial");
+    window.history.pushState({}, "", "/tutorial");
+  }, []);
+
+  const closeTutorial = useCallback(() => {
+    infoLog("[SEQ-MD-01][UI] close tutorial");
+    setPhase("select");
+    window.history.replaceState({}, "", "/select");
+  }, []);
+
+  const openDemoWorkspace = useCallback(() => {
+    infoLog("[SEQ-MD-01][UI] open demo workspace");
+    setCurrentPackage(DEMO_MODEL);
+    setMarkdown(DEMO_MODEL.rawContent);
+    setEditorStatus("Demo workspace ready");
+    setPhase("editor");
+    window.history.pushState({}, "", "/editor");
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (window.location.pathname === "/tutorial") setPhase("tutorial");
+      else if (window.location.pathname === "/select") setPhase("select");
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   // Return App Component
   infoLog("Render App", { phase });
   return (
@@ -619,7 +778,9 @@ function App() {
           editorColorMode={editorColorMode}
           onEditorColorModeChange={handleEditorColorModeChange}
         />
-        {phase !== "editor" ? <BootScreen phase={phase} error={bootError} onOpen={loadWorkspace} /> : <HASM_Markdown_Editor
+        {phase === "tutorial" ? <TutorialPage onBack={closeTutorial} onDemoOpen={openDemoWorkspace} />
+          : phase !== "editor" ? <BootScreen phase={phase} error={bootError} onOpen={loadWorkspace} onTutorialOpen={openTutorial} onDemoOpen={openDemoWorkspace} />
+          : <HASM_Markdown_Editor
           markdown={markdown}
           setMarkdown={setMarkdown}
           onPackageChange={setCurrentPackage}
