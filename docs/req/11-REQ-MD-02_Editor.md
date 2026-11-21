@@ -19,7 +19,7 @@
 
 ### 1.2 Text Editing, Diff Tracking, and Shortcut Unbinding
 
-* **`REQ-MD-02-103` (Readable Application Typography and Preview):** All application text, including UI controls, dialogs, loading screens, the editor, Markdown preview, and code, shall use a Gothic sans-serif font stack (`Yu Gothic`, `游ゴシック`, `Meiryo`, `メイリオ`, then `sans-serif`). Reading content shall use a comfortable line height. The rendered preview shall visually distinguish heading levels and space paragraphs and lists, style quotations and code for legibility, and constrain images and wide content to the available pane width.
+* **`REQ-MD-02-103` (Readable Application Typography and Preview):** Application chrome, including UI controls, dialogs, and loading screens, shall use the HASM Gothic sans-serif stack (`Yu Gothic`, `游ゴシック`, `Meiryo`, `メイリオ`, then `sans-serif`). The editor and Markdown preview shall use a serif stack (`Yu Mincho`, `游明朝`, `Georgia`, then `serif`) with 1.7 to 1.8 line height and at least 0.03em letter spacing. The rendered preview shall visually distinguish heading levels and space paragraphs and lists, style quotations and code for legibility, and constrain images and wide content to the available pane width.
 
 * **`REQ-MD-02-010` (Live Buffer Update):** The React editor component shall capture user keystrokes and immediately update the local `rawContent` state buffer in memory.
 * **`REQ-MD-02-011` (Dirty Flag Computation):** The React frontend shall continuously compute `isDirty = (rawContent !== lastSavedContent)` and update the window header UI with an unsaved indicator (`*`) when `isDirty === true`.

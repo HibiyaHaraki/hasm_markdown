@@ -4,7 +4,7 @@
 
 HASM Markdown is a quiet desktop writing tool built around **Serenity**, **Paper and Ink**, and **Mathematical Minimalism**. The interface should feel like a carefully typeset workroom: generous space, crisp geometric divisions, restrained motion, and a visible relationship to the HASM calculated logo.
 
-Use a clear Gothic sans-serif throughout the application, including UI controls, dialogs, loading screens, editor text, preview text, and code. Use `Yu Gothic`, `游ゴシック`, `Meiryo`, `メイリオ`, or `sans-serif`. Use comfortable `1.7` to `1.8` line height and modest `0.015em` letter spacing for reading content. Markdown preview typography must make heading levels distinct, separate paragraphs and list items, and keep quotations, links, images, and wide content easy to scan without overflowing.
+Match HASM's Gothic sans-serif application chrome using `Yu Gothic`, `游ゴシック`, `Meiryo`, `メイリオ`, or `sans-serif`. Use `Yu Mincho`, `游明朝`, `Georgia`, or `serif` for Markdown editor and preview content, with `1.7` to `1.8` line height and at least `0.03em` letter spacing for reading content. Markdown preview typography must make heading levels distinct, separate paragraphs and list items, and keep quotations, links, images, and wide content easy to scan without overflowing. Selection panels and demo-tour controls follow HASM's theme-aware paper panel and button treatment.
 
 Avoid flashy animations, bright primary colors, generic flat UI, excessive rounded cards, decorative blobs, purple-on-white defaults, and marketing-style hero layouts. Use subtle geometric borders and restrained mathematical accents for dividers, active states, and focus indicators.
 

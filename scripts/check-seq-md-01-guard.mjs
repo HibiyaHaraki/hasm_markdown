@@ -46,11 +46,13 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(`${url}/editor`, { waitUntil: "networkidle" });
+  await page.locator(".BootScreen").waitFor();
   const output = { finalUrl: page.url(), bootScreenCount: await page.locator(".BootScreen").count(), errors };
   trace("OUTPUT", output);
   if (!output.finalUrl.endsWith("/select") || output.bootScreenCount !== 1 || output.errors.length > 0) {
     throw new Error(`Guard failed: ${JSON.stringify(output)}`);
   }
+  console.log(`${GREEN}PASS${RESET} TC-MD-01-GUARD-001 Unauthorized Direct Navigation`);
   await page.getByRole("button", { name: "Open Tutorial", exact: true }).click();
   await page.getByRole("heading", { name: "Workspace tutorial", exact: true }).waitFor();
   if (!page.url().endsWith("/tutorial")) {
@@ -69,14 +71,72 @@ try {
   if (!page.url().endsWith("/select")) {
     throw new Error(`Tutorial return navigation failed: ${page.url()}`);
   }
+  console.log(`${GREEN}PASS${RESET} TC-MD-01-TUTORIAL-001 Step-by-step Markdown tutorial`);
+  await page.evaluate(() => {
+    localStorage.setItem("hasm_view_mode", "editor");
+    localStorage.setItem("hasm_theme_preference", "classic");
+  });
+  await page.setViewportSize({ width: 360, height: 500 });
+  await page.goto(`${url}/editor`, { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "Open Demo Workspace", exact: true }).click();
   await page.locator(".HASM_Markdown_Editor").waitFor();
   if (!page.url().endsWith("/editor")) {
     throw new Error(`Demo workspace navigation failed: ${page.url()}`);
   }
   await page.getByText("HASM Markdown", { exact: true }).first().waitFor();
+  const demoDialog = (name) => page.getByRole("dialog", { name, exact: true });
+  await demoDialog("Write Markdown").waitFor();
+  const contrast = await demoDialog("Write Markdown").evaluate((element) => {
+    const style = getComputedStyle(element);
+    const luminance = (color) => {
+      const channels = color.match(/[\d.]+/g).slice(0, 3).map((value) => Number(value) / 255);
+      const linear = channels.map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+      return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+    };
+    const foreground = luminance(style.color);
+    const background = luminance(style.backgroundColor);
+    return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+  });
+  if (contrast < 4.5) throw new Error(`Demo tour text contrast is below 4.5: ${contrast}`);
+  if (!await page.locator(".HASM_Markdown_Editor_split").isVisible()) throw new Error("Demo tour did not temporarily show split view");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await demoDialog("Review the preview").waitFor();
+  await page.getByRole("button", { name: "Back", exact: true }).click();
+  await demoDialog("Write Markdown").waitFor();
+  for (const title of ["Review the preview", "Insert assets", "Workspace menu"]) {
+    await page.getByRole("button", { name: "Next", exact: true }).click();
+    const dialog = demoDialog(title);
+    await dialog.waitFor();
+    const bounds = await dialog.boundingBox();
+    if (!bounds || bounds.x < 0 || bounds.y < 0 || bounds.x + bounds.width > 360 || bounds.y + bounds.height > 500) {
+      throw new Error(`Tour "${title}" overflows the narrow viewport: ${JSON.stringify(bounds)}`);
+    }
+  }
+  await page.getByRole("button", { name: "Finish", exact: true }).click();
+  await demoDialog("Workspace menu").waitFor({ state: "hidden" });
+  if (!await page.locator(".HASM_Markdown_Editor_editor").isVisible()) throw new Error("Tour changed the saved view mode");
+  await page.getByRole("button", { name: "Open workspace menu" }).click();
+  await page.getByRole("button", { name: "Replay tour", exact: true }).click();
+  await demoDialog("Write Markdown").waitFor();
+  await page.getByRole("button", { name: "Skip tour", exact: true }).click();
+  await demoDialog("Write Markdown").waitFor({ state: "hidden" });
+  await page.getByRole("button", { name: "Open workspace menu" }).click();
+  await page.getByRole("button", { name: "Replay tour", exact: true }).click();
+  await demoDialog("Write Markdown").waitFor();
+  await page.keyboard.press("Escape");
+  await demoDialog("Write Markdown").waitFor({ state: "hidden" });
+  if (await page.evaluate(() => localStorage.getItem("hasm_view_mode")) !== "editor") throw new Error("Tour persisted a different view mode");
+  if (errors.length) throw new Error(`Browser errors: ${errors.join("; ")}`);
+  console.log(`${GREEN}PASS${RESET} TC-MD-01-TOUR-001 Demo tour navigation, replay and narrow dark theme`);
+  await page.evaluate(() => localStorage.setItem("hasm_view_mode", "split"));
+  await page.goto(`${url}/?eval=md02`, { waitUntil: "networkidle" });
+  await page.getByRole("textbox", { name: "Markdown editor" }).waitFor();
+  await page.getByRole("button", { name: "Open workspace menu" }).click();
+  if (await page.getByRole("button", { name: "Replay tour" }).count() || await page.locator(".DemoTour").count()) {
+    throw new Error("Demo tour appeared for a non-demo workspace");
+  }
+  console.log(`${GREEN}PASS${RESET} TC-MD-01-TOUR-002 Non-demo workspace does not show tour`);
   await browser.close();
-  console.log(`${GREEN}PASS${RESET} TC-MD-01-GUARD-001 Unauthorized Direct Navigation`);
 } finally {
   if (process.platform === "win32") spawn("taskkill", ["/pid", String(server.pid), "/t", "/f"], { stdio: "ignore" });
   else server.kill("SIGTERM");

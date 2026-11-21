@@ -62,6 +62,7 @@ function Menu({
   onViewModeChange,
   editorColorMode,
   onEditorColorModeChange,
+  onReplayTour,
 }) {
   const [isGlobalMenuOpen, setIsGlobalMenuOpen] = useState(false);
   const [isFileOpen, setIsFileOpen] = useState(false);
@@ -179,6 +180,7 @@ function Menu({
           <strong>{saveState?.label ?? editorStatus}</strong>
           {saveState?.timestamp && <time dateTime={saveState.timestamp}>{saveState.timestamp}</time>}
         </div>
+        {onReplayTour && <Button variant="outline-secondary" className="Menu_ReplayTour" onClick={() => { setIsGlobalMenuOpen(false); onReplayTour(); }}>Replay tour</Button>}
         <section className="GlobalMenu_WorkspaceSummary" aria-label="Workspace paths and synchronization status">
           <div className="GlobalMenu_Path"><span>Temporal local</span><code title={localPath}>{localPath}</code></div>
           <div className="GlobalMenu_Path"><span>Local folder / archive</span><code title={masterPath}>{masterPath}</code></div>

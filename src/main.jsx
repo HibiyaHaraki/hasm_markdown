@@ -30,6 +30,7 @@ import "./main.css";
 // Bootstrap
 import "bootstrap/dist/css/bootstrap.min.css";
 import { Alert, Button, Container, Modal, ProgressBar, Stack } from "react-bootstrap";
+import { EVENTS, Joyride } from "react-joyride";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
@@ -124,6 +125,44 @@ const DEMO_MODEL = {
   missingAssets: [],
   warnings: [],
 };
+
+const DEMO_TOUR_STEPS = [
+  {
+    target: ".HASM_Markdown_Editor_EditorCol_Title",
+    title: "Write Markdown",
+    content: "Edit the sample text in the editor. This demo is temporary and does not save to an external workspace.",
+  },
+  {
+    target: ".HASM_Markdown_Editor_ViewerCol_Title",
+    title: "Review the preview",
+    content: "The preview renders your Markdown as you write. Use the workspace menu to change the view and text size.",
+  },
+  {
+    target: ".EditorAssetShelf_Count",
+    title: "Insert assets",
+    content: "Show the asset shelf and select an alias to insert its asset: Markdown reference at the cursor.",
+  },
+  {
+    target: ".Menu_Toggle",
+    title: "Workspace menu",
+    content: "Use the menu for file actions, themes, focus modes, and the asset library. Create or open a workspace from the selection page to save your own work.",
+  },
+];
+
+function DemoTourTooltip({ step, index, size, isLastStep, tooltipProps, backProps, primaryProps, skipProps }) {
+  return (
+    <div {...tooltipProps} role="dialog" aria-labelledby="demo-tour-title" aria-describedby="demo-tour-content" className="DemoTour">
+      <h2 id="demo-tour-title">{step.title}</h2>
+      <p className="DemoTour_Progress" aria-live="polite">Step {index + 1} of {size}</p>
+      <p id="demo-tour-content">{step.content}</p>
+      <div className="DemoTour_Actions">
+        <Button {...skipProps} variant="outline-secondary">Skip tour</Button>
+        <Button {...backProps} variant="outline-secondary" disabled={index === 0}>Back</Button>
+        <Button {...primaryProps} variant="primary">{isLastStep ? "Finish" : "Next"}</Button>
+      </div>
+    </div>
+  );
+}
 
 function getRelativeLuminance(hexColor) {
   const hex = String(hexColor).replace("#", "");
@@ -410,6 +449,8 @@ function App() {
   const [isSavingPackage, setIsSavingPackage] = useState(false);
   const [isAssetWindowOpen, setIsAssetWindowOpen] = useState(false);
   const [isClosePromptOpen, setIsClosePromptOpen] = useState(false);
+  const [demoTourOpen, setDemoTourOpen] = useState(false);
+  const [demoTourError, setDemoTourError] = useState("");
   const editorRef = React.useRef(null);
   const [phase, setPhase] = useState(
     initialFixture ? "editor"
@@ -418,6 +459,15 @@ function App() {
           : "editor",
   );
   const [bootError, setBootError] = useState("");
+
+  useEffect(() => {
+    if (!demoTourOpen) return undefined;
+    const dismiss = (event) => {
+      if (event.key === "Escape") setDemoTourOpen(false);
+    };
+    document.addEventListener("keydown", dismiss);
+    return () => document.removeEventListener("keydown", dismiss);
+  }, [demoTourOpen]);
 
   const savePackage = useCallback(async (exportTargetPath = null) => {
     if (!isTauriRuntime || !currentPackage?.uuid || isSavingPackage) return;
@@ -735,6 +785,8 @@ function App() {
     setCurrentPackage(DEMO_MODEL);
     setMarkdown(DEMO_MODEL.rawContent);
     setEditorStatus("Demo workspace ready");
+    setDemoTourError("");
+    setDemoTourOpen(true);
     setPhase("editor");
     window.history.pushState({}, "", "/editor");
   }, []);
@@ -777,7 +829,9 @@ function App() {
           onViewModeChange={handleViewModeChange}
           editorColorMode={editorColorMode}
           onEditorColorModeChange={handleEditorColorModeChange}
+          onReplayTour={phase === "editor" && currentPackage?.isDemo ? () => { setDemoTourError(""); setDemoTourOpen(true); } : undefined}
         />
+        {phase === "editor" && demoTourError && <Alert variant="warning" role="alert">{demoTourError}</Alert>}
         {phase === "tutorial" ? <TutorialPage onBack={closeTutorial} onDemoOpen={openDemoWorkspace} />
           : phase !== "editor" ? <BootScreen phase={phase} error={bootError} onOpen={loadWorkspace} onTutorialOpen={openTutorial} onDemoOpen={openDemoWorkspace} />
           : <HASM_Markdown_Editor
@@ -789,7 +843,7 @@ function App() {
           onInsertAsset={insertAssetAtCursor}
           onEditorReady={(element) => { editorRef.current = element; }}
           currentPackage={currentPackage}
-          viewMode={viewMode}
+          viewMode={demoTourOpen && currentPackage?.isDemo ? "split" : viewMode}
           editorColorMode={editorColorMode}
         />}
         {phase === "editor" && isAssetWindowOpen && (
@@ -810,6 +864,23 @@ function App() {
             busy={isSavingPackage}
           />
         )}
+        {phase === "editor" && currentPackage?.isDemo && demoTourOpen && <Joyride
+          run
+          continuous
+          steps={DEMO_TOUR_STEPS}
+          tooltipComponent={DemoTourTooltip}
+          floatingOptions={{ strategy: "fixed", shiftOptions: { crossAxis: true } }}
+          locale={{ back: "Back", next: "Next", last: "Finish", skip: "Skip tour" }}
+          options={{ skipBeacon: true, blockTargetInteraction: true, overlayClickAction: false, dismissKeyAction: false, arrowColor: "var(--theme-surface)", zIndex: 1200 }}
+          onEvent={(event) => {
+            if (event.type === EVENTS.TOUR_END) setDemoTourOpen(false);
+            if (event.type === EVENTS.TARGET_NOT_FOUND || event.type === EVENTS.ERROR) {
+              errorLog("[SEQ-MD-01][TUTORIAL][ERROR] product tour failed", event.error || event.type);
+              setDemoTourError("The tour could not be displayed. Please replay it.");
+              setDemoTourOpen(false);
+            }
+          }}
+        />}
       </Container>
     </>
   );
