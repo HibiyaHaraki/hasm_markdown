@@ -261,7 +261,7 @@ function isUnknownCommandError(error) {
 
 function BootScreen({ phase, error, onOpen, onTutorialOpen, onDemoOpen }) {
   const isLoading = phase === "loading";
-  const title = isLoading ? "Opening workspace" : phase === "error" ? "Workspace could not be opened" : "HASM Markdown";
+  const title = isLoading ? "Opening workspace" : phase === "error" ? "Workspace could not be opened" : "Open a workspace";
   const message = isLoading
     ? "Preparing metadata and resolving asset paths..."
     : phase === "error"
@@ -270,16 +270,21 @@ function BootScreen({ phase, error, onOpen, onTutorialOpen, onDemoOpen }) {
 
   return (
     <main className="BootScreen">
-      <section className="BootScreen_Panel" aria-live="polite">
-        <p className="BootScreen_Kicker">HASM MARKDOWN</p>
+      <section className={`BootScreen_Panel${phase === "error" ? " BootScreen_Panel_Error" : ""}`} aria-live="polite">
+        <p className="BootScreen_Kicker">HASM MARKDOWN WORKSPACE</p>
         <h1>{title}</h1>
         <p className="BootScreen_Message">{message}</p>
         {!isLoading && (
-          <Stack direction="horizontal" gap={2} className="BootScreen_Actions">
-            <Button variant="outline-primary" onClick={onTutorialOpen}>Open Tutorial</Button>
-            <Button variant="outline-secondary" onClick={() => onOpen("archive")} disabled={!isTauriRuntime}>Open .hasmmd archive</Button>
-            <Button variant="outline-secondary" onClick={() => onOpen("folder")} disabled={!isTauriRuntime}>Open workspace folder</Button>
-            <Button className="BootScreen_Actions_Primary" onClick={() => onOpen("new")} disabled={!isTauriRuntime}>Create new workspace</Button>
+          <Stack gap={2} className="BootScreen_Actions">
+            <div className="BootScreen_OpenGroup" role="group" aria-labelledby="boot-open-label">
+              <span id="boot-open-label" className="BootScreen_OpenLabel">Open existing workspace</span>
+              <div className="BootScreen_OpenButtons">
+                <Button variant="outline-secondary" onClick={() => onOpen("folder")} disabled={!isTauriRuntime}>Open workspace folder</Button>
+                <Button variant="outline-secondary" onClick={() => onOpen("archive")} disabled={!isTauriRuntime}>Open .hasmmd archive</Button>
+              </div>
+            </div>
+            <Button variant="outline-secondary" onClick={() => onOpen("new")} disabled={!isTauriRuntime}>Create new workspace</Button>
+            <Button variant="outline-secondary" onClick={onTutorialOpen}>Open Tutorial</Button>
             <Button variant="outline-secondary" onClick={onDemoOpen}>Open Demo Workspace</Button>
           </Stack>
         )}

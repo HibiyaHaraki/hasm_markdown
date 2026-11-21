@@ -13,6 +13,7 @@ This sequence defines the global cross-cutting UI services available across all 
 2. **Real-time Save State Readout:** A synchronized UI indicator displaying the live status (`Dirty / Unsaved (*)` vs `Autosaved Locally at HH:mm:ss` vs `Master Target Synced`). Hovering or keyboard-focusing this indicator exposes the active local-folder or archive `targetPath`. The drawer summary shows both `tempDirPath` and `targetPath`, each with a Current/Synced, Pending, or Unavailable state mark; a clean `Ready` workspace marks both as current.
 3. **App-wide Color Pattern Selector:** Real-time theme switching across every pattern exported by the shared `src/hasm_color_pattern` submodule. The standard compatibility patterns are **`Light`** (`sand`), **`Dark`** (`classic`), and **`High-Contrast`** (`high-contrast`); all other exported patterns are available through local preference persistence.
 4. **Collapsed Drawer Controls:** File and Appearance sections are collapsed when the hamburger drawer opens and expand independently when selected.
+5. **HASM-aligned Chrome:** The compact header, status chip, drawer, editor section headings, asset panel, and dialogs use the shared color-pattern tokens and HASM's bordered paper-and-ink treatment. The asset panel occupies the full viewport height, including on narrow screens.
 
 ---
 

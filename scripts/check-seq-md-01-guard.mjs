@@ -53,6 +53,91 @@ try {
     throw new Error(`Guard failed: ${JSON.stringify(output)}`);
   }
   console.log(`${GREEN}PASS${RESET} TC-MD-01-GUARD-001 Unauthorized Direct Navigation`);
+  for (const [width, height, theme] of [[1280, 800, "classic"], [360, 500, "classic"], [1280, 800, "sand"], [360, 500, "sand"]]) {
+    await page.setViewportSize({ width, height });
+    await page.evaluate((pattern) => localStorage.setItem("hasm_theme_preference", pattern), theme);
+    await page.goto(`${url}/editor`, { waitUntil: "networkidle" });
+    await page.getByRole("heading", { name: "Open a workspace", exact: true }).waitFor();
+    const layout = await page.locator(".BootScreen").evaluate((screen) => {
+      const panel = screen.querySelector(".BootScreen_Panel");
+      const buttons = [...screen.querySelectorAll(".BootScreen_Actions > button")];
+      return {
+        panelWidth: panel.getBoundingClientRect().width,
+        overflow: screen.scrollWidth > screen.clientWidth,
+        stacked: buttons.every((button) => Math.abs(button.getBoundingClientRect().width - buttons[0].getBoundingClientRect().width) < 1),
+        menuInside: document.querySelector(".Menu_Toggle").getBoundingClientRect().right <= innerWidth,
+      };
+    });
+    if (layout.panelWidth > 620 || layout.overflow || !layout.stacked || !layout.menuInside) {
+      throw new Error(`Selection layout failed at ${width}x${height} (${theme}): ${JSON.stringify(layout)}`);
+    }
+    await page.getByRole("button", { name: "Open Demo Workspace", exact: true }).scrollIntoViewIfNeeded();
+    if (!await page.getByRole("button", { name: "Open Demo Workspace", exact: true }).isVisible()) {
+      throw new Error(`Selection actions are inaccessible at ${width}x${height}`);
+    }
+  }
+  console.log(`${GREEN}PASS${RESET} TC-MD-01-DESIGN-001 Responsive HASM workspace selection`);
+
+  for (const scenario of [
+    { button: "Open .hasmmd archive", path: "C:\\fixtures\\sample.hasmmd", command: "open_archive_workspace", argument: "archive_path", targetType: "Archive" },
+    { button: "Open workspace folder", path: "C:\\fixtures\\folder", command: "open_folder_workspace", argument: "folder_path", targetType: "Folder" },
+    { button: "Create new workspace", command: "create_new_package", targetType: "Unbound", delay: true },
+    { button: "Open workspace folder", path: null, cancel: true },
+    { button: "Open .hasmmd archive", path: "C:\\fixtures\\bad.hasmmd", command: "open_archive_workspace", fail: true },
+  ]) {
+    const ipcPage = await browser.newPage({ viewport: { width: 360, height: 500 } });
+    await ipcPage.addInitScript((fixture) => {
+      window.__workspaceCalls = [];
+      window.__TAURI_INTERNALS__ = {
+        transformCallback: () => 1,
+        invoke: async (name, args) => {
+          window.__workspaceCalls.push({ name, args });
+          if (name === "plugin:dialog|open") return fixture.path;
+          if (name === fixture.command) {
+            if (fixture.fail) throw new Error("Workspace fixture failed");
+            if (fixture.delay) await new Promise((resolve) => { window.__releaseWorkspace = resolve; });
+            return {
+              uuid: "selection-fixture",
+              targetType: fixture.targetType,
+              targetPath: fixture.path ?? null,
+              rawContent: "# Selection fixture",
+              manifest: { version: "1", assets: {} },
+              missingAssets: [],
+              warnings: [],
+            };
+          }
+          if (name === "get_app_theme_config") return "Dark";
+          return null;
+        },
+      };
+    }, scenario);
+    await ipcPage.goto(`${url}/select`, { waitUntil: "networkidle" });
+    await ipcPage.getByRole("button", { name: scenario.button, exact: true }).click();
+    if (scenario.delay) {
+      await ipcPage.getByRole("heading", { name: "Opening workspace", exact: true }).waitFor();
+      await ipcPage.evaluate(() => window.__releaseWorkspace());
+    }
+    if (scenario.cancel) {
+      await ipcPage.getByRole("heading", { name: "Open a workspace", exact: true }).waitFor();
+    } else if (scenario.fail) {
+      await ipcPage.getByRole("heading", { name: "Workspace could not be opened", exact: true }).waitFor();
+      await ipcPage.getByText("Error: Workspace fixture failed").waitFor();
+    } else {
+      await ipcPage.getByRole("textbox", { name: "Markdown editor" }).waitFor();
+    }
+    const calls = await ipcPage.evaluate(() => window.__workspaceCalls);
+    const dialog = calls.find(({ name }) => name === "plugin:dialog|open");
+    const opened = calls.find(({ name }) => name === scenario.command);
+    if (scenario.path !== undefined && (!dialog || dialog.args.options.directory !== (scenario.button === "Open workspace folder"))) {
+      throw new Error(`Incorrect selection dialog: ${JSON.stringify({ scenario, calls })}`);
+    }
+    if (scenario.cancel ? calls.some(({ name }) => name === "open_folder_workspace") :
+      (!opened || (scenario.argument && opened.args[scenario.argument] !== scenario.path))) {
+      throw new Error(`Incorrect workspace IPC: ${JSON.stringify({ scenario, calls })}`);
+    }
+    await ipcPage.close();
+  }
+  console.log(`${GREEN}PASS${RESET} TC-MD-01-DESIGN-002 Workspace selection IPC, cancellation and failure`);
   await page.getByRole("button", { name: "Open Tutorial", exact: true }).click();
   await page.getByRole("heading", { name: "Workspace tutorial", exact: true }).waitFor();
   if (!page.url().endsWith("/tutorial")) {

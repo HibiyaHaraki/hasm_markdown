@@ -7,15 +7,17 @@
 .BootScreen {
     flex: 1;
     min-height: 0;
-    display: grid;
-    place-items: center;
-    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    padding: 24px 12px;
     color: var(--text-color);
-    background: var(--textbackground-color);
+    background: transparent;
 }
 
 .BootScreen_Panel {
     width: min(620px, 100%);
+    margin: auto;
     padding: 48px;
     border: 1px solid var(--theme-border, currentColor);
     background: var(--theme-surface, var(--textbackground-color));
@@ -24,48 +26,45 @@
 
 .BootScreen_Kicker {
     margin: 0 0 12px;
-    color: var(--theme-danger, currentColor);
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.16em;
+    color: var(--theme-accent-readable);
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
 }
 
 .BootScreen h1 {
-    margin: 0;
+    margin: 0 0 0.5rem;
     font-family: var(--content-font-family);
-    font-size: clamp(2rem, 6vw, 4rem);
-    font-weight: 400;
+    font-size: clamp(1.375rem, 1.375rem + 1.5vw, 2.5rem);
+    font-weight: 500;
 }
 
 .BootScreen_Message {
-    max-width: 40em;
-    margin: 20px 0 28px;
+    margin: 0 0 1rem;
     color: var(--theme-muted, currentColor);
 }
 
 .BootScreen_Actions {
     display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+    flex-direction: column;
 }
 
 .BootScreen_Actions button {
-    min-height: 42px;
-    padding: 8px 14px;
-    border: 1px solid var(--text-color);
-    color: var(--text-color);
-    background: transparent;
-    cursor: pointer;
+    width: 100%;
 }
 
-.BootScreen_Actions button:disabled {
-    cursor: not-allowed;
-    opacity: 0.45;
+.BootScreen_OpenLabel {
+    display: block;
+    margin-bottom: 0.5rem;
 }
 
-.BootScreen_Actions_Primary {
-    color: var(--theme-on-accent, var(--theme-surface, #f4f0e8)) !important;
-    background: var(--text-color) !important;
+.BootScreen_OpenButtons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.BootScreen_OpenButtons .btn {
+    flex: 1 1 12rem;
 }
 
 .TutorialPage {
@@ -75,7 +74,7 @@
     display: grid;
     place-items: center;
     padding: 32px;
-    background: var(--theme-textbackground);
+    background: transparent;
     color: var(--theme-text);
 }
 
@@ -105,8 +104,8 @@
 .TutorialPage h1 {
     margin: 0;
     font-family: var(--content-font-family);
-    font-size: clamp(2rem, 5vw, 3.5rem);
-    font-weight: 400;
+    font-size: clamp(1.375rem, 1.375rem + 1.5vw, 2.5rem);
+    font-weight: 500;
 }
 
 .TutorialPage_Header .btn {
@@ -654,8 +653,7 @@ body {
     color: var(--theme-text);
     background: var(--theme-textbackground);
     font-family: var(--content-font-family);
-    letter-spacing: 0.015em;
-    line-height: 1.75;
+    line-height: 1.5;
 }
 
 html body,
@@ -688,15 +686,16 @@ button:disabled {
 
 .Main {
     color: var(--theme-text);
-    background: var(--theme-textbackground);
+    background-color: var(--theme-surface);
+    background-image: repeating-linear-gradient(0deg, transparent, transparent 31px, color-mix(in srgb, var(--theme-border) 36%, transparent) 32px);
 }
 
 .Menu {
-    min-height: 64px;
+    min-height: 56px;
     display: flex;
     align-items: center;
-    gap: 24px;
-    padding: 10px 24px;
+    gap: 8px;
+    padding: 8px 12px;
     color: var(--theme-text);
     background: var(--theme-surface);
     border-bottom: 1px solid var(--theme-border);
@@ -706,14 +705,14 @@ button:disabled {
 .Menu_Brand {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     min-width: max-content;
 }
 
 .Menu_Mark {
     display: block;
-    width: 34px;
-    height: 34px;
+    width: 14px;
+    height: 14px;
     object-fit: contain;
 }
 
@@ -725,17 +724,17 @@ button:disabled {
 }
 
 .Menu_Subtitle {
-    display: block;
-    color: var(--theme-muted);
-    font-size: 0.68rem;
-    letter-spacing: 0.08em;
+    display: none;
 }
 
 .Menu_Status {
     min-width: 0;
     overflow: hidden;
-    color: var(--theme-muted);
-    font-size: 0.76rem;
+    padding: 4px 8px;
+    border: 1px solid var(--theme-border);
+    color: var(--theme-text);
+    background: var(--theme-surface);
+    font-size: 0.78rem;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -744,10 +743,9 @@ button:disabled {
     display: inline-flex;
     align-items: center;
     gap: 9px;
-    margin-left: auto;
-    padding: 7px 0 7px 12px;
-    border: 0;
-    border-left: 1px solid var(--theme-border);
+    margin-left: 0;
+    padding: 6px 10px;
+    border: 1px solid var(--theme-secondary);
     color: var(--theme-text);
     background: transparent;
     font-size: 0.76rem;
@@ -1548,7 +1546,7 @@ html body .HASM_Markdown_Editor_ViewerCol_Viewer * {
 }
 
 .BootScreen {
-    background: var(--theme-textbackground);
+    background: transparent;
 }
 
 .BootScreen_Panel {
@@ -1562,15 +1560,54 @@ html body .HASM_Markdown_Editor_ViewerCol_Viewer * {
     color: var(--theme-accent-readable);
 }
 
-.BootScreen_Actions button {
-    border-color: var(--theme-text);
-    color: var(--theme-text);
+.BootScreen_Panel_Error {
+    border-color: var(--theme-danger-readable);
 }
 
-.BootScreen_Actions_Primary {
-    color: var(--theme-input-bg) !important;
-    background: var(--theme-text) !important;
-    border-color: var(--theme-primary) !important;
+.BootScreen_Actions .btn {
+    border-radius: 0;
+    border-color: var(--theme-secondary);
+    color: var(--theme-text);
+    background: transparent;
+}
+
+.BootScreen_Actions .btn:hover,
+.BootScreen_Actions .btn:focus-visible {
+    border-color: var(--theme-accent-readable);
+    color: var(--theme-text);
+    background: var(--theme-soft);
+    outline: 2px solid var(--theme-accent-readable);
+    outline-offset: 2px;
+}
+
+.BootScreen .alert,
+.AssetWindow .alert {
+    border-radius: 0;
+    border-color: var(--theme-border);
+    color: var(--theme-text);
+    background: var(--theme-surface);
+}
+
+:is(.TutorialPage, .TutorialModal, .AssetWindow, .CloseWorkspaceModal) .btn {
+    border-radius: 0;
+}
+
+:is(.TutorialPage, .TutorialModal, .AssetWindow, .CloseWorkspaceModal) :is(.btn-outline-primary, .btn-outline-secondary, .btn-secondary) {
+    border-color: var(--theme-secondary);
+    color: var(--theme-text);
+    background: transparent;
+}
+
+:is(.TutorialPage, .TutorialModal, .AssetWindow, .CloseWorkspaceModal) :is(.btn-outline-primary, .btn-outline-secondary, .btn-secondary):hover {
+    border-color: var(--theme-secondary);
+    color: var(--theme-text);
+    background: color-mix(in srgb, var(--theme-secondary) 14%, transparent);
+}
+
+:is(.TutorialPage, .TutorialModal, .AssetWindow, .CloseWorkspaceModal) .btn-primary {
+    border-color: var(--theme-primary);
+    color: var(--theme-input-bg);
+    background: var(--theme-text);
 }
 
 .Menu_ReplayTour.btn {
@@ -1643,6 +1680,7 @@ html body .HASM_Markdown_Editor_ViewerCol_Viewer * {
 .Menu.navbar {
     --bs-navbar-padding-y: 0;
     --bs-navbar-padding-x: 0;
+    padding: 8px 12px;
 }
 
 .Menu .navbar-brand {
@@ -1718,8 +1756,8 @@ html body .HASM_Markdown_Editor_ViewerCol_Viewer * {
 
 .GlobalMenu .btn-primary,
 .GlobalMenu .btn-outline-primary:hover {
-    color: var(--theme-on-accent);
-    background: var(--theme-primary);
+    color: var(--theme-input-bg);
+    background: var(--theme-text);
     border-color: var(--theme-primary);
 }
 
@@ -1751,7 +1789,7 @@ html body .HASM_Markdown_Editor_ViewerCol_Viewer * {
 
 .AssetWindow.offcanvas {
     --bs-offcanvas-width: min(390px, 100vw);
-    top: 64px;
+    top: 0;
     color: var(--theme-text);
     background: var(--theme-surface);
     border-left: 1px solid var(--theme-border);
@@ -1841,11 +1879,6 @@ html body .HASM_Markdown_Editor_ViewerCol_Viewer * {
     border-radius: 0;
 }
 
-.BootScreen_Actions .btn {
-    min-height: 42px;
-    border-radius: 0;
-}
-
 @media (max-width: 720px) {
     .TutorialPage {
         align-items: start;
@@ -1877,24 +1910,29 @@ html body .HASM_Markdown_Editor_ViewerCol_Viewer * {
     }
 
     .Menu {
-        min-height: 58px;
-        padding: 9px 14px;
-        gap: 12px;
+        flex-wrap: wrap;
+        gap: 8px;
     }
 
-    .Menu_Subtitle {
-        display: none;
+    .Menu_Brand {
+        flex: 1 1 50%;
+    }
+
+    .Menu_Toggle {
+        order: 1;
+    }
+
+    .Menu_Diagnostics {
+        order: 2;
+        margin-left: 0;
     }
 
     .Menu_Status {
-        position: absolute;
-        top: 59px;
-        left: 0;
-        right: 0;
-        z-index: 5;
-        padding: 3px 14px;
-        background: var(--theme-soft);
-        font-size: 0.68rem;
+        order: 3;
+        flex: 1 1 0;
+        min-width: 0;
+        margin: 0;
+        font-size: 0.78rem;
     }
 
     .HASM_Markdown_Editor {
@@ -1943,8 +1981,6 @@ html body .HASM_Markdown_Editor_ViewerCol_Viewer * {
 /* Keep the raw input, rendered syntax, and line-number gutter on identical text metrics. */
 
 .HASM_Markdown_Editor_ViewerCol_Title {
-    background-color: var(--main-color);
-    color: var(--theme-on-accent, var(--text-color));
-    padding: 8px 16px;
-    font-weight: bold;
+    color: var(--theme-text);
+    background-color: var(--theme-surface);
 }

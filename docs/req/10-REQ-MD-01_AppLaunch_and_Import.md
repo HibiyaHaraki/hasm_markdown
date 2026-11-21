@@ -24,6 +24,7 @@
 * If readiness is not reported within 30 seconds, the backend shall log a warning and show `main` so the splash never blocks the application indefinitely.
 
 * **`REQ-MD-01-006` (Selection Tutorial and Demo Model Access):** The workspace selection page shall provide **Open Tutorial** and **Open Demo Workspace** buttons. The tutorial shall open at `/tutorial` and present a step-by-step React-Bootstrap popup with example Markdown for headings, supporting text, asset links, and save/checklist review. Previous, Next, and Finish controls shall move through or complete the tutorial; closing or finishing shall return the user to `/select`. The demo action shall mount an isolated in-memory demo package at `/editor` containing sample Markdown and a registered asset, without requiring an external folder or archive and without modifying persisted workspace data. It shall open a theme-aware Joyride tour of the editor, preview, asset shelf, and workspace menu with Back, Next, Finish, Skip, Escape, and Replay. Split view may be shown temporarily for the tour but the saved focus mode shall remain unchanged. Other workspaces shall not show the demo tour.
+* The selection, loading, and error screens shall use a responsive HASM-style paper panel on the lined application shell. Archive and folder actions shall remain available alongside creation, tutorial, and demo actions; the panel shall scroll when needed on a short viewport.
 
 ---
 
