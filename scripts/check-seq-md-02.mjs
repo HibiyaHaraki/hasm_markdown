@@ -137,7 +137,7 @@ async function checkBrowserContract() {
       assert(errors.length === 0, `browser errors detected: ${errors.join("; ")}`);
     });
 
-    await record("TC-MD-02-E2E-006", "App-Wide Gothic Typography", async () => {
+    await record("TC-MD-02-E2E-006", "HASM Chrome and Markdown Typography", async () => {
       await editor.fill("# Main heading\n\n## Section heading\n\nA readable paragraph.\n\n- First item\n- Second item\n\n> A quotation\n\n`inline code`");
       const preview = page.locator(".HASM_Markdown_Editor_ViewerCol_Viewer");
       const typography = await page.evaluate(() => {
@@ -153,20 +153,33 @@ async function checkBrowserContract() {
           buttonFont: buttonStyle.fontFamily,
           editorFont: editorStyle.fontFamily,
           editorLineHeight: Number.parseFloat(editorStyle.lineHeight) / Number.parseFloat(editorStyle.fontSize),
+          editorSpacing: Number.parseFloat(editorStyle.letterSpacing) / Number.parseFloat(editorStyle.fontSize),
           previewFont: previewStyle.fontFamily,
           previewLineHeight: Number.parseFloat(previewStyle.lineHeight) / Number.parseFloat(previewStyle.fontSize),
+          previewSpacing: Number.parseFloat(previewStyle.letterSpacing) / Number.parseFloat(previewStyle.fontSize),
           codeFont: codeStyle.fontFamily,
           h1Size: Number.parseFloat(h1.fontSize),
           h2Size: Number.parseFloat(h2.fontSize),
         };
       });
-      assert([typography.bodyFont, typography.buttonFont, typography.editorFont, typography.previewFont, typography.codeFont]
-        .every((font) => font.toLowerCase().includes("yu gothic")), `application typography does not use Gothic consistently: ${JSON.stringify(typography)}`);
-      assert(typography.editorLineHeight >= 1.7 && typography.previewLineHeight >= 1.7, "editor or preview line height is too tight");
+      assert([typography.bodyFont, typography.buttonFont].every((font) => font.toLowerCase().includes("yu gothic"))
+        && [typography.editorFont, typography.previewFont, typography.codeFont].every((font) => font.toLowerCase().includes("yu mincho")),
+      `application and Markdown typography do not match the design policy: ${JSON.stringify(typography)}`);
+      assert(typography.editorLineHeight >= 1.7 && typography.editorLineHeight <= 1.8
+        && typography.previewLineHeight >= 1.7 && typography.previewLineHeight <= 1.8, "editor or preview line height is outside the design range");
+      assert(typography.editorSpacing >= 0.0299 && typography.previewSpacing >= 0.0299, "editor or preview letter spacing is too tight");
       assert(typography.h1Size > typography.h2Size, "preview heading levels are not visually differentiated");
       assert(await preview.locator("p").count() === 3 && await preview.locator("ul li").count() === 2, "Markdown paragraphs or list items were not rendered");
       assert(await preview.locator("blockquote").count() === 1 && await preview.locator("code").count() === 1, "quotation or code styles were not rendered");
       assert(await preview.evaluate((element) => element.scrollWidth <= element.clientWidth), "preview content overflows its pane");
+    });
+
+    await record("TC-MD-02-E2E-007", "Long Markdown Text Does Not Overflow", async () => {
+      await editor.fill(`Long text: ${"unbroken".repeat(100)}`);
+      const preview = page.locator(".HASM_Markdown_Editor_ViewerCol_Viewer");
+      await preview.getByText(/^Long text:/).waitFor();
+      assert(await editor.evaluate((element) => element.scrollWidth <= element.clientWidth), "long text overflowed the editor");
+      assert(await preview.evaluate((element) => element.scrollWidth <= element.clientWidth), "long text overflowed the preview");
     });
 
     await record("TC-MD-02-E2E-002-LIVE", "Live Missing Asset Highlighting", async () => {

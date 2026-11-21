@@ -30,6 +30,7 @@ import "./main.css";
 // Bootstrap
 import "bootstrap/dist/css/bootstrap.min.css";
 import { Alert, Button, Container, Modal, ProgressBar, Stack } from "react-bootstrap";
+import { EVENTS, Joyride } from "react-joyride";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
@@ -102,6 +103,66 @@ const isEditorEvaluation = evaluationMode === "md02";
 const isAssetEvaluation = evaluationMode === "md03";
 const isSaveEvaluation = evaluationMode === "md04";
 const isCloseEvaluation = evaluationMode === "md05";
+const DEMO_MODEL = {
+  uuid: "demo-model",
+  targetType: "Folder",
+  tempDirPath: "Demo model",
+  targetPath: "No external folder or archive",
+  lastSavedContent: "# Field Notes\n\nA quiet place for observations.\n\n![HASM Markdown](asset:morning-light)\n\n## Checklist\n\n- [x] Record a detail\n- [ ] Note a question\n- [ ] Try an asset",
+  rawContent: "# Field Notes\n\nA quiet place for observations.\n\n![HASM Markdown](asset:morning-light)\n\n## Checklist\n\n- [x] Record a detail\n- [ ] Note a question\n- [ ] Try an asset",
+  isLoaded: true,
+  isDirty: false,
+  isDemo: true,
+  manifest: {
+    version: "1",
+    assets: {
+      "morning-light": {
+        uuid: "morning-light",
+        resolvedPath: "/favicon.png",
+      },
+    },
+  },
+  missingAssets: [],
+  warnings: [],
+};
+
+const DEMO_TOUR_STEPS = [
+  {
+    target: ".HASM_Markdown_Editor_EditorCol_Title",
+    title: "Write Markdown",
+    content: "Edit the sample text in the editor. This demo is temporary and does not save to an external workspace.",
+  },
+  {
+    target: ".HASM_Markdown_Editor_ViewerCol_Title",
+    title: "Review the preview",
+    content: "The preview renders your Markdown as you write. Use the workspace menu to change the view and text size.",
+  },
+  {
+    target: ".EditorAssetShelf_Count",
+    title: "Insert assets",
+    content: "Show the asset shelf and select an alias to insert its asset: Markdown reference at the cursor.",
+  },
+  {
+    target: ".Menu_Toggle",
+    title: "Workspace menu",
+    content: "Use the menu for file actions, themes, focus modes, and the asset library. Create or open a workspace from the selection page to save your own work.",
+  },
+];
+
+function DemoTourTooltip({ step, index, size, isLastStep, tooltipProps, backProps, primaryProps, skipProps }) {
+  return (
+    <div {...tooltipProps} role="dialog" aria-labelledby="demo-tour-title" aria-describedby="demo-tour-content" className="DemoTour">
+      <h2 id="demo-tour-title">{step.title}</h2>
+      <p className="DemoTour_Progress" aria-live="polite">Step {index + 1} of {size}</p>
+      <p id="demo-tour-content">{step.content}</p>
+      <div className="DemoTour_Actions">
+        <Button {...skipProps} variant="outline-secondary">Skip tour</Button>
+        <Button {...backProps} variant="outline-secondary" disabled={index === 0}>Back</Button>
+        <Button {...primaryProps} variant="primary">{isLastStep ? "Finish" : "Next"}</Button>
+      </div>
+    </div>
+  );
+}
 
 function getRelativeLuminance(hexColor) {
   const hex = String(hexColor).replace("#", "");
@@ -198,9 +259,9 @@ function isUnknownCommandError(error) {
   return message.includes("unknown command") || message.includes("command not found");
 }
 
-function BootScreen({ phase, error, onOpen }) {
+function BootScreen({ phase, error, onOpen, onTutorialOpen, onDemoOpen }) {
   const isLoading = phase === "loading";
-  const title = isLoading ? "Opening workspace" : phase === "error" ? "Workspace could not be opened" : "HASM Markdown";
+  const title = isLoading ? "Opening workspace" : phase === "error" ? "Workspace could not be opened" : "Open a workspace";
   const message = isLoading
     ? "Preparing metadata and resolving asset paths..."
     : phase === "error"
@@ -209,19 +270,118 @@ function BootScreen({ phase, error, onOpen }) {
 
   return (
     <main className="BootScreen">
-      <section className="BootScreen_Panel" aria-live="polite">
-        <p className="BootScreen_Kicker">HASM MARKDOWN</p>
+      <section className={`BootScreen_Panel${phase === "error" ? " BootScreen_Panel_Error" : ""}`} aria-live="polite">
+        <p className="BootScreen_Kicker">HASM MARKDOWN WORKSPACE</p>
         <h1>{title}</h1>
         <p className="BootScreen_Message">{message}</p>
         {!isLoading && (
-          <Stack direction="horizontal" gap={2} className="BootScreen_Actions">
-            <Button variant="outline-secondary" onClick={() => onOpen("archive")} disabled={!isTauriRuntime}>Open .hasmmd archive</Button>
-            <Button variant="outline-secondary" onClick={() => onOpen("folder")} disabled={!isTauriRuntime}>Open workspace folder</Button>
-            <Button className="BootScreen_Actions_Primary" onClick={() => onOpen("new")} disabled={!isTauriRuntime}>Create new workspace</Button>
+          <Stack gap={2} className="BootScreen_Actions">
+            <div className="BootScreen_OpenGroup" role="group" aria-labelledby="boot-open-label">
+              <span id="boot-open-label" className="BootScreen_OpenLabel">Open existing workspace</span>
+              <div className="BootScreen_OpenButtons">
+                <Button variant="outline-secondary" onClick={() => onOpen("folder")} disabled={!isTauriRuntime}>Open workspace folder</Button>
+                <Button variant="outline-secondary" onClick={() => onOpen("archive")} disabled={!isTauriRuntime}>Open .hasmmd archive</Button>
+              </div>
+            </div>
+            <Button variant="outline-secondary" onClick={() => onOpen("new")} disabled={!isTauriRuntime}>Create new workspace</Button>
+            <Button variant="outline-secondary" onClick={onTutorialOpen}>Open Tutorial</Button>
+            <Button variant="outline-secondary" onClick={onDemoOpen}>Open Demo Workspace</Button>
           </Stack>
         )}
         {!isTauriRuntime && <Alert variant="warning" className="mt-4 mb-0">Run this application in its Tauri desktop shell to open a workspace.</Alert>}
       </section>
+    </main>
+  );
+}
+
+function TutorialPage({ onBack, onDemoOpen }) {
+  const [stepIndex, setStepIndex] = useState(0);
+  const tutorialSteps = [
+    {
+      title: "Start with a heading",
+      description: "A Markdown heading gives the document a clear title.",
+      markdown: "# Field Notes",
+    },
+    {
+      title: "Add supporting text",
+      description: "Write paragraphs and short lists beneath the heading.",
+      markdown: "# Field Notes\n\nA quiet place for observations.\n\n- Record a detail\n- Note a question\n- Add the next step",
+    },
+    {
+      title: "Link an asset",
+      description: "Use HASM Markdown's asset syntax to connect a registered image alias.",
+      markdown: "# Field Notes\n\nA quiet place for observations.\n\n![Morning light](asset:morning-light)\n\n- Record a detail\n- Note a question\n- Add the next step",
+    },
+    {
+      title: "Review and save",
+      description: "Check the preview, then use Save or Save As before closing the workspace.",
+      markdown: "# Field Notes\n\nA quiet place for observations.\n\n![Morning light](asset:morning-light)\n\n## Checklist\n\n- [x] Record a detail\n- [ ] Note a question\n- [ ] Add the next step",
+    },
+  ];
+  const step = tutorialSteps[stepIndex];
+
+  return (
+    <main className="TutorialPage">
+      <section className="TutorialPage_Panel" aria-labelledby="tutorial-title">
+        <div className="TutorialPage_Header">
+          <div>
+            <p className="TutorialPage_Kicker">HASM MARKDOWN</p>
+            <h1 id="tutorial-title">Workspace tutorial</h1>
+          </div>
+          <Button variant="outline-secondary" onClick={onBack}>Back to selection</Button>
+        </div>
+        <p className="TutorialPage_Intro">
+          HASM Markdown keeps writing and assets together in a portable workspace.
+        </p>
+        <Stack direction="horizontal" gap={2} className="TutorialPage_Actions">
+          <Button variant="primary" onClick={() => setStepIndex(0)} className="TutorialPage_Start">
+            Start step-by-step tutorial
+          </Button>
+          <Button variant="outline-secondary" onClick={onDemoOpen}>
+            Open Demo Workspace
+          </Button>
+        </Stack>
+      </section>
+      <Modal
+        show
+        centered
+        backdrop="static"
+        keyboard={false}
+        onHide={onBack}
+        contentClassName="TutorialModal"
+        aria-label="HASM Markdown tutorial"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>{step.title}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Stack gap={3}>
+            <div className="TutorialModal_Progress">
+              <span>Step {stepIndex + 1} of {tutorialSteps.length}</span>
+              <ProgressBar now={((stepIndex + 1) / tutorialSteps.length) * 100} />
+            </div>
+            <p className="TutorialModal_Description">{step.description}</p>
+            <div>
+              <label className="TutorialModal_Label" htmlFor="tutorial-example">Example markdown</label>
+              <pre id="tutorial-example" className="TutorialModal_Example"><code>{step.markdown}</code></pre>
+            </div>
+          </Stack>
+        </Modal.Body>
+        <Modal.Footer className="TutorialModal_Actions">
+          <Button variant="outline-secondary" onClick={() => setStepIndex((current) => Math.max(0, current - 1))} disabled={stepIndex === 0}>
+            Previous
+          </Button>
+          {stepIndex < tutorialSteps.length - 1 ? (
+            <Button variant="primary" onClick={() => setStepIndex((current) => current + 1)}>
+              Next
+            </Button>
+          ) : (
+            <Button variant="primary" onClick={onBack}>
+              Finish
+            </Button>
+          )}
+        </Modal.Footer>
+      </Modal>
     </main>
   );
 }
@@ -294,11 +454,25 @@ function App() {
   const [isSavingPackage, setIsSavingPackage] = useState(false);
   const [isAssetWindowOpen, setIsAssetWindowOpen] = useState(false);
   const [isClosePromptOpen, setIsClosePromptOpen] = useState(false);
+  const [demoTourOpen, setDemoTourOpen] = useState(false);
+  const [demoTourError, setDemoTourError] = useState("");
   const editorRef = React.useRef(null);
   const [phase, setPhase] = useState(
-    initialFixture ? "editor" : isTauriRuntime || window.location.pathname === "/editor" ? "select" : "editor",
+    initialFixture ? "editor"
+      : window.location.pathname === "/tutorial" ? "tutorial"
+        : isTauriRuntime || window.location.pathname === "/editor" ? "select"
+          : "editor",
   );
   const [bootError, setBootError] = useState("");
+
+  useEffect(() => {
+    if (!demoTourOpen) return undefined;
+    const dismiss = (event) => {
+      if (event.key === "Escape") setDemoTourOpen(false);
+    };
+    document.addEventListener("keydown", dismiss);
+    return () => document.removeEventListener("keydown", dismiss);
+  }, [demoTourOpen]);
 
   const savePackage = useCallback(async (exportTargetPath = null) => {
     if (!isTauriRuntime || !currentPackage?.uuid || isSavingPackage) return;
@@ -427,6 +601,16 @@ function App() {
   }, [isSavingPackage, savePackage]);
 
   const finishClose = useCallback(async (forceDiscard = false) => {
+    if (currentPackage?.isDemo) {
+      setCurrentPackage(null);
+      setMarkdown(EMPTY_MARKDOWN);
+      setEditorStatus("Ready");
+      setIsAssetWindowOpen(false);
+      setIsClosePromptOpen(false);
+      setPhase("select");
+      window.history.replaceState({}, "", "/select");
+      return;
+    }
     if (!isTauriRuntime || !currentPackage?.uuid) return;
     try {
       await invoke("close_and_cleanup_workspace", { uuid: currentPackage.uuid, force_discard: forceDiscard });
@@ -589,6 +773,38 @@ function App() {
     }
   }, [phase]);
 
+  const openTutorial = useCallback(() => {
+    infoLog("[SEQ-MD-01][UI] open tutorial", { from: window.location.pathname });
+    setPhase("tutorial");
+    window.history.pushState({}, "", "/tutorial");
+  }, []);
+
+  const closeTutorial = useCallback(() => {
+    infoLog("[SEQ-MD-01][UI] close tutorial");
+    setPhase("select");
+    window.history.replaceState({}, "", "/select");
+  }, []);
+
+  const openDemoWorkspace = useCallback(() => {
+    infoLog("[SEQ-MD-01][UI] open demo workspace");
+    setCurrentPackage(DEMO_MODEL);
+    setMarkdown(DEMO_MODEL.rawContent);
+    setEditorStatus("Demo workspace ready");
+    setDemoTourError("");
+    setDemoTourOpen(true);
+    setPhase("editor");
+    window.history.pushState({}, "", "/editor");
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (window.location.pathname === "/tutorial") setPhase("tutorial");
+      else if (window.location.pathname === "/select") setPhase("select");
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   // Return App Component
   infoLog("Render App", { phase });
   return (
@@ -618,8 +834,12 @@ function App() {
           onViewModeChange={handleViewModeChange}
           editorColorMode={editorColorMode}
           onEditorColorModeChange={handleEditorColorModeChange}
+          onReplayTour={phase === "editor" && currentPackage?.isDemo ? () => { setDemoTourError(""); setDemoTourOpen(true); } : undefined}
         />
-        {phase !== "editor" ? <BootScreen phase={phase} error={bootError} onOpen={loadWorkspace} /> : <HASM_Markdown_Editor
+        {phase === "editor" && demoTourError && <Alert variant="warning" role="alert">{demoTourError}</Alert>}
+        {phase === "tutorial" ? <TutorialPage onBack={closeTutorial} onDemoOpen={openDemoWorkspace} />
+          : phase !== "editor" ? <BootScreen phase={phase} error={bootError} onOpen={loadWorkspace} onTutorialOpen={openTutorial} onDemoOpen={openDemoWorkspace} />
+          : <HASM_Markdown_Editor
           markdown={markdown}
           setMarkdown={setMarkdown}
           onPackageChange={setCurrentPackage}
@@ -628,7 +848,7 @@ function App() {
           onInsertAsset={insertAssetAtCursor}
           onEditorReady={(element) => { editorRef.current = element; }}
           currentPackage={currentPackage}
-          viewMode={viewMode}
+          viewMode={demoTourOpen && currentPackage?.isDemo ? "split" : viewMode}
           editorColorMode={editorColorMode}
         />}
         {phase === "editor" && isAssetWindowOpen && (
@@ -649,6 +869,23 @@ function App() {
             busy={isSavingPackage}
           />
         )}
+        {phase === "editor" && currentPackage?.isDemo && demoTourOpen && <Joyride
+          run
+          continuous
+          steps={DEMO_TOUR_STEPS}
+          tooltipComponent={DemoTourTooltip}
+          floatingOptions={{ strategy: "fixed", shiftOptions: { crossAxis: true } }}
+          locale={{ back: "Back", next: "Next", last: "Finish", skip: "Skip tour" }}
+          options={{ skipBeacon: true, blockTargetInteraction: true, overlayClickAction: false, dismissKeyAction: false, arrowColor: "var(--theme-surface)", zIndex: 1200 }}
+          onEvent={(event) => {
+            if (event.type === EVENTS.TOUR_END) setDemoTourOpen(false);
+            if (event.type === EVENTS.TARGET_NOT_FOUND || event.type === EVENTS.ERROR) {
+              errorLog("[SEQ-MD-01][TUTORIAL][ERROR] product tour failed", event.error || event.type);
+              setDemoTourError("The tour could not be displayed. Please replay it.");
+              setDemoTourOpen(false);
+            }
+          }}
+        />}
       </Container>
     </>
   );

@@ -5,6 +5,7 @@
 ### 1.1 Global Menu & Diagnostic Notifications
 
 * **`REQ-MD-06-001` (Persistent Global Menu Accessibility):** The system shall render a persistent Global Menu trigger inside the root application shell (`AppLayout`), making it accessible across all route pages (`/select`, `/editor`, `/loading-model`, `/error-model`, `/error-app`).
+* The header, status, drawer, editor chrome, asset panel, and dialogs shall follow HASM's theme-aware bordered visual language while retaining the Markdown-specific controls and responsive layout.
 * **`REQ-MD-06-002` (Error List Notification):** The Global Menu shall aggregate and display active error records (`missingAssets` tags referenced in `main.md` but missing physically, plus process lock conflicts) in a dedicated Error List view with badge count indicators.
 * **`REQ-MD-06-003` (Warning List Notification):** The Global Menu shall aggregate and display active warning records (unregistered orphan files in `assets/` and soft-deleted asset references) in a dedicated Warning List view.
 * **`REQ-MD-06-004` (Direct Error Navigation):** Clicking an item in the Error List shall scroll the main code editor to the relevant line decorator and highlight the missing asset tag.
